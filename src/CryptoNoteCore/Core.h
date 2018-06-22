@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <ctime>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 
@@ -92,6 +93,8 @@ namespace CryptoNote {
      virtual bool addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) override;
      virtual bool removeMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) override;
 
+	 virtual std::time_t getStartTime() const;
+	 
      uint32_t get_current_blockchain_height();
      bool have_block(const Crypto::Hash& id) override;
      std::vector<Crypto::Hash> buildSparseChain() override;
@@ -140,6 +143,7 @@ namespace CryptoNote {
      void print_blockchain(uint32_t start_index, uint32_t end_index);
      void print_blockchain_index();
      std::string print_pool(bool short_format);
+	 std::list<CryptoNote::tx_memory_pool::TransactionDetails> getMemoryPool() const;
      void print_blockchain_outs(const std::string& file);
      virtual bool getPoolChanges(const Crypto::Hash& tailBlockId, const std::vector<Crypto::Hash>& knownTxsIds,
                                  std::vector<Transaction>& addedTxs, std::vector<Crypto::Hash>& deletedTxsIds) override;
@@ -150,6 +154,7 @@ namespace CryptoNote {
 
      uint64_t getNextBlockDifficulty();
      uint64_t getTotalGeneratedAmount();
+	 uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
 
    private:
      bool add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block);
@@ -161,6 +166,9 @@ namespace CryptoNote {
      //check correct values, amounts and all lightweight checks not related with database
      bool check_tx_semantic(const Transaction& tx, bool keeped_by_block);
      //check if tx already in memory pool or in main blockchain
+     bool check_tx_mixin(const Transaction& tx);
+     //check if the mixin is not too large
+	 bool check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_context& tvc);
 
      bool is_key_image_spent(const Crypto::KeyImage& key_im);
 
@@ -189,5 +197,6 @@ namespace CryptoNote {
      friend class tx_validate_inputs;
      std::atomic<bool> m_starter_message_showed;
      Tools::ObserverManager<ICoreObserver> m_observerManager;
+	 time_t start_time;
    };
 }

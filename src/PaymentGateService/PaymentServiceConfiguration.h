@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright(c) 2014 - 2017 XDN - project developers
+// Copyright(c) 2018 The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -23,6 +25,12 @@
 
 #include <boost/program_options.hpp>
 
+#include "SimpleWallet/PasswordContainer.h"
+
+namespace {
+	Tools::PasswordContainer pwd_container;
+}
+
 namespace PaymentService {
 
 class ConfigurationError : public std::runtime_error {
@@ -38,6 +46,8 @@ struct Configuration {
 
   std::string bindAddress;
   uint16_t bindPort;
+  std::string m_rpcUser;
+  std::string m_rpcPassword;
 
   std::string containerFile;
   std::string containerPassword;

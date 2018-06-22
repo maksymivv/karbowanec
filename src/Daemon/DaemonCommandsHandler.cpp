@@ -1,4 +1,8 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2018, The Monero project
+// Copyright (c) 2014-2018, The Forknote developers
+// Copyright (c) 2018, The TurtleCoin developers
+// Copyright (c) 2016-2018, The Karbowanec developers
 //
 // This file is part of Bytecoin.
 //
@@ -17,12 +21,15 @@
 
 #include "DaemonCommandsHandler.h"
 
+#include <ctime>
 #include "P2p/NetNode.h"
 #include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/Core.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
 #include "Serialization/SerializationTools.h"
 #include "version.h"
+#include <boost/format.hpp>
+#include "math.h"
 
 namespace {
   template <typename T>
@@ -33,13 +40,14 @@ namespace {
 }
 
 
-DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::core& core, CryptoNote::NodeServer& srv, Logging::LoggerManager& log) :
-  m_core(core), m_srv(srv), logger(log, "daemon"), m_logManager(log) {
+DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::core& core, CryptoNote::NodeServer& srv, Logging::LoggerManager& log, const CryptoNote::ICryptoNoteProtocolQuery& protocol, CryptoNote::RpcServer* prpc_server) :
+  m_core(core), m_srv(srv), logger(log, "daemon"), m_logManager(log), protocolQuery(protocol), m_prpc_server(prpc_server) {
   m_consoleHandler.setHandler("exit", boost::bind(&DaemonCommandsHandler::exit, this, _1), "Shutdown the daemon");
   m_consoleHandler.setHandler("help", boost::bind(&DaemonCommandsHandler::help, this, _1), "Show this help");
   m_consoleHandler.setHandler("print_pl", boost::bind(&DaemonCommandsHandler::print_pl, this, _1), "Print peer list");
   m_consoleHandler.setHandler("print_cn", boost::bind(&DaemonCommandsHandler::print_cn, this, _1), "Print connections");
   m_consoleHandler.setHandler("print_bc", boost::bind(&DaemonCommandsHandler::print_bc, this, _1), "Print blockchain info in a given blocks range, print_bc <begin_height> [<end_height>]");
+  m_consoleHandler.setHandler("height", boost::bind(&DaemonCommandsHandler::print_height, this, _1), "Print blockchain height");
   //m_consoleHandler.setHandler("print_bci", boost::bind(&DaemonCommandsHandler::print_bci, this, _1));
   //m_consoleHandler.setHandler("print_bc_outs", boost::bind(&DaemonCommandsHandler::print_bc_outs, this, _1));
   m_consoleHandler.setHandler("print_block", boost::bind(&DaemonCommandsHandler::print_block, this, _1), "Print block, print_block <block_hash> | <block_height>");
@@ -48,9 +56,15 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::core& core, CryptoNote:
   m_consoleHandler.setHandler("stop_mining", boost::bind(&DaemonCommandsHandler::stop_mining, this, _1), "Stop mining");
   m_consoleHandler.setHandler("print_pool", boost::bind(&DaemonCommandsHandler::print_pool, this, _1), "Print transaction pool (long format)");
   m_consoleHandler.setHandler("print_pool_sh", boost::bind(&DaemonCommandsHandler::print_pool_sh, this, _1), "Print transaction pool (short format)");
+  m_consoleHandler.setHandler("print_mp", boost::bind(&DaemonCommandsHandler::print_pool_count, this, _1), "Print number of transactions in memory pool");
   m_consoleHandler.setHandler("show_hr", boost::bind(&DaemonCommandsHandler::show_hr, this, _1), "Start showing hash rate");
   m_consoleHandler.setHandler("hide_hr", boost::bind(&DaemonCommandsHandler::hide_hr, this, _1), "Stop showing hash rate");
   m_consoleHandler.setHandler("set_log", boost::bind(&DaemonCommandsHandler::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
+  m_consoleHandler.setHandler("print_diff", boost::bind(&DaemonCommandsHandler::print_diff, this, _1), "Difficulty for next block");
+  m_consoleHandler.setHandler("print_ban", boost::bind(&DaemonCommandsHandler::print_ban, this, _1), "Print banned nodes");
+  m_consoleHandler.setHandler("ban", boost::bind(&DaemonCommandsHandler::ban, this, _1), "Ban a given <IP> for a given amount of <seconds>, ban <IP> [<seconds>]");
+  m_consoleHandler.setHandler("unban", boost::bind(&DaemonCommandsHandler::unban, this, _1), "Unban a given <IP>, unban <IP>");
+  m_consoleHandler.setHandler("status", boost::bind(&DaemonCommandsHandler::status, this, _1), "Show daemon status");
 }
 
 //--------------------------------------------------------------------------------
@@ -67,6 +81,24 @@ std::string DaemonCommandsHandler::get_commands_str()
 }
 
 //--------------------------------------------------------------------------------
+std::string DaemonCommandsHandler::get_mining_speed(uint32_t hr) {
+  if (hr>1e9) return (boost::format("%.2f GH/s") % (hr / 1e9)).str();
+  if (hr>1e6) return (boost::format("%.2f MH/s") % (hr / 1e6)).str();
+  if (hr>1e3) return (boost::format("%.2f kH/s") % (hr / 1e3)).str();
+  return (boost::format("%.0f H/s") % hr).str();
+}
+
+//--------------------------------------------------------------------------------
+float DaemonCommandsHandler::get_sync_percentage(uint64_t height, uint64_t target_height) {
+  target_height = target_height ? target_height < height ? height : target_height : height;
+  float pc = 100.0f * height / target_height;
+  if (height < target_height && pc > 99.9f){
+    return 99.9f; // to avoid 100% when not fully synced
+  }
+    return pc;
+}
+
+//--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::exit(const std::vector<std::string>& args) {
   m_consoleHandler.requestStop();
   m_srv.sendStopSignal();
@@ -78,6 +110,40 @@ bool DaemonCommandsHandler::help(const std::vector<std::string>& args) {
   std::cout << get_commands_str() << ENDL;
   return true;
 }
+
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
+  uint32_t height = m_core.get_current_blockchain_height() - 1;
+  uint64_t difficulty = m_core.getNextBlockDifficulty();
+  size_t tx_pool_size = m_core.get_pool_transactions_count();
+  size_t alt_blocks_count = m_core.get_alternative_blocks_count();
+  uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight()) - 1;
+  size_t total_conn = m_srv.get_connections_count();
+  size_t rpc_conn = m_prpc_server->get_connections_count();
+  size_t outgoing_connections_count = m_srv.get_outgoing_connections_count();
+  size_t incoming_connections_count = total_conn - outgoing_connections_count;
+  size_t white_peerlist_size = m_srv.getPeerlistManager().get_white_peers_count();
+  size_t grey_peerlist_size = m_srv.getPeerlistManager().get_gray_peers_count();
+  uint64_t hashrate = (uint32_t)round(difficulty / CryptoNote::parameters::DIFFICULTY_TARGET);
+  std::time_t uptime = std::time(nullptr) - m_core.getStartTime();
+  uint8_t majorVersion = m_core.getBlockMajorVersionForHeight(height);
+  bool synced = ((uint32_t)height == (uint32_t)last_known_block_index);
+
+  std::cout << std::endl
+    << (synced ? "Synced " : "Syncing ") << height << "/" << last_known_block_index 
+    << " (" << get_sync_percentage(height, last_known_block_index) << "%) "
+    << "on " << (m_core.currency().isTestnet() ? "testnet, " : "mainnet, ")
+    << "network hashrate: " << get_mining_speed(hashrate) << ", difficulty: " << difficulty << ", "
+    << "block v. " << (int)majorVersion << ", "
+    << outgoing_connections_count << " out. + " << incoming_connections_count << " inc. connections, "
+    << rpc_conn <<  " rpc connections, "
+    << "uptime: " << (unsigned int)floor(uptime / 60.0 / 60.0 / 24.0) << "d " << (unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0)) << "h "
+    << (unsigned int)floor(fmod((uptime / 60.0), 60.0)) << "m " << (unsigned int)fmod(uptime, 60.0) << "s"
+    << std::endl;
+  
+  return true;
+}
+
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::print_pl(const std::vector<std::string>& args) {
   m_srv.log_peerlist();
@@ -153,6 +219,11 @@ bool DaemonCommandsHandler::print_bc(const std::vector<std::string> &args) {
   }
 
   m_core.print_blockchain(start_index, end_index);
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_height(const std::vector<std::string> &args) {
+  logger(Logging::INFO) << "Height: " << m_core.get_current_blockchain_height() << std::endl;
   return true;
 }
 //--------------------------------------------------------------------------------
@@ -288,6 +359,18 @@ bool DaemonCommandsHandler::print_pool_sh(const std::vector<std::string>& args)
   return true;
 }
 //--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_diff(const std::vector<std::string>& args)
+{
+  logger(Logging::INFO) << "Difficulty for next block: " << m_core.getNextBlockDifficulty() << std::endl;
+  return true;
+}
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& args)
+{
+  logger(Logging::INFO) << "Pending transactions in mempool: " << m_core.get_pool_transactions_count() << std::endl;
+  return true;
+}
+//--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::start_mining(const std::vector<std::string> &args) {
   if (!args.size()) {
     std::cout << "Please, specify wallet address to mine for: start_mining <addr> [threads=1]" << std::endl;
@@ -314,4 +397,47 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string> &args) {
 bool DaemonCommandsHandler::stop_mining(const std::vector<std::string>& args) {
   m_core.get_miner().stop();
   return true;
+}
+
+//--------------------------------------------------------------------------------
+bool DaemonCommandsHandler::print_ban(const std::vector<std::string>& args) {
+  m_srv.log_banlist();
+  return true;
+}
+
+bool DaemonCommandsHandler::ban(const std::vector<std::string>& args)
+{
+  if (args.size() != 1 && args.size() != 2) return false;
+  std::string addr = args[0];
+  uint32_t ip;
+  time_t seconds;
+  if (args.size() > 1) {
+    try {
+      seconds = std::stoi(args[1]);
+    } catch (const std::exception &e) {
+      return false;
+    }
+    if (seconds == 0) {
+      return false;
+    }
+  } 
+  try {
+    ip = Common::stringToIpAddress(addr);
+  } catch (const std::exception &e) {
+     return false;
+  }
+  return m_srv.ban_host(ip, seconds);
+}
+
+bool DaemonCommandsHandler::unban(const std::vector<std::string>& args)
+{
+  if (args.size() != 1) return false;
+  std::string addr = args[0];
+  uint32_t ip;
+  try {
+    ip = Common::stringToIpAddress(addr);
+  }	catch (const std::exception &e) {
+    return false;
+  }
+  return m_srv.unban_host(ip);
 }
