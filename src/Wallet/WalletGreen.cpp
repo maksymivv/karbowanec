@@ -29,6 +29,7 @@
 
 #include <System/EventLock.h>
 #include <System/RemoteContext.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "ITransaction.h"
 
@@ -848,7 +849,15 @@ void WalletGreen::convertAndLoadWalletFile(const std::string& path, std::ifstrea
   prefix->version = WalletSerializerV2::SERIALIZATION_VERSION;
   prefix->nextIv = Crypto::rand<Crypto::chacha8_iv>();
 
-  uint64_t creationTimestamp = time(nullptr);
+  uint64_t creationTimestamp;
+  for (WalletRecord wallet : m_walletsContainer.get<RandomAccessIndex>()) {
+    boost::posix_time::ptime ts = boost::posix_time::from_time_t(wallet.creationTimestamp);
+    if (!ts.is_not_a_date_time()) {
+      creationTimestamp = wallet.creationTimestamp;
+      break;
+    }
+    creationTimestamp = time(nullptr);
+  }
   prefix->encryptedViewKeys = encryptKeyPair(m_viewPublicKey, m_viewSecretKey, creationTimestamp);
 
   for (auto spendKeys : m_walletsContainer.get<RandomAccessIndex>()) {
@@ -977,16 +986,6 @@ std::string WalletGreen::createAddress(const Crypto::SecretKey& spendSecretKey, 
     throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
   }
   uint64_t creationTimestamp = reset ? 0 : static_cast<uint64_t>(time(nullptr));
-
-  return doCreateAddress(spendPublicKey, spendSecretKey, creationTimestamp);
-}
-
-std::string WalletGreen::createAddressWithTimestamp(const Crypto::SecretKey& spendSecretKey, const uint64_t& creationTimestamp) {
-  Crypto::PublicKey spendPublicKey;
-  if (!Crypto::secret_key_to_public_key(spendSecretKey, spendPublicKey)) {
-    m_logger(ERROR, BRIGHT_RED) << "createAddress(" << spendSecretKey << ") Failed to convert secret key to public key";
-    throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
-  }
 
   return doCreateAddress(spendPublicKey, spendSecretKey, creationTimestamp);
 }
