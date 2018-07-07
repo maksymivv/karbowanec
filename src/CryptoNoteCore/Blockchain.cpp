@@ -1830,6 +1830,117 @@ bool Blockchain::pushBlock(const Block& blockData, block_verification_context& b
 }
 
 bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction>& transactions, block_verification_context& bvc) {
+
+  Crypto::Hash blockHash = get_block_hash(blockData);
+
+  if (m_blockIndex.hasBlock(blockHash)) {
+    logger(ERROR, BRIGHT_RED) << "Block " << blockHash << " already exists in blockchain.";
+    bvc.m_verifivation_failed = true;
+    return false;
+  }
+
+  if (blockData.previousBlockHash != getTailId()) {
+    logger(INFO, BRIGHT_WHITE) <<
+      "Block " << blockHash << " has wrong previousBlockHash: " << blockData.previousBlockHash << ", expected: " << getTailId();
+    bvc.m_verifivation_failed = true;
+    return false;
+  }
+
+  if (!m_checkpoints.check_block(getCurrentBlockchainHeight(), blockHash)) {
+    logger(ERROR, BRIGHT_RED) << "CHECKPOINT VALIDATION FAILED";
+    bvc.m_verifivation_failed = true;
+    return false;
+  }
+
+  if (m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
+    return pushBlockInCheckpointZone(blockData, transactions, bvc);
+  } else {
+    return pushBlockFullCheck(blockData,transactions,bvc);
+  }
+}
+
+bool Blockchain::pushBlockInCheckpointZone(const Block& blockData, const std::vector<Transaction>& transactions, block_verification_context& bvc) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+
+  auto blockProcessingStart = std::chrono::steady_clock::now();
+  Crypto::Hash blockHash = get_block_hash(blockData);
+
+  BlockEntry block;
+  block.bl = blockData;
+  block.transactions.resize(1);
+  block.transactions[0].tx = blockData.baseTransaction;
+  Crypto::Hash minerTransactionHash = getObjectHash(blockData.baseTransaction);
+  TransactionIndex transactionIndex = { static_cast<uint32_t>(m_blocks.size()), static_cast<uint16_t>(0) };
+  pushTransaction(block, minerTransactionHash, transactionIndex);
+
+  size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
+  size_t cumulative_block_size = coinbase_blob_size;
+  uint64_t fee_summary = 0;
+  for (size_t i = 0; i < transactions.size(); ++i) {
+    const Crypto::Hash& tx_id = blockData.transactionHashes[i];
+    block.transactions.resize(block.transactions.size() + 1);
+    size_t blob_size = 0;
+    uint64_t fee = 0;
+    block.transactions.back().tx = transactions[i];
+
+    blob_size = toBinaryArray(block.transactions.back().tx).size();
+    fee = getInputAmount(block.transactions.back().tx) - getOutputAmount(block.transactions.back().tx);
+
+    ++transactionIndex.transaction;
+    pushTransaction(block, tx_id, transactionIndex);
+
+    cumulative_block_size += blob_size;
+    fee_summary += fee;
+  }
+
+  difficulty_type currentDifficulty = 0;
+
+  if (m_currency.isTestnet() || m_blocks.size() > BLOCK_HEIGHT_ALIGNMENT) {
+    currentDifficulty = getDifficultyForNextBlock();
+  }
+  else {
+    currentDifficulty = 1000000;
+  }
+
+  int64_t emissionChange = 0;
+  uint64_t reward = 0;
+  uint64_t already_generated_coins = m_blocks.empty() ? 0 : m_blocks.back().already_generated_coins;
+  if (!validate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
+    if (m_blocks.size() > BLOCK_HEIGHT_ALIGNMENT) {
+      logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
+      bvc.m_verifivation_failed = true;
+      popTransactions(block, minerTransactionHash);
+      return false;
+    }
+  }
+
+  block.height = static_cast<uint32_t>(m_blocks.size());
+  block.block_cumulative_size = cumulative_block_size;
+  block.cumulative_difficulty = currentDifficulty;
+  block.already_generated_coins = already_generated_coins + emissionChange;
+  if (m_blocks.size() > 0) {
+    block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
+  }
+
+  pushBlock(block);
+
+  auto block_processing_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - blockProcessingStart).count();
+
+  if (m_blocks.size() % 1000 == 0) {
+    logger(INFO) << "+++++ Blockchain loaded to height: " << block.height + 1;
+  }
+  bvc.m_added_to_main_chain = true;
+
+  m_upgradeDetectorV2.blockPushed();
+  m_upgradeDetectorV3.blockPushed();
+  m_upgradeDetectorV4.blockPushed();
+  m_upgradeDetectorV5.blockPushed();
+  update_next_comulative_size_limit();
+
+  return true;
+}
+
+bool Blockchain::pushBlockFullCheck(const Block& blockData, const std::vector<Transaction>& transactions, block_verification_context& bvc) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   auto blockProcessingStart = std::chrono::steady_clock::now();
