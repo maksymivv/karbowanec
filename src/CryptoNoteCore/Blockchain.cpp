@@ -1835,20 +1835,20 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   if (m_blockIndex.hasBlock(blockHash)) {
     logger(ERROR, BRIGHT_RED) << "Block " << blockHash << " already exists in blockchain.";
-    bvc.m_verifivation_failed = true;
+    bvc.m_verification_failed = true;
     return false;
   }
 
   if (blockData.previousBlockHash != getTailId()) {
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " has wrong previousBlockHash: " << blockData.previousBlockHash << ", expected: " << getTailId();
-    bvc.m_verifivation_failed = true;
+    bvc.m_verification_failed = true;
     return false;
   }
 
   if (!m_checkpoints.check_block(getCurrentBlockchainHeight(), blockHash)) {
     logger(ERROR, BRIGHT_RED) << "CHECKPOINT VALIDATION FAILED";
-    bvc.m_verifivation_failed = true;
+    bvc.m_verification_failed = true;
     return false;
   }
 
@@ -1893,25 +1893,16 @@ bool Blockchain::pushBlockInCheckpointZone(const Block& blockData, const std::ve
     fee_summary += fee;
   }
 
-  difficulty_type currentDifficulty = 0;
-
-  if (m_currency.isTestnet() || m_blocks.size() > BLOCK_HEIGHT_ALIGNMENT) {
-    currentDifficulty = getDifficultyForNextBlock();
-  }
-  else {
-    currentDifficulty = 1000000;
-  }
+  difficulty_type currentDifficulty = getDifficultyForNextBlock();
 
   int64_t emissionChange = 0;
   uint64_t reward = 0;
   uint64_t already_generated_coins = m_blocks.empty() ? 0 : m_blocks.back().already_generated_coins;
   if (!validate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
-    if (m_blocks.size() > BLOCK_HEIGHT_ALIGNMENT) {
       logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
-      bvc.m_verifivation_failed = true;
+      bvc.m_verification_failed = true;
       popTransactions(block, minerTransactionHash);
       return false;
-    }
   }
 
   block.height = static_cast<uint32_t>(m_blocks.size());
@@ -1933,8 +1924,6 @@ bool Blockchain::pushBlockInCheckpointZone(const Block& blockData, const std::ve
 
   m_upgradeDetectorV2.blockPushed();
   m_upgradeDetectorV3.blockPushed();
-  m_upgradeDetectorV4.blockPushed();
-  m_upgradeDetectorV5.blockPushed();
   update_next_comulative_size_limit();
 
   return true;
