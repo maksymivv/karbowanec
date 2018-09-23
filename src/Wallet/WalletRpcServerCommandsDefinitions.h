@@ -40,11 +40,15 @@ using CryptoNote::ISerializer;
 		{
 			uint64_t locked_amount;
 			uint64_t available_balance;
+			uint64_t balance;			// deprecated - use locked_amount + available_balance
+			uint64_t unlocked_balance;	// deprecated - use available_balance
 
 			void serialize(ISerializer& s)
 			{
 				KV_MEMBER(locked_amount)
 				KV_MEMBER(available_balance)
+				KV_MEMBER(balance)
+				KV_MEMBER(unlocked_balance)
 			}
 		};
 	};
@@ -400,5 +404,60 @@ using CryptoNote::ISerializer;
 			}
 		};
 	};
+
+	struct COMMAND_RPC_CREATE_INTEGRATED
+    {
+      struct request
+      {
+        std::string payment_id;
+        std::string address;      
+
+        void serialize(ISerializer& s) {
+          KV_MEMBER(payment_id)
+          KV_MEMBER(address)         
+        }
+      };
+
+      struct response
+      {
+        std::string integrated_address;
+
+        void serialize(ISerializer& s) 
+        {
+
+          KV_MEMBER(integrated_address)
+        }
+      };
+    };
+
+	struct COMMAND_RPC_GET_OUTPUTS
+    {
+      typedef CryptoNote::EMPTY_STRUCT request;
+
+      struct response
+      {
+        size_t unlocked_outputs_count;
+
+        void serialize(ISerializer& s) {
+          KV_MEMBER(unlocked_outputs_count)
+        }
+      };
+    };
+
+    struct COMMAND_RPC_OPTIMIZE
+    {
+      typedef CryptoNote::EMPTY_STRUCT request;
+
+      struct response
+      {
+        std::string tx_hash;
+        std::string tx_key;
+
+        void serialize(ISerializer& s) {
+          KV_MEMBER(tx_hash)
+          KV_MEMBER(tx_key)
+        }
+    };
+  };
 
 }} //Tools::wallet_rpc

@@ -91,7 +91,6 @@ namespace Crypto {
     return rng;
   }
 
-
   bool crypto_ops::check_key(const PublicKey &key) {
     ge_p3 point;
     return ge_frombytes_vartime(&point, reinterpret_cast<const unsigned char*>(&key)) == 0;
