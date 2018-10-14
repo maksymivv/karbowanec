@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2014-2017, XDN-project developers
+// Copyright (c) 2017-2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -34,6 +35,21 @@
 
 using namespace Common;
 
+namespace {
+
+bool verifyKeys(const Crypto::SecretKey& sec, const Crypto::PublicKey& expected_pub) {
+  Crypto::PublicKey pub;
+  bool r = Crypto::secret_key_to_public_key(sec, pub);
+  return r && expected_pub == pub;
+}
+
+void throwIfKeysMissmatch(const Crypto::SecretKey& sec, const Crypto::PublicKey& expected_pub) {
+  if (!verifyKeys(sec, expected_pub))
+    throw std::system_error(make_error_code(CryptoNote::error::WRONG_PASSWORD));
+}
+
+}
+
 namespace CryptoNote {
 
 uint32_t WALLET_LEGACY_SERIALIZATION_VERSION = 2;
@@ -41,7 +57,7 @@ uint32_t WALLET_LEGACY_SERIALIZATION_VERSION = 2;
 WalletLegacySerializer::WalletLegacySerializer(CryptoNote::AccountBase& account, WalletUserTransactionsCache& transactionsCache) :
   account(account),
   transactionsCache(transactionsCache),
-  walletSerializationVersion(2)
+  walletSerializationVersion(WALLET_LEGACY_SERIALIZATION_VERSION)
 {
 }
 
@@ -147,7 +163,11 @@ void WalletLegacySerializer::deserialize(std::istream& stream, const std::string
   serializer(detailsSaved, "has_details");
 
   if (detailsSaved) {
-    serializer(transactionsCache, "details");
+    if (version == 1) {
+      transactionsCache.deserializeLegacyV1(serializer);
+    } else {
+      serializer(transactionsCache, "details");
+    }
   }
 
   serializer.binary(cache, "cache");

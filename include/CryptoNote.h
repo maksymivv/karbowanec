@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2017 XDN-project developers
+// Copyright (c) 2018 Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -38,6 +40,7 @@ struct MultisignatureInput {
   uint64_t amount;
   uint8_t signatureCount;
   uint32_t outputIndex;
+  uint32_t term;
 };
 
 struct KeyOutput {
@@ -47,6 +50,7 @@ struct KeyOutput {
 struct MultisignatureOutput {
   std::vector<Crypto::PublicKey> keys;
   uint8_t requiredSignatureCount;
+  uint32_t term;
 };
 
 typedef boost::variant<BaseInput, KeyInput, MultisignatureInput> TransactionInput;

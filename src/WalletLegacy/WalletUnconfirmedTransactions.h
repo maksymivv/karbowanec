@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2014-2017, XDN-project developers
+// Copyright (c) 2017-2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -63,6 +64,12 @@ struct UnconfirmedTransferDetails {
   Crypto::SecretKey secretKey;
 };
 
+struct UnconfirmedSpentDepositDetails {
+  TransactionId transactionId;
+  uint64_t depositsSum;
+  uint64_t fee;
+};
+
 class WalletUnconfirmedTransactions
 {
 public:
@@ -70,12 +77,22 @@ public:
   explicit WalletUnconfirmedTransactions(uint64_t uncofirmedTransactionsLiveTime);
 
   bool serialize(CryptoNote::ISerializer& s);
+  bool deserializeV1(CryptoNote::ISerializer& s);
 
   bool findTransactionId(const Crypto::Hash& hash, TransactionId& id);
   void erase(const Crypto::Hash& hash);
   void add(const CryptoNote::Transaction& tx, TransactionId transactionId, 
-    uint64_t amount, const std::list<TransactionOutputInformation>& usedOutputs, Crypto::SecretKey& tx_key);
+    uint64_t amount, const std::vector<TransactionOutputInformation>& usedOutputs, Crypto::SecretKey& tx_key);
   void updateTransactionId(const Crypto::Hash& hash, TransactionId id);
+
+  void addCreatedDeposit(DepositId id, uint64_t totalAmount);
+  void addDepositSpendingTransaction(const Crypto::Hash& transactionHash, const UnconfirmedSpentDepositDetails& details);
+
+  void eraseCreatedDeposit(DepositId id);
+
+  uint64_t countCreatedDepositsSum() const;
+  uint64_t countSpentDepositsProfit() const;
+  uint64_t countSpentDepositsTotalAmount() const;
 
   uint64_t countUnconfirmedOutsAmount() const;
   uint64_t countUnconfirmedTransactionsAmount() const;
@@ -89,12 +106,21 @@ private:
   void collectUsedOutputs();
   void deleteUsedOutputs(const std::vector<TransactionOutputId>& usedOutputs);
 
+  bool eraseUnconfirmedTransaction(const Crypto::Hash& hash);
+  bool eraseDepositSpendingTransaction(const Crypto::Hash& hash);
+
+  bool findUnconfirmedTransactionId(const Crypto::Hash& hash, TransactionId& id);
+  bool findUnconfirmedDepositSpendingTransactionId(const Crypto::Hash& hash, TransactionId& id);
+
   typedef std::unordered_map<Crypto::Hash, UnconfirmedTransferDetails, boost::hash<Crypto::Hash>> UnconfirmedTxsContainer;
   typedef std::unordered_set<TransactionOutputId> UsedOutputsContainer;
 
   UnconfirmedTxsContainer m_unconfirmedTxs;
   UsedOutputsContainer m_usedOutputs;
   uint64_t m_uncofirmedTransactionsLiveTime;
+
+  std::unordered_map<DepositId, uint64_t> m_createdDeposits;
+  std::unordered_map<Crypto::Hash, UnconfirmedSpentDepositDetails> m_spentDeposits;
 };
 
 } // namespace CryptoNote

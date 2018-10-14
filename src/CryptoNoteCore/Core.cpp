@@ -1397,6 +1397,30 @@ bool core::fillTransactionDetails(const Transaction& transaction, TransactionDet
   return true;
 }
 
+uint64_t core::fullDepositAmount() const {
+  return m_blockchain.fullDepositAmount();
+}
+
+uint64_t core::depositAmountAtHeight(size_t height) const {
+  return m_blockchain.depositAmountAtHeight(height);
+}
+
+uint64_t core::fullDepositInterest() const {
+  return m_blockchain.fullDepositInterest();
+}
+
+uint64_t core::depositInterestAtHeight(size_t height) const {
+  return m_blockchain.depositInterestAtHeight(height);
+}
+
+uint64_t core::coinsEmittedAtHeight(uint64_t height) {
+  return m_blockchain.coinsEmittedAtHeight(height);
+}
+
+uint64_t core::difficultyAtHeight(uint64_t height) {
+  return m_blockchain.difficultyAtHeight(height);
+}
+
 bool core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& txHash, size_t blobSize, tx_verification_context& tvc, bool keptByBlock, uint32_t height, bool loose_check) {
   if (!check_tx_syntax(tx)) {
     logger(INFO) << "WRONG TRANSACTION BLOB, Failed to check tx " << txHash << " syntax, rejected";

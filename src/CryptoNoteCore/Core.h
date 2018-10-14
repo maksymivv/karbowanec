@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2017, XDN-project developers
+// Copyright (c) 2018, Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -154,7 +156,7 @@ namespace CryptoNote {
      void print_blockchain(uint32_t start_index, uint32_t end_index);
      void print_blockchain_index();
      std::string print_pool(bool short_format);
-	 std::list<CryptoNote::tx_memory_pool::TransactionDetails> getMemoryPool() const;
+     std::list<CryptoNote::tx_memory_pool::TransactionDetails> getMemoryPool() const;
      void print_blockchain_outs(const std::string& file);
      virtual bool getPoolChanges(const Crypto::Hash& tailBlockId, const std::vector<Crypto::Hash>& knownTxsIds,
                                  std::vector<Transaction>& addedTxs, std::vector<Crypto::Hash>& deletedTxsIds) override;
@@ -167,6 +169,12 @@ namespace CryptoNote {
      uint64_t getTotalGeneratedAmount();
      uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
      bool f_getMixin(const Transaction& transaction, uint64_t& mixin);
+     uint64_t fullDepositAmount() const;
+     uint64_t fullDepositInterest() const;
+     uint64_t depositAmountAtHeight(size_t height) const;
+     uint64_t depositInterestAtHeight(size_t height) const;
+     uint64_t coinsEmittedAtHeight(uint64_t height);
+     uint64_t difficultyAtHeight(uint64_t height);
 
    private:
      bool add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block);

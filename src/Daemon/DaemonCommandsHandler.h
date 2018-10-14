@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero project
 // Copyright (c) 2014-2018, The Forknote developers
+// Copyright (c) 2014-2017, XDN-project developers
 // Copyright (c) 2016-2018, The Karbowanec developers
 //
 // This file is part of Bytecoin.
@@ -29,6 +30,7 @@
 
 namespace CryptoNote {
 class core;
+class Currency;
 class NodeServer;
 class ICryptoNoteProtocolQuery;
 }
@@ -62,6 +64,7 @@ private:
   float get_sync_percentage(uint64_t height, uint64_t target_height);
   bool print_block_by_height(uint32_t height);
   bool print_block_by_hash(const std::string& arg);
+  uint64_t calculatePercent(const CryptoNote::Currency& currency, uint64_t value, uint64_t total);
 
   bool exit(const std::vector<std::string>& args);
   bool help(const std::vector<std::string>& args);
@@ -83,6 +86,7 @@ private:
   bool stop_mining(const std::vector<std::string>& args);
   bool print_diff(const std::vector<std::string>& args);
   bool print_ban(const std::vector<std::string>& args);
+  bool print_stat(const std::vector<std::string>& args);
   bool ban(const std::vector<std::string>& args);
   bool unban(const std::vector<std::string>& args);
   bool status(const std::vector<std::string>& args);

@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
+// Copyright (c) 2014-2017, XDN-project developers
 // Copyright (c) 2017-2018, The Karbo developers
 //
 // This file is part of Bytecoin.
@@ -275,7 +276,7 @@ struct COMMAND_RPC_GET_INFO {
     std::string status;
     std::string version;
     uint64_t height;
-	std::string top_block_hash;
+    std::string top_block_hash;
     uint64_t difficulty;
     uint64_t min_tx_fee;
     std::string readable_tx_fee;
@@ -284,7 +285,7 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t alt_blocks_count;
     uint64_t outgoing_connections_count;
     uint64_t incoming_connections_count;
-	uint64_t rpc_connections_count;
+    uint64_t rpc_connections_count;
     uint64_t white_peerlist_size;
     uint64_t grey_peerlist_size;
     uint32_t last_known_block_index;
@@ -292,21 +293,23 @@ struct COMMAND_RPC_GET_INFO {
     std::string fee_address;
     uint8_t block_major_version;
 	std::string already_generated_coins;
+    uint64_t full_deposit_amount;
+    uint64_t full_deposit_interest;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
       KV_MEMBER(version)
       KV_MEMBER(height)
-	  KV_MEMBER(top_block_hash)
+      KV_MEMBER(top_block_hash)
       KV_MEMBER(difficulty)
-	  KV_MEMBER(min_tx_fee)
+      KV_MEMBER(min_tx_fee)
       KV_MEMBER(readable_tx_fee)
       KV_MEMBER(tx_count)
       KV_MEMBER(tx_pool_size)
       KV_MEMBER(alt_blocks_count)
       KV_MEMBER(outgoing_connections_count)
       KV_MEMBER(incoming_connections_count)
-	  KV_MEMBER(rpc_connections_count)
+      KV_MEMBER(rpc_connections_count)
       KV_MEMBER(white_peerlist_size)
       KV_MEMBER(grey_peerlist_size)
       KV_MEMBER(last_known_block_index)
@@ -314,6 +317,8 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(fee_address)
       KV_MEMBER(block_major_version)
       KV_MEMBER(already_generated_coins)
+      KV_MEMBER(full_deposit_amount)
+      KV_MEMBER(full_deposit_interest)
     }
   };
 };

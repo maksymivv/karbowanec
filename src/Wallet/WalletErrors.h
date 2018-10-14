@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2017, XDN-project developers
+// Copyright (c) 2017-2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -56,7 +58,12 @@ enum WalletErrorCodes {
   BAD_PAYMENT_ID,
   BAD_TRANSACTION_EXTRA,
   MIXIN_COUNT_TOO_SMALL,
-  MIXIN_COUNT_TOO_LARGE
+  MIXIN_COUNT_TOO_LARGE,
+  DEPOSIT_TERM_TOO_SMALL,
+  DEPOSIT_TERM_TOO_BIG,
+  DEPOSIT_AMOUNT_TOO_SMALL,
+  DEPOSIT_DOESNOT_EXIST,
+  DEPOSIT_LOCKED
 };
 
 // custom category:
@@ -105,6 +112,11 @@ public:
     case BAD_TRANSACTION_EXTRA:         return "Wrong transaction extra format";
     case MIXIN_COUNT_TOO_SMALL:         return "MixIn count is below the required minimum";
 	case MIXIN_COUNT_TOO_LARGE:         return "MixIn count is over the maximum allowed";
+	case DEPOSIT_TERM_TOO_SMALL:        return "Deposit term is too small";
+    case DEPOSIT_TERM_TOO_BIG:          return "Deposit term is too big";
+    case DEPOSIT_AMOUNT_TOO_SMALL:      return "Deposit amount is too small";
+    case DEPOSIT_DOESNOT_EXIST:         return "Deposit doesn't exist";
+    case DEPOSIT_LOCKED:                return "Deposit is locked";
     default:                            return "Unknown error";
     }
   }

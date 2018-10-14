@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2014-2017, XDN-project developers
+// Copyright (c) 2017-2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -42,10 +43,11 @@ struct SendTransactionContext
   TransactionId transactionId;
   std::vector<CryptoNote::COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount> outs;
   uint64_t foundMoney;
-  std::list<TransactionOutputInformation> selectedTransfers;
+  std::vector<TransactionOutputInformation> selectedTransfers;
   TxDustPolicy dustPolicy;
   uint64_t mixIn;
   Crypto::SecretKey tx_key = NULL_SECRET_KEY;
+  uint32_t depositTerm;
 };
 
 } //namespace CryptoNote

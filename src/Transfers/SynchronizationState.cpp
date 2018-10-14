@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2017-2018, The Karbo developers
 //
 // This file is part of Bytecoin.
 //
@@ -79,9 +80,9 @@ SynchronizationState::CheckResult SynchronizationState::checkInterval(const Bloc
     return result;
   }
 
+  result.newBlockHeight = static_cast<uint32_t>(m_blockchain.size());
   if (intervalEnd > m_blockchain.size()) {
     result.hasNewBlocks = true;
-    result.newBlockHeight = static_cast<uint32_t>(m_blockchain.size());
   }
 
   return result;

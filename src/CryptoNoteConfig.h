@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero project
 // Copyright (c) 2014-2018, The Forknote developers
+// Copyright (c) 2014-2017, XDN-project developers
 // Copyright (c) 2018, Ryo Currency Project
 // Copyright (c) 2016-2018, The Karbowanec developers
 //
@@ -74,6 +75,15 @@ static constexpr uint64_t POISSON_CHECK_TRIGGER = 10; // Reorg size that trigger
 static constexpr uint64_t POISSON_CHECK_DEPTH = 60;   // Main-chain depth of the poisson check. The attacker will have to tamper 50% of those blocks
 static constexpr double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
 
+const uint64_t DEPOSIT_MIN_AMOUNT                            = 1 * COIN;
+const uint32_t DEPOSIT_MIN_TERM                              = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;
+const uint32_t DEPOSIT_MAX_TERM                              = 30 * DEPOSIT_MIN_TERM;
+const uint64_t DEPOSIT_MIN_TOTAL_RATE_FACTOR                 = 0;
+const uint64_t DEPOSIT_MAX_TOTAL_RATE                        = 3;
+static_assert(DEPOSIT_MIN_TERM > 0, "Bad DEPOSIT_MIN_TERM");
+static_assert(DEPOSIT_MIN_TERM <= DEPOSIT_MAX_TERM, "Bad DEPOSIT_MAX_TERM");
+static_assert(DEPOSIT_MIN_TERM * DEPOSIT_MAX_TOTAL_RATE > DEPOSIT_MIN_TOTAL_RATE_FACTOR, "Bad DEPOSIT_MIN_TOTAL_RATE_FACTOR or DEPOSIT_MAX_TOTAL_RATE");
+
 const size_t   MAX_BLOCK_SIZE_INITIAL                        = 1000000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
@@ -111,6 +121,8 @@ const char     CRYPTONOTE_NAME[]                             = "karbowanec";
 const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
 
 const uint8_t  CURRENT_TRANSACTION_VERSION                   =  1;
+const uint8_t  TRANSACTION_VERSION_1                         =  1;
+const uint8_t  TRANSACTION_VERSION_2                         =  2;
 const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;
 const uint8_t  BLOCK_MAJOR_VERSION_2                         =  2;
 const uint8_t  BLOCK_MAJOR_VERSION_3                         =  3;
