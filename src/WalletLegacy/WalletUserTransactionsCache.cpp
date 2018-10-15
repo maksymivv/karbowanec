@@ -25,6 +25,7 @@
 #include "CryptoNoteCore/TransactionExtra.h"
 #include "WalletLegacy/WalletUserTransactionsCache.h"
 #include "WalletLegacy/WalletLegacySerialization.h"
+#include "WalletLegacy/WalletLegacySerializer.h"
 #include "WalletLegacy/WalletUtils.h"
 
 #include "Serialization/ISerializer.h"
@@ -129,11 +130,12 @@ bool WalletUserTransactionsCache::serialize(CryptoNote::ISerializer& s) {
     s(m_transactions, "transactions");
     s(m_transfers, "transfers");
     s(m_unconfirmedTransactions, "unconfirmed");
-	s(m_deposits, "deposits");
+    if (CryptoNote::WALLET_LEGACY_SERIALIZATION_VERSION >= 3)
+      s(m_deposits, "deposits");
 
     updateUnconfirmedTransactions();
     deleteOutdatedTransactions();
-	restoreTransactionOutputToDepositIndex();
+    restoreTransactionOutputToDepositIndex();
 	rebuildPaymentsIndex();
   } else {
     UserTransactions txsToSave;
@@ -143,7 +145,8 @@ bool WalletUserTransactionsCache::serialize(CryptoNote::ISerializer& s) {
     s(txsToSave, "transactions");
     s(transfersToSave, "transfers");
     s(m_unconfirmedTransactions, "unconfirmed");
-	s(m_deposits, "deposits");
+    if (CryptoNote::WALLET_LEGACY_SERIALIZATION_VERSION >= 3)
+      s(m_deposits, "deposits");
   }
 
   return true;

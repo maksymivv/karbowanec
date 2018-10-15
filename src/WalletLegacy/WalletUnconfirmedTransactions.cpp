@@ -19,7 +19,7 @@
 
 #include "WalletUnconfirmedTransactions.h"
 #include "WalletLegacy/WalletLegacySerialization.h"
-
+#include "WalletLegacy/WalletLegacySerializer.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "Serialization/ISerializer.h"
 #include "Serialization/SerializationOverloads.h"
@@ -39,8 +39,10 @@ WalletUnconfirmedTransactions::WalletUnconfirmedTransactions(uint64_t uncofirmed
 
 bool WalletUnconfirmedTransactions::serialize(ISerializer& s) {
   s(m_unconfirmedTxs, "transactions");
-  s(m_createdDeposits, "unconfirmedCreatedDeposits");
-  s(m_spentDeposits, "unconfirmedSpentDeposits");
+  if (CryptoNote::WALLET_LEGACY_SERIALIZATION_VERSION >= 3) {
+    s(m_createdDeposits, "unconfirmedCreatedDeposits");
+    s(m_spentDeposits, "unconfirmedSpentDeposits");
+  }
   if (s.type() == ISerializer::INPUT) {
     collectUsedOutputs();
   }

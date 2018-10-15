@@ -52,12 +52,12 @@ void throwIfKeysMissmatch(const Crypto::SecretKey& sec, const Crypto::PublicKey&
 
 namespace CryptoNote {
 
-uint32_t WALLET_LEGACY_SERIALIZATION_VERSION = 2;
+uint32_t WALLET_LEGACY_SERIALIZATION_VERSION = 3;
 
 WalletLegacySerializer::WalletLegacySerializer(CryptoNote::AccountBase& account, WalletUserTransactionsCache& transactionsCache) :
   account(account),
   transactionsCache(transactionsCache),
-  walletSerializationVersion(WALLET_LEGACY_SERIALIZATION_VERSION)
+  walletSerializationVersion(3)
 {
 }
 
@@ -163,11 +163,11 @@ void WalletLegacySerializer::deserialize(std::istream& stream, const std::string
   serializer(detailsSaved, "has_details");
 
   if (detailsSaved) {
-    if (version == 1) {
-      transactionsCache.deserializeLegacyV1(serializer);
-    } else {
+    //if (version < 3) {
+    //  transactionsCache.deserializeLegacyV1(serializer);
+    //} else {
       serializer(transactionsCache, "details");
-    }
+    //}
   }
 
   serializer.binary(cache, "cache");
