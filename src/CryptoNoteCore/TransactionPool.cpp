@@ -36,6 +36,7 @@
 #include "CryptoNoteFormatUtils.h"
 #include "CryptoNoteTools.h"
 #include "CryptoNoteConfig.h"
+#include "CryptoNote.h"
 
 using namespace Logging;
 
@@ -126,16 +127,31 @@ namespace CryptoNote {
       return false;
     }
 
-    uint64_t inputs_amount = 0;
-    if (!get_inputs_money_amount(tx, inputs_amount)) {
-      tvc.m_verification_failed = true;
-      return false;
-    }
-
+	uint64_t inputs_amount = m_currency.getTransactionAllInputsAmount(tx);
     uint64_t outputs_amount = get_outs_money_amount(tx);
 
+    bool isDepositTransaction = false;
+    for (const auto& in : tx.inputs) {
+      if (in.type() == typeid(MultisignatureInput)) {
+        const auto& msig = boost::get<MultisignatureInput>(in);
+        if (msig.term != 0) {
+          isDepositTransaction = true;
+          break;
+        }
+      }
+    }
+    for (const auto& out : tx.outputs) {
+      if (out.target.type() == typeid(MultisignatureOutput)) {
+        const auto& msig = boost::get<MultisignatureOutput>(out.target);
+        if (msig.term != 0) {
+          isDepositTransaction = true;
+          break;
+        }
+      }
+    }
+
     if (outputs_amount > inputs_amount) {
-      logger(INFO) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
+      logger(INFO) << "transaction use more money than it has: use " << m_currency.formatAmount(outputs_amount) <<
         ", have " << m_currency.formatAmount(inputs_amount);
       tvc.m_verification_failed = true;
       return false;
@@ -143,9 +159,10 @@ namespace CryptoNote {
 
     const uint64_t fee = inputs_amount - outputs_amount;
     bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, m_core.get_current_blockchain_height());
+	bool isQualifiedForNoFee = fee == 0 && (tx.unlockTime >= m_currency.minedMoneyUnlockWindow() && outputs_amount > m_core.getMinimalFee() || isDepositTransaction);
 
     // Check fee is probably not neeeded here as it is already verified in Core's handleIncomingTransaction()
-	if (!keptByBlock && !isFusionTransaction) {
+    if (!keptByBlock && !isFusionTransaction && !isQualifiedForNoFee) {
 		if (m_core.getCurrentBlockMajorVersion() < BLOCK_MAJOR_VERSION_4 ? fee < m_currency.minimumFee() : 
 			fee < m_core.getMinimalFeeForHeight(m_core.get_current_blockchain_height() - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY)) {
 			logger(INFO) << "[TransactionPool] Transaction fee is not enough: " << m_currency.formatAmount(fee) <<
@@ -226,7 +243,7 @@ namespace CryptoNote {
     }
 
     tvc.m_added_to_pool = true;
-    tvc.m_should_be_relayed = inputsValid && (fee > 0 || isFusionTransaction);
+    tvc.m_should_be_relayed = inputsValid && (isQualifiedForNoFee ? true : fee > 0 || isFusionTransaction);
     tvc.m_verification_failed = true;
 
     if (!addTransactionInputs(id, tx, keptByBlock))

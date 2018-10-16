@@ -185,9 +185,9 @@ namespace CryptoNote {
 void serialize(TransactionPrefix& txP, ISerializer& serializer) {
   serializer(txP.version, "version");
 
-  if (CURRENT_TRANSACTION_VERSION < txP.version) {
-    throw std::runtime_error("Wrong transaction version");
-  }
+  //if (CURRENT_TRANSACTION_VERSION < txP.version) {
+  //  throw std::runtime_error("Wrong transaction version");
+  //}
 
   serializer(txP.unlockTime, "unlock_time");
   serializer(txP.inputs, "vin");
@@ -197,6 +197,10 @@ void serialize(TransactionPrefix& txP, ISerializer& serializer) {
 
 void serialize(Transaction& tx, ISerializer& serializer) {
   serialize(static_cast<TransactionPrefix&>(tx), serializer);
+
+  //if (TRANSACTION_VERSION_2 < tx.version) {
+  //  throw std::runtime_error("Wrong transaction version");
+  //}
 
   size_t sigSize = tx.inputs.size();
   //TODO: make arrays without sizes
@@ -274,6 +278,7 @@ void serialize(MultisignatureInput& multisignature, ISerializer& serializer) {
   serializer(multisignature.amount, "amount");
   serializer(multisignature.signatureCount, "signatures");
   serializer(multisignature.outputIndex, "outputIndex");
+  serializer(multisignature.term, "term");
 }
 
 void serialize(TransactionOutput& output, ISerializer& serializer) {
@@ -304,6 +309,7 @@ void serialize(KeyOutput& key, ISerializer& serializer) {
 void serialize(MultisignatureOutput& multisignature, ISerializer& serializer) {
   serializer(multisignature.keys, "keys");
   serializer(multisignature.requiredSignatureCount, "required_signatures");
+  serializer(multisignature.term, "term");
 }
 
 void serialize(ParentBlockSerializer& pbs, ISerializer& serializer) {

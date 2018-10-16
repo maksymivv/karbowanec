@@ -274,16 +274,32 @@ bool core::check_tx_mixin(const Transaction& tx) {
 }
 
 bool core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_context& tvc, uint32_t height, bool loose_check) {
-	uint64_t inputs_amount = 0;
-	if (!get_inputs_money_amount(tx, inputs_amount)) {
-		tvc.m_verification_failed = true;
-		return false;
-	}
-
+	
+	uint64_t inputs_amount = m_currency.getTransactionAllInputsAmount(tx);
 	uint64_t outputs_amount = get_outs_money_amount(tx);
 
+	bool isDepositTransaction = false;
+	for (const auto& in : tx.inputs) {
+		if (in.type() == typeid(MultisignatureInput)) {
+			const auto& msig = boost::get<MultisignatureInput>(in);
+			if (msig.term != 0) {
+				isDepositTransaction = true;
+				break;
+			}
+		}
+	}
+	for (const auto& out : tx.outputs) {
+		if (out.target.type() == typeid(MultisignatureOutput)) {
+			const auto& msig = boost::get<MultisignatureOutput>(out.target);
+			if (msig.term != 0) {
+				isDepositTransaction = true;
+				break;
+			}
+		}
+	}
+
 	if (outputs_amount > inputs_amount) {
-		logger(DEBUGGING) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
+		logger(DEBUGGING) << "transaction use more money than it has: use " << m_currency.formatAmount(outputs_amount) <<
 			", have " << m_currency.formatAmount(inputs_amount);
 		tvc.m_verification_failed = true;
 		return false;
@@ -293,7 +309,7 @@ bool core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
 	getObjectHash(tx, h, blobSize);
 	const uint64_t fee = inputs_amount - outputs_amount;
 	bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
-	if (!isFusionTransaction && (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? fee < m_currency.minimumFee() : 
+	if (!isFusionTransaction && !isDepositTransaction && (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? fee < m_currency.minimumFee() :
 		fee < getMinimalFeeForHeight(loose_check ? height - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY : height))) {
 		logger(DEBUGGING) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " <<
 			m_currency.formatAmount(getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? m_currency.minimumFee() : 
@@ -328,8 +344,7 @@ bool core::check_tx_semantic(const Transaction& tx, bool keeped_by_block) {
     return false;
   }
 
-  uint64_t amount_in = 0;
-  get_inputs_money_amount(tx, amount_in);
+  uint64_t amount_in = m_currency.getTransactionAllInputsAmount(tx);
   uint64_t amount_out = get_outs_money_amount(tx);
 
   if (amount_in < amount_out) {
