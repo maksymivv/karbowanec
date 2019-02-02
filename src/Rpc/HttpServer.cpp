@@ -18,15 +18,25 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "HttpServer.h"
+#include <thread>
+#include <string.h>
+#include <streambuf>
+#include <array>
+#include <vector>
 #include <boost/scope_exit.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ssl/stream.hpp>
 
 #include <Common/Base64.h>
 #include <HTTP/HttpParser.h>
 #include <System/InterruptedException.h>
 #include <System/TcpStream.h>
+#include <System/SocketStream.h>
 #include <System/Ipv4Address.h>
 
+using boost::asio::ip::tcp;
 using namespace Logging;
+
 
 namespace {
 	void fillUnauthorizedResponse(CryptoNote::HttpResponse& response) {
@@ -41,21 +51,127 @@ namespace CryptoNote {
 
 HttpServer::HttpServer(System::Dispatcher& dispatcher, Logging::ILogger& log)
   : m_dispatcher(dispatcher), workingContextGroup(dispatcher), logger(log, "HttpServer") {
-
+  this->m_server_ssl_do = false;
+  this->m_server_ssl_is_run = false;
+  this->m_server_ssl_clients = 0;
+  this->m_server_ssl_port = 0;
+  this->m_address = "";
+  this->m_chain_file = "";
+  this->m_dh_file = "";
+  this->m_key_file = "";
 }
 
-void HttpServer::start(const std::string& address, uint16_t port, const std::string& user, const std::string& password) {
+void HttpServer::setCerts(const std::string& chain_file, const std::string& key_file, const std::string& dh_file){
+  this->m_chain_file = chain_file;
+  this->m_dh_file = dh_file;
+  this->m_key_file = key_file;
+}
+
+void HttpServer::start(const std::string& address, uint16_t port, uint16_t port_ssl,
+                       bool server_ssl_enable, const std::string& user, const std::string& password) {
   m_listener = System::TcpListener(m_dispatcher, System::Ipv4Address(address), port);
   workingContextGroup.spawn(std::bind(&HttpServer::acceptLoop, this));
-  
-  		if (!user.empty() || !password.empty()) {
-			m_credentials = Tools::Base64::encode(user + ":" + password);
-		}
+
+  this->m_server_ssl_do = server_ssl_enable;
+  this->m_server_ssl_port = port_ssl;
+  this->m_address = address;
+
+  if (!user.empty() || !password.empty()) {
+    m_credentials = Tools::Base64::encode(user + ":" + password);
+  }
+
+  if (!this->m_chain_file.empty() && !this->m_key_file.empty() && !this->m_dh_file.empty() &&
+      this->m_server_ssl_port != 0 && this->m_server_ssl_do) {
+    this->m_ssl_server_thread = boost::thread(&HttpServer::server_ssl, this);
+    this->m_ssl_server_thread.detach();
+  }
 }
 
 void HttpServer::stop() {
   workingContextGroup.interrupt();
   workingContextGroup.wait();
+  this->m_server_ssl_do = false;
+  while (this->m_server_ssl_clients > 0) {
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+  }
+  if (this->m_server_ssl_is_run) this->m_ssl_server_thread.interrupt();
+}
+
+void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx){
+  const size_t request_max_len = 1024 * 32;
+  boost::system::error_code ec;
+  boost::asio::ssl::stream<tcp::socket&> stream(socket, ctx);
+
+  this->m_server_ssl_clients++;
+
+  try {
+    stream.handshake(boost::asio::ssl::stream_base::server, ec);
+    if (!ec) {
+      char req_buff[request_max_len];
+      size_t req_len = stream.read_some(boost::asio::buffer(req_buff, request_max_len), ec);
+      if (req_len > 0 && req_len < request_max_len) {
+        System::SocketStreambuf streambuf((char *) req_buff, req_len);
+
+        HttpParser parser;
+        HttpRequest req;
+        HttpResponse resp;
+        resp.addHeader("Access-Control-Allow-Origin", "*");
+        resp.addHeader("content-type", "application/json");
+
+        std::iostream io_stream(&streambuf);
+        parser.receiveRequest(io_stream, req);
+
+        if (authenticate(req)) {
+          processRequest(req, resp);
+        } else {
+          logger(WARNING) << "Authorization required" << std::endl;
+        }
+        io_stream << resp;
+        io_stream.flush();
+
+        std::vector<uint8_t> resp_data;
+        streambuf.getRespdata(resp_data);
+        stream.write_some(boost::asio::buffer(resp_data), ec);
+        stream.lowest_layer().close(ec);
+      } else {
+        logger(WARNING) << "Unable to process request (SSL server)" << std::endl;
+      }
+    }
+  } catch (std::exception& e) {
+    logger(ERROR, BRIGHT_RED) << "SSL server unit error: " << e.what() << std::endl;
+  }
+  this->m_server_ssl_clients--;
+}
+
+void HttpServer::server_ssl() {
+  while (this->m_server_ssl_do) {
+    this->m_server_ssl_is_run = false;
+    try {
+      boost::asio::io_service io_service;
+      tcp::acceptor accept(io_service, tcp::endpoint(boost::asio::ip::address::from_string(this->m_address),
+                                                     this->m_server_ssl_port));
+
+      boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
+      ctx.set_options(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2);
+      ctx.use_certificate_chain_file(this->m_chain_file);
+      ctx.use_private_key_file(this->m_key_file, boost::asio::ssl::context::pem);
+      ctx.use_tmp_dh_file(this->m_dh_file);
+
+      while (this->m_server_ssl_do) {
+        tcp::socket sock(io_service);
+        this->m_server_ssl_is_run = true;
+        accept.accept(sock);
+        boost::thread t(std::bind(&HttpServer::do_session_ssl, this, std::move(sock), std::ref(ctx)));
+        t.detach();
+      }
+      while (this->m_server_ssl_clients > 0) {
+        boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+      }
+    } catch (std::exception& e) {
+      logger(ERROR, BRIGHT_RED) << "SSL server error: " << e.what() << std::endl;
+    }
+  }
+  this->m_server_ssl_is_run = false;
 }
 
 void HttpServer::acceptLoop() {

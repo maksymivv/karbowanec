@@ -30,7 +30,7 @@ SocketStreambuf::SocketStreambuf(char *data, size_t lenght) {
   setp(reinterpret_cast<char*>(&writeBuf.front()), reinterpret_cast<char *>(&writeBuf.front() + writeBuf.max_size()));
 }
 
-SocketStreambuf::~SocketStreambuf() {
+SocketStreambuf::~SocketStreambuf(){
   this->dumpBuffer(true);
 }
 
@@ -52,7 +52,7 @@ std::streambuf::int_type SocketStreambuf::underflow() {
   if (gptr() < egptr()) {
     return traits_type::to_int_type(*gptr());
   }
-  if (read_t) {
+  if (read_t){
     read_t = false;
   } else {
     lenght = 0;
