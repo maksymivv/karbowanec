@@ -1183,7 +1183,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
 	// Phase 1
 
-	uint32_t m_cost1 = (1 << 12);
+	uint32_t m_cost1 = (1 << 15);
 	uint32_t lanes = 2;
 	uint32_t threads = 1;
 	uint32_t t_cost = 2;
@@ -1214,7 +1214,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
 	// Phase 2
 	
-	uint32_t m_cost2 = (1 << 11);
+	uint32_t m_cost2 = (1 << 12);
 	Crypto::Hash hash_2;
 
 	// Hashing the eight blocks as one continous block, salt is hash_1
