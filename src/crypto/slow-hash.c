@@ -49,12 +49,22 @@
 #define INIT_SIZE_BLK   8
 #define INIT_SIZE_BYTE (INIT_SIZE_BLK * AES_BLOCK_SIZE)
 
+#pragma pack(push, 1)
+union cn_slow_hash_state
+{
+	union hash_state hs;
+	struct
+	{
+		uint8_t k[64];
+		uint8_t init[INIT_SIZE_BYTE];
+	};
+};
+#pragma pack(pop)
+
 #define AN_PAGE_SIZE    (1 << 21) // 2MB
 #define AN_SCRATCHPAD   (1 << 21)
-#define AN_ITERATIONS   (1 << 12) // 0x1000 or 4096 iterations
-
-//extern void aesb_single_round(const uint8_t *in, uint8_t*out, const uint8_t *expandedKey);
-//extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *expandedKey);
+#define AN_ITERATIONS   (1 << 18)
+#define AN_MCOST        (1 << 12)
 
 #if !defined NO_AES && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
 // Optimised code below, uses x86-specific intrinsics, SSE2, AES-NI
@@ -149,18 +159,6 @@
 #else
 #define THREADV __thread
 #endif
-
-#pragma pack(push, 1)
-union cn_slow_hash_state
-{
-    union hash_state hs;
-    struct
-    {
-        uint8_t k[64];
-        uint8_t init[INIT_SIZE_BYTE];
-    };
-};
-#pragma pack(pop)
 
 THREADV uint8_t *hp_state = NULL;
 THREADV int hp_allocated = 0;
@@ -689,8 +687,9 @@ void an_slow_hash(const void *data, size_t length, char *hash)
 	slow_hash_allocate_state(AN_PAGE_SIZE);
 
 	keccak1600(data, (int)length, (uint8_t*)&state.hs);
-	char* salt = (char*)&state.hs;
-	argon2d_hash_encoded(2, AN_SCRATCHPAD / 1024, 2, salt, 64, NULL, 0, 64, (uint8_t*)&state.hs, 64);
+	char* pw = (char*)&state.hs;
+	argon2d_hash_encoded(2, AN_MCOST, 1, pw, 8 * length, pw, 8 * length, 64, (uint8_t*)&state.hs, 64);
+
 	memcpy(text, state.init, INIT_SIZE_BYTE);
 
 	if (useAes)
@@ -785,18 +784,6 @@ void slow_hash_free_state(void)
 #endif
 
 #define U64(x) ((uint64_t *) (x))
-
-#pragma pack(push, 1)
-union cn_slow_hash_state
-{
-    union hash_state hs;
-    struct
-    {
-        uint8_t k[64];
-        uint8_t init[INIT_SIZE_BYTE];
-    };
-};
-#pragma pack(pop)
 
 #if defined(__aarch64__) && defined(__ARM_FEATURE_CRYPTO)
 
@@ -1073,10 +1060,10 @@ void an_slow_hash(const void *data, size_t length, char *hash)
 		hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
 	};
 
+	keccak1600(data, (int)length, (uint8_t*)&state.hs);
+	char* pw = (char*)&state.hs;
+	argon2d_hash_encoded(2, AN_MCOST, 1, pw, 8 * length, pw, 8 * length, 64, (uint8_t*)&state.hs, 64);
 
-	char* salt;
-
-	argon2d_hash_encoded(2, AN_SCRATCHPAD / 1024, 2, data, 8 * length, NULL, 0, 64, (uint8_t*)&state.hs, 64);
 	memcpy(text, state.init, INIT_SIZE_BYTE);
 
 	aes_expand_key(state.hs.b, expandedKey);
@@ -1337,15 +1324,14 @@ void an_slow_hash(const void *data, size_t length, char *hash)
 	uint8_t *long_state = (uint8_t *)malloc(AN_PAGE_SIZE);
 #endif
 
+	keccak1600(data, (int)length, (uint8_t*)&state.hs);
+	char* pw = (char*)&state.hs;
+	argon2d_hash_encoded(2, AN_MCOST, 1, pw, 8 * length, pw, 8 * length, 64, (uint8_t*)&state.hs, 64);
 
-	char* salt;
-
-	argon2d_hash_encoded(2, AN_SCRATCHPAD / 1024, 2, data, 8 * length, NULL, 0, 64, (uint8_t*)&state.hs, 64);
 	memcpy(text, state.init, INIT_SIZE_BYTE);
 
 	aes_ctx = (oaes_ctx *)oaes_alloc();
 	oaes_key_import_data(aes_ctx, state.hs.b, AES_KEY_SIZE);
-
 
 	// use aligned data
 	memcpy(expandedKey, aes_ctx->key->exp_data, aes_ctx->key->exp_data_len);
@@ -1447,16 +1433,6 @@ static void xor_blocks(uint8_t* a, const uint8_t* b) {
   }
 }
 
-#pragma pack(push, 1)
-union cn_slow_hash_state {
-  union hash_state hs;
-  struct {
-    uint8_t k[64];
-    uint8_t init[INIT_SIZE_BYTE];
-  };
-};
-#pragma pack(pop)
-
 void cn_slow_hash(const void *data, size_t length, char *hash) {
   uint8_t* long_state = (uint8_t*)malloc(MEMORY);
   union cn_slow_hash_state state;
@@ -1547,11 +1523,9 @@ void an_slow_hash(const void *data, size_t length, char *hash, int light, int va
 	uint8_t aes_key[AES_KEY_SIZE];
 	oaes_ctx *aes_ctx;
 
-	char* salt;
-
 	keccak1600(data, (int)length, (uint8_t*)&state.hs);
-	char* salt = (char*)&state.hs;
-	argon2d_hash_encoded(2, AN_SCRATCHPAD / 1024, 2, salt, 64, NULL, 0, 64, (uint8_t*)&state.hs, 64);
+	char* pw = (char*)&state.hs;
+	argon2d_hash_encoded(2, AN_MCOST, 1, pw, 8 * length, pw, 8 * length, 64, (uint8_t*)&state.hs, 64);
 
 	memcpy(text, state.init, INIT_SIZE_BYTE);
 	memcpy(aes_key, state.hs.b, AES_KEY_SIZE);
