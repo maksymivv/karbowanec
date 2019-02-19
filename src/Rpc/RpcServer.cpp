@@ -264,6 +264,31 @@ bool RpcServer::setContactInfo(const std::string& contact) {
   return true;
 }
 
+bool RpcServer::setCollateralInfo(const std::string& proof) {
+
+  // check that collateral is valid for fee_address
+  K_COMMAND_RPC_CHECK_RESERVE_PROOF::request req;
+  K_COMMAND_RPC_CHECK_RESERVE_PROOF::response res;
+  req.address = m_fee_address;
+  req.signature = proof;
+
+  std::cout << std::endl << "Enter public node's IP or URL as in proof of balance message: " << std::endl;
+  std::getline(std::cin, req.message);
+
+  k_on_check_reserve_proof(req, res);
+  if (!res.good) {
+    logger(ERROR) << "Collateral is not valid";
+    return false;
+  }
+  if (res.total - res.spent < CryptoNote::parameters::MASTERNODE_COLLATERAL) {
+    logger(ERROR, BRIGHT_RED) << "The amount of the collateral is not enough!";
+    return false;
+  }
+  m_collateral = proof;
+
+  return true;
+}
+
 bool RpcServer::isCoreReady() {
   return m_core.currency().isTestnet() || m_p2p.get_payload_object().isSynchronized();
 }
