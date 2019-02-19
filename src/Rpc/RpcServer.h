@@ -48,7 +48,7 @@ public:
   bool setFeeAddress(const std::string& fee_address, const AccountPublicAddress& fee_acc);
   bool setViewKey(const std::string& view_key);
   bool setContactInfo(const std::string& contact);
-  bool setCollateralInfo(const std::string& proof);
+  bool setCollateralInfo(const std::string& proof, const std::string& url);
   bool masternode_check_incoming_tx(const BinaryArray& tx_blob);
 
 private:
@@ -84,6 +84,7 @@ private:
   bool on_stop_mining(const COMMAND_RPC_STOP_MINING::request& req, COMMAND_RPC_STOP_MINING::response& res);
   bool on_stop_daemon(const COMMAND_RPC_STOP_DAEMON::request& req, COMMAND_RPC_STOP_DAEMON::response& res);
   bool on_get_fee_address(const COMMAND_RPC_GET_FEE_ADDRESS::request& req, COMMAND_RPC_GET_FEE_ADDRESS::response& res);
+  bool on_get_collateral(const COMMAND_RPC_GET_COLLATERAL_INFO::request& req, COMMAND_RPC_GET_COLLATERAL_INFO::response& res);
   bool on_get_peer_list(const COMMAND_RPC_GET_PEER_LIST::request& req, COMMAND_RPC_GET_PEER_LIST::response& res);
   bool on_get_payment_id(const COMMAND_RPC_GEN_PAYMENT_ID::request& req, COMMAND_RPC_GEN_PAYMENT_ID::response& res);
   

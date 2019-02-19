@@ -69,6 +69,7 @@ namespace
   const command_line::arg_descriptor<std::string> arg_set_view_key = { "view-key", "Sets private view key to check for masternode's fee.", "" };
   const command_line::arg_descriptor<std::string> arg_set_contact = { "contact", "Sets node admin contact", "" };
   const command_line::arg_descriptor<std::string> arg_set_collateral = { "collateral", "Specify reserve proof file for node collateral", "collateral.txt" };
+  const command_line::arg_descriptor<std::string> arg_set_url = { "public-url", "Specify node public URL as in collateral challenge message", "" };
   const command_line::arg_descriptor<bool>        arg_testnet_on  = {"testnet", "Used to deploy test nets. Checkpoints and hardcoded seeds are ignored, "
     "network id is changed. Use it with --data-dir flag. The wallet must be launched with --testnet flag.", false};
   const command_line::arg_descriptor<std::string> arg_load_checkpoints = { "load-checkpoints", "<filename> Load checkpoints from csv file.", "" };
@@ -142,6 +143,7 @@ int main(int argc, char* argv[])
 	command_line::add_arg(desc_cmd_sett, arg_rollback);
 	command_line::add_arg(desc_cmd_sett, arg_set_contact);
 	command_line::add_arg(desc_cmd_sett, arg_set_collateral);
+	command_line::add_arg(desc_cmd_sett, arg_set_url);
 
     RpcServerConfig::initOptions(desc_cmd_sett);
     CoreConfig::initOptions(desc_cmd_sett);
@@ -371,21 +373,27 @@ int main(int argc, char* argv[])
         rpcServer.setContactInfo(contact_str);
       }
     }
-	if (command_line::has_arg(vm, arg_set_collateral) && command_line::has_arg(vm, arg_set_fee_address)) {
+
+	/*
+	 * The collateral reserve proof must be for the same address as node's address for fees.
+	 * The reserve proof challenge message must contain node's public IP or URL.
+	 */
+	if (command_line::has_arg(vm, arg_set_collateral) && command_line::has_arg(vm, arg_set_fee_address) && command_line::has_arg(vm, arg_set_url)) {
       std::string collateral_file = command_line::get_arg(vm, arg_set_collateral);
+      std::string node_url = command_line::get_arg(vm, arg_set_url);
       std::string collateral_str;
       if (!collateral_file.empty()) {
         if (!Common::loadFileToString(collateral_file, collateral_str)) {
           logger(Logging::ERROR, BRIGHT_RED) << "Could not load collateral file: " << collateral_file;
         }
         BinaryArray ba = Common::asBinaryArray(collateral_str);
-        if (ba.size() > (size_t)(1024 * 10)) {
+        if (ba.size() > CryptoNote::parameters::MAX_COLLATERAL_PROOF_SIZE) {
           logger(ERROR, BRIGHT_RED) << "Collateral proof size is too large";
           return 1;
 		}
-		if (!addr_str.empty()) {
+		if (!addr_str.empty() && !node_url.empty()) {
           logger(INFO) << "Setting masternode collateral info...";
-          rpcServer.setCollateralInfo(collateral_str);
+          rpcServer.setCollateralInfo(collateral_str, node_url);
 		}
       }
     }

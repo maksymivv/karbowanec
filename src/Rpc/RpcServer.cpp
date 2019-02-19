@@ -108,6 +108,7 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/gettransactions", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS>(&RpcServer::on_get_transactions), false } },
   { "/sendrawtransaction", { jsonMethod<COMMAND_RPC_SEND_RAW_TX>(&RpcServer::on_send_raw_tx), false } },
   { "/feeaddress", { jsonMethod<COMMAND_RPC_GET_FEE_ADDRESS>(&RpcServer::on_get_fee_address), true } },
+  { "/collateral", { jsonMethod<COMMAND_RPC_GET_COLLATERAL_INFO>(&RpcServer::on_get_collateral), true } },
   { "/peers", { jsonMethod<COMMAND_RPC_GET_PEER_LIST>(&RpcServer::on_get_peer_list), true } },
   { "/paymentid", { jsonMethod<COMMAND_RPC_GEN_PAYMENT_ID>(&RpcServer::on_get_payment_id), true } },
 
@@ -264,20 +265,18 @@ bool RpcServer::setContactInfo(const std::string& contact) {
   return true;
 }
 
-bool RpcServer::setCollateralInfo(const std::string& proof) {
+bool RpcServer::setCollateralInfo(const std::string& proof, const std::string& url) {
 
-  // check that collateral is valid for fee_address
+  // check that collateral is valid for the fee_address
   K_COMMAND_RPC_CHECK_RESERVE_PROOF::request req;
   K_COMMAND_RPC_CHECK_RESERVE_PROOF::response res;
   req.address = m_fee_address;
   req.signature = proof;
-
-  std::cout << std::endl << "Enter public node's IP or URL as in proof of balance message: " << std::endl;
-  std::getline(std::cin, req.message);
+  req.message = url;
 
   k_on_check_reserve_proof(req, res);
   if (!res.good) {
-    logger(ERROR) << "Collateral is not valid";
+    logger(ERROR, BRIGHT_RED) << "The collateral is not valid";
     return false;
   }
   if (res.total - res.spent < CryptoNote::parameters::MASTERNODE_COLLATERAL) {
@@ -854,6 +853,17 @@ bool RpcServer::on_get_fee_address(const COMMAND_RPC_GET_FEE_ADDRESS::request& r
 	return false; 
   }
   res.fee_address = m_fee_address;
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::on_get_collateral(const COMMAND_RPC_GET_COLLATERAL_INFO::request& req, COMMAND_RPC_GET_COLLATERAL_INFO::response& res) {
+  if (m_collateral.empty() || m_fee_address.empty()) {
+	res.status = CORE_RPC_STATUS_OK;
+	return false; 
+  }
+  res.address = m_fee_address;
+  res.reserve_proof = m_collateral;
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }
