@@ -266,25 +266,26 @@ bool RpcServer::setContactInfo(const std::string& contact) {
 }
 
 bool RpcServer::setCollateralInfo(const std::string& proof, const std::string& url) {
-
   // check that collateral is valid for the fee_address
   K_COMMAND_RPC_CHECK_RESERVE_PROOF::request req;
   K_COMMAND_RPC_CHECK_RESERVE_PROOF::response res;
   req.address = m_fee_address;
   req.signature = proof;
   req.message = url;
-
   k_on_check_reserve_proof(req, res);
   if (!res.good) {
     logger(ERROR, BRIGHT_RED) << "The collateral is not valid";
     return false;
   }
-  if (res.total - res.spent < CryptoNote::parameters::MASTERNODE_COLLATERAL) {
-    logger(ERROR, BRIGHT_RED) << "The amount of the collateral is not enough!";
+  uint64_t available = res.total - res.spent;
+  if (available < CryptoNote::parameters::MASTERNODE_COLLATERAL) {
+    logger(ERROR, BRIGHT_RED) << "Insufficient unspent collateral: "
+      << m_core.currency().formatAmount(available) << ", minimum: " 
+      << m_core.currency().formatAmount(CryptoNote::parameters::MASTERNODE_COLLATERAL);
     return false;
   }
-  m_collateral = proof;
 
+  m_collateral = proof;
   return true;
 }
 
