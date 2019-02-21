@@ -1174,12 +1174,12 @@ struct COMMAND_RPC_GET_COLLATERAL_INFO {
 	typedef EMPTY_STRUCT request;
 
 	struct response {
-		std::string address;
+		std::string reserve_address;
 		std::string reserve_proof;
 		std::string status;
 
 		void serialize(ISerializer &s) {
-			KV_MEMBER(address)
+			KV_MEMBER(reserve_address)
 			KV_MEMBER(reserve_proof)
 			KV_MEMBER(status)
 		}

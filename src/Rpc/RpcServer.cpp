@@ -863,7 +863,7 @@ bool RpcServer::on_get_collateral(const COMMAND_RPC_GET_COLLATERAL_INFO::request
 	res.status = CORE_RPC_STATUS_OK;
 	return false; 
   }
-  res.address = m_fee_address;
+  res.reserve_address = m_fee_address;
   res.reserve_proof = m_collateral;
   res.status = CORE_RPC_STATUS_OK;
   return true;
