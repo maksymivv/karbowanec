@@ -108,10 +108,14 @@ set(KarboCommon_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/Common/pod-class.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/static_assert.h")
 
+set(KarboCommon_LIBS
+    Threads::Threads
+    Qwertycoin::Crypto)
+
 add_library(KarboCommon STATIC ${KarboCommon_SOURCES})
 add_library(Karbo::Common ALIAS KarboCommon)
 target_include_directories(KarboCommon PRIVATE ${Karbo_INCLUDE_DIRS})
-target_link_libraries(KarboCommon PRIVATE Threads::Threads)
+target_link_libraries(KarboCommon PRIVATE ${KarboCommon_LIBS})
 
 if (UNIX AND NOT ANDROID)
     target_link_libraries(KarboCommon PUBLIC -lresolv)
@@ -129,10 +133,7 @@ endif()
 set(KarboConnectivityTool_LIBS
     Boost::program_options
     Karbo::Common
-    Karbo::Crypto
     Karbo::CryptoNoteCore
-    Karbo::Http
-    Karbo::Logging
     Karbo::P2p
     Karbo::Rpc
     Karbo::Serialization
@@ -151,6 +152,8 @@ set_target_properties(KarboConnectivityTool PROPERTIES OUTPUT_NAME "connectivity
 # Karbo::Crypto
 
 set(KarboCrypto_SOURCES
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/aesb.c"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/aesb.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/blake256.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/blake256.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/chacha8.c"
@@ -168,6 +171,10 @@ set(KarboCrypto_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/crypto/groestl.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/groestl.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/groestl_tables.h"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/hash-extra-blake.c"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/hash-extra-groestl.c"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/hash-extra-jh.c"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/hash-extra-skein.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/hash-ops.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/hash.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/hash.h"
@@ -176,11 +183,17 @@ set(KarboCrypto_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/crypto/jh.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/keccak.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/keccak.h"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/oaes_config.h"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/oaes_lib.c"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/oaes_lib.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/random.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/random.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/skein.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/skein.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/skein_port.h"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/slow-hash.c"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/slow-hash.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/slow-hash.inl"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/tree-hash.c")
 
 add_library(KarboCrypto STATIC ${KarboCrypto_SOURCES})
@@ -264,10 +277,13 @@ set(KarboCryptoNoteCore_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/CryptoNoteCore/VerificationContext.h")
 
 set(KarboCryptoNoteCore_LIBS
+    Boost::filesystem
+    Boost::program_options
     sparsehash::sparsehash
     Karbo::BlockchainExplorer
     Karbo::Common
-    Karbo::Crypto)
+    Karbo::Crypto
+    Karbo::Serialization)
 
 add_library(KarboCryptoNoteCore STATIC ${KarboCryptoNoteCore_SOURCES})
 add_library(Karbo::CryptoNoteCore ALIAS KarboCryptoNoteCore)
@@ -301,14 +317,8 @@ endif()
 
 set(KarboDaemon_LIBS
     Boost::filesystem
-    Boost::program_options
-    MiniUPnP::miniupnpc
-    Karbo::BlockchainExplorer
     Karbo::Common
-    Karbo::Crypto
     Karbo::CryptoNoteCore
-    Karbo::CryptoNoteProtocol
-    Karbo::Http
     Karbo::Logging
     Karbo::P2p
     Karbo::Rpc
@@ -319,7 +329,7 @@ add_executable(KarboDaemon ${KarboDaemon_SOURCES})
 add_executable(Karbo::Daemon ALIAS KarboDaemon)
 target_include_directories(KarboDaemon PRIVATE ${Karbo_INCLUDE_DIRS})
 target_link_libraries(KarboDaemon PRIVATE ${KarboDaemon_LIBS})
-set_target_properties(KarboDaemon PROPERTIES OUTPUT_NAME "Karbod")
+set_target_properties(KarboDaemon PROPERTIES OUTPUT_NAME "karbowanecd")
 
 # Karbo::Http
 
@@ -405,11 +415,8 @@ endif()
 
 set(KarboMiner_LIBS
     Boost::program_options
-    Threads::Threads
     Karbo::Common
-    Karbo::Crypto
     Karbo::CryptoNoteCore
-    Karbo::Http
     Karbo::Logging
     Karbo::Rpc
     Karbo::Serialization
@@ -460,7 +467,6 @@ set(KarboNodeRpcProxy_SOURCES
 add_library(KarboNodeRpcProxy STATIC ${KarboNodeRpcProxy_SOURCES})
 add_library(Karbo::NodeRpcProxy ALIAS KarboNodeRpcProxy)
 target_include_directories(KarboNodeRpcProxy PRIVATE ${Karbo_INCLUDE_DIRS})
-target_link_libraries(KarboNodeRpcProxy PRIVATE Karbo::Rpc)
 
 # Karbo::P2p
 
@@ -493,10 +499,15 @@ set(KarboP2p_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/P2p/PeerListManager.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/P2p/PeerListManager.h")
 
+
+set(KarboP2p_LIBS
+    MiniUPnP::miniupnpc
+    Karbo::CryptoNoteProtocol)
+
 add_library(KarboP2p STATIC ${KarboP2p_SOURCES})
 add_library(Karbo::P2p ALIAS KarboP2p)
 target_include_directories(KarboP2p PRIVATE ${Karbo_INCLUDE_DIRS})
-target_link_libraries(KarboP2p PRIVATE MiniUPnP::miniupnpc)
+target_link_libraries(KarboP2p PRIVATE ${KarboP2p_LIBS})
 
 # Karbo::PaymentGate
 
@@ -512,10 +523,16 @@ set(KarboPaymentGate_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/PaymentGate/WalletServiceErrorCategory.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/PaymentGate/WalletServiceErrorCategory.h")
 
+set(KarboPaymentGate_LIBS
+    Karbo::JsonRpcServer
+    Karbo::NodeRpcProxy
+    Karbo::System
+    Karbo::Wallet)
+
 add_library(KarboPaymentGate STATIC ${KarboPaymentGate_SOURCES})
 add_library(Karbo::PaymentGate ALIAS KarboPaymentGate)
 target_include_directories(KarboPaymentGate PRIVATE ${Karbo_INCLUDE_DIRS})
-target_link_libraries(KarboPaymentGate PRIVATE Karbo::NodeRpcProxy)
+target_link_libraries(KarboPaymentGate PRIVATE ${KarboPaymentGate_LIBS})
 
 # Karbo::PaymentGateService
 
@@ -537,25 +554,12 @@ endif()
 set(KarboPaymentGateService_LIBS
     Boost::filesystem
     Boost::program_options
-    MiniUPnP::miniupnpc
-    Threads::Threads
-    Karbo::BlockchainExplorer
     Karbo::Common
-    Karbo::Crypto
     Karbo::CryptoNoteCore
-    Karbo::CryptoNoteProtocol
-    Karbo::Http
     Karbo::InProcessNode
-    Karbo::JsonRpcServer
     Karbo::Logging
-    Karbo::NodeRpcProxy
-    Karbo::P2p
-    Karbo::PaymentGate
     Karbo::Rpc
-    Karbo::Serialization
-    Karbo::System
-    Karbo::Transfers
-    Karbo::Wallet)
+    Karbo::System)
 
 add_executable(KarboPaymentGateService ${KarboPaymentGateService_SOURCES})
 add_executable(Karbo::PaymentGateService ALIAS KarboPaymentGateService)
@@ -582,9 +586,12 @@ set(KarboRpc_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/Rpc/RpcServerConfig.h")
 
 set(KarboRpc_LIBS
-    sparsehash::sparsehash
-    Karbo::Crypto
+    Karbo::BlockchainExplorer
     Karbo::CryptoNoteCore
+    Karbo::P2p
+    Karbo::PaymentGate
+    Karbo::Serialization
+    Karbo::System
     Karbo::Http)
 
 add_library(KarboRpc STATIC ${KarboRpc_SOURCES})
@@ -600,6 +607,8 @@ set(KarboSerialization_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/Serialization/BinaryOutputStreamSerializer.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/Serialization/BinaryOutputStreamSerializer.h"
     "${CMAKE_CURRENT_LIST_DIR}/Serialization/BinarySerializationTools.h"
+    "${CMAKE_CURRENT_LIST_DIR}/Serialization/BlockchainExplorerDataSerialization.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/Serialization/BlockchainExplorerDataSerialization.h"
     "${CMAKE_CURRENT_LIST_DIR}/Serialization/ISerializer.h"
     "${CMAKE_CURRENT_LIST_DIR}/Serialization/IStream.h"
     "${CMAKE_CURRENT_LIST_DIR}/Serialization/JsonInputStreamSerializer.cpp"
@@ -622,6 +631,7 @@ set(KarboSerialization_SOURCES
 add_library(KarboSerialization STATIC ${KarboSerialization_SOURCES})
 add_library(Karbo::Serialization ALIAS KarboSerialization)
 target_include_directories(KarboSerialization PRIVATE ${Karbo_INCLUDE_DIRS})
+target_link_libraries(KarboSerialization PRIVATE Karbo::Common)
 
 # Karbo::SimpleWallet
 
@@ -638,24 +648,11 @@ endif()
 set(KarboSimpleWallet_LIBS
     Boost::filesystem
     Boost::program_options
-    Threads::Threads
-    Karbo::BlockchainExplorer
     Karbo::Common
-    Karbo::Crypto
-    Karbo::CryptoNoteCore
-    Karbo::CryptoNoteProtocol
-    Karbo::Http
-    Karbo::InProcessNode
-    Karbo::JsonRpcServer
     Karbo::Logging
-    Karbo::Mnemonics
     Karbo::NodeRpcProxy
-    Karbo::P2p
-    Karbo::PaymentGate
     Karbo::Rpc
     Karbo::Serialization
-    Karbo::System
-    Karbo::Transfers
     Karbo::Wallet)
 
 if(WIN32)
@@ -797,15 +794,11 @@ set(KarboTransfers_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/Transfers/TransfersSynchronizer.h"
     "${CMAKE_CURRENT_LIST_DIR}/Transfers/TypeHelpers.h")
 
-set(KarboTransfers_LIBS
-    Karbo::CryptoNoteCore
-    Karbo::Serialization
-    Karbo::Wallet)
-
 add_library(KarboTransfers STATIC ${KarboTransfers_SOURCES})
 add_library(Karbo::Transfers ALIAS KarboTransfers)
 target_include_directories(KarboTransfers PRIVATE ${Karbo_INCLUDE_DIRS})
 target_link_libraries(KarboTransfers PRIVATE ${KarboTransfers_LIBS})
+target_link_libraries(KarboTransfers PRIVATE Karbo::CryptoNoteCore)
 
 # Karbo::Wallet
 
@@ -854,6 +847,11 @@ set(KarboWallet_SOURCES
 set(KarboWallet_LIBS
     Boost::filesystem
     Karbo::System
+    Karbo::Common
+    Karbo::Crypto
+    Karbo::CryptoNoteCore
+    Karbo::Mnemonics
+    Karbo::Rpc
     Karbo::Transfers)
 
 add_library(KarboWallet STATIC ${KarboWallet_SOURCES})
