@@ -187,7 +187,7 @@ add_library(KarboCrypto STATIC ${KarboCrypto_SOURCES})
 add_library(Karbo::Crypto ALIAS KarboCrypto)
 target_include_directories(KarboCrypto PRIVATE ${Karbo_INCLUDE_DIRS})
 
-if(NOT ARM AND NOT PPC64LE)
+if(NOT WIN32 AND NOT ARM AND NOT PPC64LE)
     message(STATUS "[Karbo::Crypto] AES support enabled.")
     target_compile_options(KarboCrypto PRIVATE -maes)
 elseif(PPC64LE)
