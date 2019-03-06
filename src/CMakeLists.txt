@@ -27,7 +27,10 @@ else()
     list(APPEND Karbo_INCLUDE_DIRS "${CMAKE_CURRENT_LIST_DIR}/Platform/Posix")
 endif()
 
+set(Karbo_INCLUDE_DIRS ${Karbo_INCLUDE_DIRS} PARENT_SCOPE)
+
 # Karbo::BinaryInfo # NOTE: Ignore this. It's not a target.
+
 
 # Karbo::BlockchainExplorer
 
@@ -283,6 +286,7 @@ set(KarboCryptoNoteCore_LIBS
     Karbo::BlockchainExplorer
     Karbo::Common
     Karbo::Crypto
+    Karbo::Logging
     Karbo::Serialization)
 
 add_library(KarboCryptoNoteCore STATIC ${KarboCryptoNoteCore_SOURCES})
@@ -467,6 +471,7 @@ set(KarboNodeRpcProxy_SOURCES
 add_library(KarboNodeRpcProxy STATIC ${KarboNodeRpcProxy_SOURCES})
 add_library(Karbo::NodeRpcProxy ALIAS KarboNodeRpcProxy)
 target_include_directories(KarboNodeRpcProxy PRIVATE ${Karbo_INCLUDE_DIRS})
+target_link_libraries(KarboNodeRpcProxy PRIVATE Karbo::System)
 
 # Karbo::P2p
 
@@ -850,6 +855,7 @@ set(KarboWallet_LIBS
     Karbo::Common
     Karbo::Crypto
     Karbo::CryptoNoteCore
+    Karbo::Logging
     Karbo::Mnemonics
     Karbo::Rpc
     Karbo::Transfers)
