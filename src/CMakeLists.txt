@@ -855,7 +855,6 @@ set(KarboWallet_SOURCES
 
 set(KarboWallet_LIBS
     Boost::filesystem
-    Karbo::System
     Karbo::Common
     Karbo::Crypto
     Karbo::CryptoNoteCore
@@ -870,3 +869,33 @@ target_include_directories(KarboWallet PRIVATE ${Karbo_INCLUDE_DIRS})
 target_link_libraries(KarboWallet PRIVATE ${KarboWallet_LIBS})
 
 # Karbo::WalletLegacy # TODO: Merge this target into Karbo::Wallet
+
+# Installation
+
+install(TARGETS
+            KarboBlockchainExplorer
+            KarboCommon
+            KarboConnectivityTool
+            KarboCrypto
+            KarboCryptoNoteCore
+            KarboCryptoNoteProtocol
+            KarboDaemon
+            KarboHttp
+            KarboInProcessNode
+            KarboJsonRpcServer
+            KarboLogging
+            KarboMiner
+            KarboMnemonics
+            KarboNodeRpcProxy
+            KarboP2p
+            KarboPaymentGate
+            KarboPaymentGateService
+            KarboRpc
+            KarboSerialization
+            KarboSimpleWallet
+            KarboSystem
+            KarboTransfers
+            KarboWallet
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib/static)

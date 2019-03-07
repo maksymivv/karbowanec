@@ -85,3 +85,7 @@ add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/src")
 if(BUILD_WITH_TESTS)
     add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/tests")
 endif()
+
+if(BUILD_WITH_PACKAGE)
+    include(project/CPackConfig)
+endif()
