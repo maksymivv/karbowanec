@@ -97,8 +97,8 @@ set(KarboCommon_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringOutputStream.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringTools.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringTools.h"
-    "${CMAKE_CURRENT_LIST_DIR}/Common/StringUtils.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/Common/StringUtils.h"
+    #"${CMAKE_CURRENT_LIST_DIR}/Common/StringUtils.cpp"
+    #"${CMAKE_CURRENT_LIST_DIR}/Common/StringUtils.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringView.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringView.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/Util.cpp"
@@ -106,14 +106,14 @@ set(KarboCommon_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/Common/Varint.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/VectorOutputStream.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/Common/VectorOutputStream.h"
-    "${CMAKE_CURRENT_LIST_DIR}/Common/VectorUtils.h"
+    #"${CMAKE_CURRENT_LIST_DIR}/Common/VectorUtils.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/int-util.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/pod-class.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/static_assert.h")
 
 set(KarboCommon_LIBS
     Threads::Threads
-    Qwertycoin::Crypto)
+    Karbo::Crypto)
 
 add_library(KarboCommon STATIC ${KarboCommon_SOURCES})
 add_library(Karbo::Common ALIAS KarboCommon)
@@ -161,10 +161,7 @@ set(KarboCrypto_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/crypto/blake256.h"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/chacha8.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/chacha8.h"
-    "${CMAKE_CURRENT_LIST_DIR}/crypto/cn_slow_hash.hpp"
-    "${CMAKE_CURRENT_LIST_DIR}/crypto/cn_slow_hash_hard_arm.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/crypto/cn_slow_hash_hard_intel.cpp"
-    "${CMAKE_CURRENT_LIST_DIR}/crypto/cn_slow_hash_soft.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/crypto/slow-hash.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/crypto-ops-data.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/crypto-ops.c"
     "${CMAKE_CURRENT_LIST_DIR}/crypto/crypto-ops.h"
