@@ -36,6 +36,7 @@ HunterGate(
 find_package(Git)
 message(STATUS "Found Git: ${GIT_FOUND}")
 if(GIT_FOUND)
+	set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include commit ID in version")
     execute_process(
         COMMAND "${GIT_EXECUTABLE}" describe --tags --abbrev=0 --match "v*"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -51,6 +52,20 @@ if(GIT_FOUND)
         string(REPLACE "v." "" PROJECT_GIT_TAG ${PROJECT_GIT_TAG})
         message(STATUS "Version from Git tag: ${PROJECT_GIT_TAG}")
     endif()
+	execute_process(
+		COMMAND "${GIT_EXECUTABLE}" describe --dirty --match "v*" 
+		RESULT_VARIABLE RET
+		OUTPUT_VARIABLE DESCRIPTION 
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+		ERROR_STRIP_TRAILING_WHITESPACE)
+	if(RET)
+		message(WARNING "Cannot determine current revision. Make sure that you are building either from a Git working tree or from a source archive.")
+		set(COMMIT_ID "")
+	else()
+		string(REGEX MATCH "([0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f])?(-dirty)? $" COMMIT "${DESCRIPTION} ")
+		string(STRIP "${COMMIT}" COMMIT)
+		set(COMMIT_ID "${COMMIT}")
+	endif()
 endif()
 
 set(PROJECT_DISPLAY_NAME "Karbo")

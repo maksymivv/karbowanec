@@ -4,7 +4,7 @@
 set(Boost_COMPONENTS chrono filesystem program_options serialization)
 
 if(MSVC)
-#    add_definitions(-DBOOST_ALL_NO_LIB)
+    # add_definitions(-DBOOST_ALL_NO_LIB)
     add_definitions(-DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
 endif()
 
