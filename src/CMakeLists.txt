@@ -97,6 +97,8 @@ set(KarboCommon_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringOutputStream.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringTools.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringTools.h"
+    "${CMAKE_CURRENT_LIST_DIR}/Common/UrlTools.h"
+    "${CMAKE_CURRENT_LIST_DIR}/Common/UrlTools.cpp"
     #"${CMAKE_CURRENT_LIST_DIR}/Common/StringUtils.cpp"
     #"${CMAKE_CURRENT_LIST_DIR}/Common/StringUtils.h"
     "${CMAKE_CURRENT_LIST_DIR}/Common/StringView.cpp"
