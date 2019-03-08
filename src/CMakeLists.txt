@@ -779,6 +779,10 @@ add_library(KarboSystem STATIC ${KarboSystem_SOURCES})
 add_library(Karbo::System ALIAS KarboSystem)
 target_include_directories(KarboSystem PRIVATE ${Karbo_INCLUDE_DIRS})
 
+if(WIN32)
+    target_link_libraries(KarboSystem PRIVATE ws2_32)
+endif()
+
 # Karbo::Transfers
 
 set(KarboTransfers_SOURCES
