@@ -22,7 +22,7 @@
 #include <string>
 
 #include "crypto/hash.h"
-#include "../Io.h"
+#include "../Common/Io.h"
 
 using namespace std;
 typedef Crypto::Hash chash;
