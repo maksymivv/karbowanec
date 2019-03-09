@@ -1,10 +1,10 @@
 # Boost
 
-#set(Boost_COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
-set(Boost_COMPONENTS chrono filesystem program_options serialization)
+set(Boost_COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
 
 if(MSVC)
-    # add_definitions(-DBOOST_ALL_NO_LIB)
+    add_definitions(-DBOOST_ALL_NO_LIB)
+    add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_WINCRYPT)
     add_definitions(-DBOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE)
 endif()
 
