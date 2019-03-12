@@ -111,6 +111,27 @@ namespace Crypto {
     return rng;
   }
 
+  void crypto_ops::generate_hd_child_keys(const SecretKey &master_view, const SecretKey &master_sec, const uint32_t &key_num, PublicKey &child_pub, SecretKey &child_sec) {
+    lock_guard<mutex> lock(random_lock);
+    ge_p3 point;
+	uint8_t master_keys[64];
+	memcpy(master_keys, &reinterpret_cast<const unsigned char &>(master_sec), sizeof(master_sec));
+	memcpy(master_keys + sizeof(master_sec), &reinterpret_cast<const unsigned char &>(master_view), sizeof(master_view));
+    
+	Hash chain_code = cn_fast_hash(master_keys, sizeof(master_keys));
+
+	uint8_t child_seed[sizeof(master_keys) + sizeof(chain_code) + sizeof(key_num)];
+	memcpy(child_seed, master_keys, sizeof(master_keys));
+	memcpy(child_seed + sizeof(master_keys), reinterpret_cast<unsigned char*>(&chain_code), sizeof(chain_code));
+	memcpy(child_seed + sizeof(master_keys) + sizeof(chain_code), &key_num, sizeof(key_num));
+
+	Hash child_first = cn_fast_hash(child_seed, sizeof(child_seed));
+
+	hash_to_scalar(reinterpret_cast<char *>(&child_first), sizeof(child_first), reinterpret_cast<EllipticCurveScalar&>(child_sec));
+
+	ge_scalarmult_base(&point, reinterpret_cast<unsigned char*>(&child_sec));
+	ge_p3_tobytes(reinterpret_cast<unsigned char*>(&child_pub), &point);
+  }
 
   bool crypto_ops::check_key(const PublicKey &key) {
     ge_p3 point;
