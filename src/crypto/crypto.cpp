@@ -120,15 +120,12 @@ namespace Crypto {
     
 	Hash chain_code = cn_fast_hash(master_keys, sizeof(master_keys));
 
-	uint8_t child_seed[sizeof(master_keys) + sizeof(chain_code) + sizeof(key_num)];
-	memcpy(child_seed, master_keys, sizeof(master_keys));
-	memcpy(child_seed + sizeof(master_keys), reinterpret_cast<unsigned char*>(&chain_code), sizeof(chain_code));
-	memcpy(child_seed + sizeof(master_keys) + sizeof(chain_code), &key_num, sizeof(key_num));
-
-	Hash child_first = cn_fast_hash(child_seed, sizeof(child_seed));
+	uint8_t child_first[sizeof(master_keys) + sizeof(chain_code) + sizeof(key_num)];
+	memcpy(child_first, master_keys, sizeof(master_keys));
+	memcpy(child_first + sizeof(master_keys), reinterpret_cast<unsigned char*>(&chain_code), sizeof(chain_code));
+	memcpy(child_first + sizeof(master_keys) + sizeof(chain_code), &key_num, sizeof(key_num));
 
 	hash_to_scalar(reinterpret_cast<char *>(&child_first), sizeof(child_first), reinterpret_cast<EllipticCurveScalar&>(child_sec));
-
 	ge_scalarmult_base(&point, reinterpret_cast<unsigned char*>(&child_sec));
 	ge_p3_tobytes(reinterpret_cast<unsigned char*>(&child_pub), &point);
   }
