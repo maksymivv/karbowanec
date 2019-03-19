@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <boost/utility/value_init.hpp>
 #include <boost/range/combine.hpp>
+#include "CryptoNote.h"
 #include "../CryptoNoteConfig.h"
 #include "../Common/CommandLine.h"
 #include "../Common/Util.h"
@@ -188,7 +189,7 @@ size_t core::addChain(const std::vector<const IBlock*>& chain) {
 
       Crypto::Hash txHash = NULL_HASH;
       size_t blobSize = 0;
-      getObjectHash(tx, txHash, blobSize);
+      get_transaction_hash(tx, txHash, blobSize);
       tx_verification_context tvc = boost::value_initialized<tx_verification_context>();
 
       if (!handleIncomingTransaction(tx, txHash, blobSize, tvc, true, get_block_height(block->getBlock()), true)) {
@@ -262,11 +263,11 @@ bool core::check_tx_mixin(const Transaction& tx, uint32_t height) {
       uint64_t txMixin = boost::get<KeyInput>(txin).outputIndexes.size();
       if (height > CryptoNote::parameters::MIN_TX_MIXIN_V1_HEIGHT && height < CryptoNote::parameters::MIN_TX_MIXIN_V2_HEIGHT && txMixin > CryptoNote::parameters::MAX_TX_MIXIN_SIZE_V1
        || height > CryptoNote::parameters::MIN_TX_MIXIN_V2_HEIGHT && txMixin > CryptoNote::parameters::MAX_TX_MIXIN_SIZE_V2) {
-        logger(ERROR) << "Transaction " << getObjectHash(tx) << " has too large mixIn count, rejected";
+        logger(ERROR) << "Transaction " << get_transaction_hash(tx) << " has too large mixIn count, rejected";
         return false;
       }
       if (getCurrentBlockMajorVersion() >= BLOCK_MAJOR_VERSION_4 && txMixin < m_currency.minMixin() && txMixin != 1) {
-        logger(ERROR) << "Transaction " << getObjectHash(tx) << " has mixIn count below the required minimum, rejected";
+        logger(ERROR) << "Transaction " << get_transaction_hash(tx) << " has mixIn count below the required minimum, rejected";
         return false;
       }
     }
@@ -275,43 +276,46 @@ bool core::check_tx_mixin(const Transaction& tx, uint32_t height) {
 }
 
 bool core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_context& tvc, uint32_t height, bool loose_check) {
-	uint64_t inputs_amount = 0;
-	if (!get_inputs_money_amount(tx, inputs_amount)) {
-		tvc.m_verification_failed = true;
-		return false;
-	}
+  uint64_t inputs_amount = 0;
+  if (!get_inputs_money_amount(tx, inputs_amount)) {
+    tvc.m_verification_failed = true;
+    return false;
+  }
 
-	uint64_t outputs_amount = get_outs_money_amount(tx);
+  uint64_t outputs_amount = get_outs_money_amount(tx);
 
-	if (outputs_amount > inputs_amount) {
-		logger(DEBUGGING) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
-			", have " << m_currency.formatAmount(inputs_amount);
-		tvc.m_verification_failed = true;
-		return false;
-	}
+  if (outputs_amount > inputs_amount) {
+    logger(DEBUGGING) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
+      ", have " << m_currency.formatAmount(inputs_amount);
+    tvc.m_verification_failed = true;
+    return false;
+  }
 
-	Crypto::Hash h = NULL_HASH;
-	getObjectHash(tx, h, blobSize);
-	const uint64_t fee = inputs_amount - outputs_amount;
-	bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
-	if (!isFusionTransaction)
-		if (height < CryptoNote::parameters::MINIMUM_FEE_V2_HEIGHT ? fee < CryptoNote::parameters::MINIMUM_FEE_V1 : (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? fee < m_currency.minimumFee() :
-		fee < getMinimalFeeForHeight(loose_check ? height - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY : height))) {
-		logger(ERROR) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " <<
-			m_currency.formatAmount(getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? m_currency.minimumFee() : 
-			getMinimalFeeForHeight(loose_check ? height - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY : height));
-		tvc.m_verification_failed = true;
-		tvc.m_tx_fee_too_small = true;
-		return false;
-	}
+  Crypto::Hash h = NULL_HASH;
+  if (!get_transaction_hash(tx, h, blobSize)) {
+    tvc.m_verification_failed = true;
+    return false;
+  }
+  const uint64_t fee = inputs_amount - outputs_amount;
+  bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
+  if (!isFusionTransaction)
+    if (height < CryptoNote::parameters::MINIMUM_FEE_V2_HEIGHT ? fee < CryptoNote::parameters::MINIMUM_FEE_V1 : (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? fee < m_currency.minimumFee() :
+    fee < getMinimalFeeForHeight(loose_check ? height - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY : height))) {
+    logger(ERROR) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " <<
+      m_currency.formatAmount(getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4 ? m_currency.minimumFee() : 
+      getMinimalFeeForHeight(loose_check ? height - CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY : height));
+    tvc.m_verification_failed = true;
+    tvc.m_tx_fee_too_small = true;
+    return false;
+  }
 
-	return true;
+  return true;
 }
 
 bool core::check_tx_unmixable(const Transaction& tx, uint32_t height) {
   for (const auto& out : tx.outputs) {
     if (!is_valid_decomposed_amount(out.amount) && height >= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-      logger(ERROR) << "Invalid decomposed output amount " << out.amount << " for tx id= " << getObjectHash(tx);
+      logger(ERROR) << "Invalid decomposed output amount " << out.amount << " for tx id= " << get_transaction_hash(tx);
       return false;
     }
   }
@@ -320,12 +324,12 @@ bool core::check_tx_unmixable(const Transaction& tx, uint32_t height) {
 
 bool core::check_tx_semantic(const Transaction& tx, bool keeped_by_block) {
   if (!tx.inputs.size()) {
-    logger(ERROR) << "tx with empty inputs, rejected for tx id= " << getObjectHash(tx);
+    logger(ERROR) << "tx with empty inputs, rejected for tx id= " << get_transaction_hash(tx);
     return false;
   }
 
   if (tx.inputs.size() != tx.signatures.size()) {
-    logger(ERROR) << "tx signatures size doesn't match inputs size, rejected for tx id= " << getObjectHash(tx);
+    logger(ERROR) << "tx signatures size doesn't match inputs size, rejected for tx id= " << get_transaction_hash(tx);
     return false;
   }
 
@@ -333,25 +337,25 @@ bool core::check_tx_semantic(const Transaction& tx, bool keeped_by_block) {
     if (tx.inputs[i].type() == typeid(KeyInput)) {
       if (boost::get<KeyInput>(tx.inputs[i]).outputIndexes.size() != tx.signatures[i].size()) {
         logger(ERROR) << "tx signatures count doesn't match outputIndexes count for input " 
-          << i << ", rejected for tx id= " << getObjectHash(tx);
+          << i << ", rejected for tx id= " << get_transaction_hash(tx);
         return false;
       }
     }
   }
 
   if (!check_inputs_types_supported(tx)) {
-    logger(ERROR) << "unsupported input types for tx id= " << getObjectHash(tx);
+    logger(ERROR) << "unsupported input types for tx id= " << get_transaction_hash(tx);
     return false;
   }
 
   std::string errmsg;
   if (!check_outs_valid(tx, &errmsg)) {
-    logger(ERROR) << "tx with invalid outputs, rejected for tx id= " << getObjectHash(tx) << ": " << errmsg;
+    logger(ERROR) << "tx with invalid outputs, rejected for tx id= " << get_transaction_hash(tx) << ": " << errmsg;
     return false;
   }
 
   if (!check_money_overflow(tx)) {
-    logger(ERROR) << "tx have money overflow, rejected for tx id= " << getObjectHash(tx);
+    logger(ERROR) << "tx have money overflow, rejected for tx id= " << get_transaction_hash(tx);
     return false;
   }
 
@@ -360,7 +364,7 @@ bool core::check_tx_semantic(const Transaction& tx, bool keeped_by_block) {
   uint64_t amount_out = get_outs_money_amount(tx);
 
   if (amount_in < amount_out) {
-    logger(ERROR) << "tx with wrong amounts: ins " << amount_in << ", outs " << amount_out << ", rejected for tx id= " << getObjectHash(tx);
+    logger(ERROR) << "tx with wrong amounts: ins " << amount_in << ", outs " << amount_out << ", rejected for tx id= " << get_transaction_hash(tx);
     return false;
   }
 
@@ -634,7 +638,7 @@ bool core::getPoolChangesLite(const Crypto::Hash& tailBlockId, const std::vector
   for (const auto& tx: added) {
     TransactionPrefixInfo tpi;
     tpi.txPrefix = tx;
-    tpi.txHash = getObjectHash(tx);
+    tpi.txHash = get_transaction_hash(tx);
 
     addedTxs.push_back(std::move(tpi));
   }
@@ -969,7 +973,7 @@ bool core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockIds, uint6
       for (const auto& tx: txs) {
         TransactionPrefixInfo info;
         info.txPrefix = tx;
-        info.txHash = getObjectHash(tx);
+        info.txHash = get_transaction_hash(tx);
 
         item.txPrefixes.push_back(std::move(info));
       }
@@ -1005,7 +1009,7 @@ bool core::scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pa
     outputs_visitor(std::list<std::pair<Crypto::Hash, size_t>>& resultsCollector):m_resultsCollector(resultsCollector){}
     bool handle_output(const Transaction& tx, const TransactionOutput& out, size_t transactionOutputIndex)
     {
-      m_resultsCollector.push_back(std::make_pair(getObjectHash(tx), transactionOutputIndex));
+      m_resultsCollector.push_back(std::make_pair(get_transaction_hash(tx), transactionOutputIndex));
       return true;
     }
   };
@@ -1300,7 +1304,7 @@ bool core::fillBlockDetails(const Block &block, BlockDetails2& blockDetails) {
 }
 
 bool core::fillTransactionDetails(const Transaction& transaction, TransactionDetails2& transactionDetails, uint64_t timestamp) {
-  Crypto::Hash hash = getObjectHash(transaction);
+  Crypto::Hash hash = get_transaction_hash(transaction);
   transactionDetails.hash = hash;
 
   transactionDetails.timestamp = timestamp;

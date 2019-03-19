@@ -176,7 +176,12 @@ namespace CryptoNote {
     }
     
     extra.parse(transaction.extra);
-    transactionHash = getBinaryArrayHash(ba); // avoid serialization if we already have blob
+    //if (transaction.version >= 2) {
+      transactionHash = get_transaction_hash(transaction);
+    //}
+    //else {
+    //  transactionHash = getBinaryArrayHash(ba); // avoid serialization if we already have blob
+    //}
   }
 
   TransactionImpl::TransactionImpl(const CryptoNote::Transaction& tx) : transaction(tx) {
@@ -190,9 +195,9 @@ namespace CryptoNote {
   }
 
   Hash TransactionImpl::getTransactionHash() const {
-    if (!transactionHash.is_initialized()) {
-      transactionHash = getObjectHash(transaction);
-    }
+    //if (!transactionHash.is_initialized()) {
+      transactionHash = get_transaction_hash(transaction);
+    //}
 
     return transactionHash.get();   
   }

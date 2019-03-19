@@ -46,7 +46,10 @@ bool parseAndValidateTransactionFromBinaryArray(const BinaryArray& tx_blob, Tran
   }
 
   //TODO: validate tx
-  cn_fast_hash(tx_blob.data(), tx_blob.size(), tx_hash);
+  //cn_fast_hash(tx_blob.data(), tx_blob.size(), tx_hash);
+  if (!get_transaction_hash(tx, tx_hash)) {
+    return false;
+  }
   getObjectHash(*static_cast<TransactionPrefix*>(&tx), tx_prefix_hash);
   return true;
 }
@@ -516,6 +519,30 @@ bool get_aux_block_header_hash(const Block& b, Hash& res) {
   return getObjectHash(blob, res);
 }
 
+Crypto::Hash get_transaction_hash(const Transaction& t)
+{
+  Crypto::Hash h = NULL_HASH;
+  size_t blob_size = 0;
+  if (t.version >= 2) {
+    getObjectHash(static_cast<const TransactionPrefix&>(t), h, blob_size);
+  }
+  else {
+    getObjectHash(t, h, blob_size);
+  }
+  return h;
+}
+
+bool get_transaction_hash(const Transaction& t, Crypto::Hash& res)
+{
+  size_t blob_size = 0;
+  return getObjectHash(static_cast<const TransactionPrefix&>(t), res, blob_size);
+}
+
+bool get_transaction_hash(const Transaction& t, Crypto::Hash& res, size_t& blob_size)
+{
+  return getObjectHash(static_cast<const TransactionPrefix&>(t), res, blob_size);
+}
+
 bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   BinaryArray bd;
   if (b.majorVersion == BLOCK_MAJOR_VERSION_1 || b.majorVersion >= BLOCK_MAJOR_VERSION_4) {
@@ -564,7 +591,7 @@ Hash get_tx_tree_hash(const std::vector<Hash>& tx_hashes) {
 Hash get_tx_tree_hash(const Block& b) {
   std::vector<Hash> txs_ids;
   Hash h = NULL_HASH;
-  getObjectHash(b.baseTransaction, h);
+  get_transaction_hash(b.baseTransaction, h);
   txs_ids.push_back(h);
   for (auto& th : b.transactionHashes) {
     txs_ids.push_back(th);
