@@ -1186,33 +1186,41 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   // Hashing the current blockdata (preprocessing it)
   //cn_fast_hash(bd.data(), bd.size(), hash_1);
-  Crypto::argon2d_hash(bd.data(), 64, bd.data(), m_cost1, lanes, threads, t_cost, hash_1);
+  //Crypto::argon2d_hash(bd.data(), 64, bd.data(), m_cost1, lanes, threads, t_cost, hash_1);
+  Crypto::rf_slow_hash(bd.data(), hash_1, bd.size());
 
   // Splitting the hash_1 into 8 chunks and getting the corresponding 8 blocks from blockchain
-  BinaryArray scratchpad;
+  BinaryArray scratchpad, ba;
+  // since we can't use salt in rainforest lets throw our block into common pot (entire Block, not its header bd)
+  if (!toBinaryArray(b, ba)) {
+    return false;
+  }
+  scratchpad.insert(std::end(scratchpad), std::begin(ba), std::end(ba));
+
   for (uint8_t i = 1; i <= 8; i++) {
     uint64_t cd = *reinterpret_cast<uint32_t *>(&hash_1.data[i * 4 - 4]);
     uint32_t height_i = cd % (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex - 1 - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
     Crypto::Hash hash_i = getBlockIdByHeight(height_i);
 
-    Block b;
-    if (!getBlockByHash(hash_i, b)) {
+    Block bl;
+    if (!getBlockByHash(hash_i, bl)) {
       return false;
     }
     BinaryArray ba;
-    if (!toBinaryArray(b, ba)) {
+    if (!toBinaryArray(bl, ba)) {
       return false;
     }
     scratchpad.insert(std::end(scratchpad), std::begin(ba), std::end(ba));
   }
 
-  // Phase 2
+  // Phase 2 - stir the pot
 
   uint32_t m_cost2 = (1 << 6);
   Crypto::Hash hash_2;
 
   // Hashing the eight blocks as one continous block, salt is hash_1
-  Crypto::argon2d_hash(scratchpad.data(), 64, &hash_1, m_cost2, lanes, threads, t_cost, hash_2);
+  //Crypto::argon2d_hash(scratchpad.data(), 64, &hash_1, m_cost2, lanes, threads, t_cost, hash_2);
+  Crypto::rf_slow_hash(scratchpad.data(), hash_2, scratchpad.size());
 
   // Phase 3
 	
@@ -1221,7 +1229,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // Hashing using the generated hash_2 as a salt for argon, taking the previous hash_1 as the password for argon
   // Crypto::argon2d_hash(&hash_1, 64, &hash_2, m_cost3, lanes, threads, t_cost, res);
   // additionally using keccak and pseudorandom finalizer function
-  Crypto::an_slow_hash(&hash_1, sizeof(&hash_1), &hash_2, m_cost3, t_cost, res);
+  //Crypto::an_slow_hash(&hash_1, sizeof(&hash_1), &hash_2, m_cost3, t_cost, res);
+  Crypto::rf_slow_hash(&hash_2, res, (uint32_t)sizeof(hash_2));
 
   return true;
 }
