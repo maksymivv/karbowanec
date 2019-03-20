@@ -94,8 +94,6 @@ namespace CryptoNote {
     std::string m_config_folder_path;
     std::atomic<uint64_t> m_last_hr_merge_time;
     std::atomic<uint64_t> m_hashes;
-    std::atomic<uint64_t> t_hashes = 0;
-    std::chrono::nanoseconds total_dur = std::chrono::nanoseconds::zero();
     std::atomic<uint64_t> m_current_hash_rate;
     std::mutex m_last_hash_rates_lock;
     std::list<uint64_t> m_last_hash_rates;

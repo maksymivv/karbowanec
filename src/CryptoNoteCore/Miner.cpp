@@ -373,8 +373,6 @@ namespace CryptoNote
 
     while(!m_stop)
     {
-      auto start = std::chrono::steady_clock::now();
-
       if(m_pausers_count) //anti split workaround
       {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -418,16 +416,6 @@ namespace CryptoNote
           //success update, lets update config
           Common::saveStringToFile(m_config_folder_path + "/" + CryptoNote::parameters::MINER_CONFIG_FILE_NAME, storeToJson(m_config));
         }
-      }
-
-
-      ++t_hashes;
-      total_dur += (std::chrono::steady_clock::now() - start);
-      if (t_hashes % 1000 == 0) {
-        logger(INFO) << "1000 hashes time: " << std::chrono::duration_cast<std::chrono::milliseconds>(total_dur).count() << "ms";
-        t_hashes = 0;
-        total_dur = std::chrono::nanoseconds::zero();
-
       }
 
       nonce += m_threads_total;
