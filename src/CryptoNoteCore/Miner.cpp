@@ -364,6 +364,9 @@ namespace CryptoNote
   //-----------------------------------------------------------------------------------------------------
   bool miner::worker_thread(uint32_t th_local_index)
   {
+    std::atomic<uint64_t> t_hashes = 0;
+    std::chrono::nanoseconds total_dur = std::chrono::nanoseconds::zero();
+
     logger(INFO) << "Miner thread was started ["<< th_local_index << "]";
     uint32_t nonce = m_starter_nonce + th_local_index;
     difficulty_type local_diff = 0;
@@ -427,7 +430,6 @@ namespace CryptoNote
         logger(INFO) << "1000 hashes time: " << std::chrono::duration_cast<std::chrono::milliseconds>(total_dur).count() << "ms";
         t_hashes = 0;
         total_dur = std::chrono::nanoseconds::zero();
-
       }
 
       nonce += m_threads_total;
