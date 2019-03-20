@@ -1178,26 +1178,26 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   // Phase 1
 
-  uint32_t m_cost1 = (1 << 7);
+  uint32_t m_cost = 128;
   uint32_t lanes = 2;
   uint32_t threads = 1;
   uint32_t t_cost = 2;
   Crypto::Hash hash_1;
 
   // Hashing the current blockdata (preprocessing it)
-  //cn_fast_hash(bd.data(), bd.size(), hash_1);
   //Crypto::argon2d_hash(bd.data(), 64, bd.data(), m_cost1, lanes, threads, t_cost, hash_1);
-  //Crypto::rf_slow_hash(bd.data(), hash_1, bd.size());
-  Crypto::bl_slow_hash(bd.data(), bd.size(), bd.data(), bd.size(), hash_1);
+  Crypto::rf_slow_hash(bd.data(), hash_1, bd.size());
 
-  // Splitting the hash_1 into 8 chunks and getting the corresponding 8 blocks from blockchain
-  BinaryArray scratchpad, ba;
-  // since we can't use salt in rainforest lets throw our block into common pot (entire Block, not its header bd)
+  // Phase 2
+
+  BinaryArray pot, ba;
+  // throw our Block into common pot
   if (!toBinaryArray(b, ba)) {
     return false;
   }
-  scratchpad.insert(std::end(scratchpad), std::begin(ba), std::end(ba));
+  pot.insert(std::end(pot), std::begin(ba), std::end(ba));
 
+  // Splitting the hash_1 into 8 chunks and getting the corresponding 8 blocks from blockchain
   for (uint8_t i = 1; i <= 8; i++) {
     uint64_t cd = *reinterpret_cast<uint32_t *>(&hash_1.data[i * 4 - 4]);
     uint32_t height_i = cd % (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex - 1 - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
@@ -1211,37 +1211,21 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
     if (!toBinaryArray(bl, ba)) {
       return false;
     }
-    scratchpad.insert(std::end(scratchpad), std::begin(ba), std::end(ba));
+    pot.insert(std::end(pot), std::begin(ba), std::end(ba));
   }
 
-  // Phase 2 - stir the pot
+  // Phase 3 - stir the pot
 
-  uint32_t m_cost2 = (1 << 6);
   Crypto::Hash hash_2;
 
-  // Hashing the eight blocks as one continous block, salt is hash_1
-  //Crypto::argon2d_hash(scratchpad.data(), 64, &hash_1, m_cost2, lanes, threads, t_cost, hash_2);
+  // Hashing the eight blocks as one continous data, salt is hash_1
+  Crypto::argon2d_hash(pot.data(), 64, &hash_1, m_cost, lanes, threads, t_cost, hash_2);
   
-  //Crypto::rf_slow_hash(scratchpad.data(), hash_2, scratchpad.size()); // very slow here
-  Crypto::bl_slow_hash(scratchpad.data(), scratchpad.size(), &hash_1, 64, hash_2);
-
-  // Phase 3
+  // Phase 4
 	
-  uint32_t m_cost3 = (1 << 5);
-
   // Hashing using the generated hash_2 as a salt for argon, taking the previous hash_1 as the password for argon
-  //Crypto::argon2d_hash(&hash_1, 64, &hash_2, m_cost3, lanes, threads, t_cost, res);
-  //Crypto::rf_slow_hash(&hash_2, res, (uint32_t)sizeof(hash_2));
-  
-  Crypto::bl_slow_hash(&hash_2, 64, &hash_1, 64, res);
-  
-  //Crypto::sq_slow_hash(&hash_2, res);
-
-  //cn_fast_hash(&hash_2, sizeof(hash_2), res);
-
-  // hash using pseudorandom finalizer function
-  //Crypto::an_slow_hash(&hash_1, sizeof(&hash_1), &hash_2, m_cost3, t_cost, res);
-  //Crypto::extra_hashes[hash_1.data[0] & 3](&hash_2, 64, reinterpret_cast<char *>(&res));
+  // with pseudorandom finalizer function
+  Crypto::an_slow_hash(&hash_1, sizeof(&hash_1), &hash_2, m_cost, t_cost, res);
  
   return true;
 }

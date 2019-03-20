@@ -24,7 +24,6 @@
 #include <CryptoTypes.h>
 #include "generic-ops.h"
 #include "rainforest.h"
-#include "argon2/blake2.h"
 
 namespace Crypto {
 
@@ -72,10 +71,6 @@ namespace Crypto {
 
   inline void argon2d_hash(const void *in, const size_t size, const void *salt, uint32_t m_cost, uint32_t lanes, uint32_t threads, uint32_t t_cost, Hash &hash) {
     argon2d_hash(in, size, salt, m_cost, lanes, threads, t_cost, reinterpret_cast<char *>(&hash));
-  }
-
-  inline void bl_slow_hash(const void *in, size_t inlen, const void *key, size_t keylen, Hash &hash) {
-    blake2b(reinterpret_cast<char *>(&hash), 64, in, inlen, key, keylen);
   }
 
   inline void rf_slow_hash(const void* input, Hash &hash, uint32_t len) {
