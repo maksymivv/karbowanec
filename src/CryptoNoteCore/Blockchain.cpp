@@ -1187,7 +1187,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // Hashing the current blockdata (preprocessing it)
   //cn_fast_hash(bd.data(), bd.size(), hash_1);
   //Crypto::argon2d_hash(bd.data(), 64, bd.data(), m_cost1, lanes, threads, t_cost, hash_1);
-  Crypto::rf_slow_hash(bd.data(), hash_1, bd.size());
+  //Crypto::rf_slow_hash(bd.data(), hash_1, bd.size());
+  Crypto::bl_slow_hash(bd.data(), bd.size(), bd.data(), bd.size(), hash_1);
 
   // Splitting the hash_1 into 8 chunks and getting the corresponding 8 blocks from blockchain
   BinaryArray scratchpad, ba;
@@ -1220,18 +1221,28 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   // Hashing the eight blocks as one continous block, salt is hash_1
   //Crypto::argon2d_hash(scratchpad.data(), 64, &hash_1, m_cost2, lanes, threads, t_cost, hash_2);
-  Crypto::rf_slow_hash(scratchpad.data(), hash_2, scratchpad.size());
+  
+  //Crypto::rf_slow_hash(scratchpad.data(), hash_2, scratchpad.size()); // very slow here
+  Crypto::bl_slow_hash(scratchpad.data(), scratchpad.size(), &hash_1, 64, hash_2);
 
   // Phase 3
 	
   uint32_t m_cost3 = (1 << 5);
 
   // Hashing using the generated hash_2 as a salt for argon, taking the previous hash_1 as the password for argon
-  // Crypto::argon2d_hash(&hash_1, 64, &hash_2, m_cost3, lanes, threads, t_cost, res);
-  // additionally using keccak and pseudorandom finalizer function
-  //Crypto::an_slow_hash(&hash_1, sizeof(&hash_1), &hash_2, m_cost3, t_cost, res);
-  Crypto::rf_slow_hash(&hash_2, res, (uint32_t)sizeof(hash_2));
+  //Crypto::argon2d_hash(&hash_1, 64, &hash_2, m_cost3, lanes, threads, t_cost, res);
+  //Crypto::rf_slow_hash(&hash_2, res, (uint32_t)sizeof(hash_2));
+  
+  Crypto::bl_slow_hash(&hash_2, 64, &hash_1, 64, res);
+  
+  //Crypto::sq_slow_hash(&hash_2, res);
 
+  //cn_fast_hash(&hash_2, sizeof(hash_2), res);
+
+  // hash using pseudorandom finalizer function
+  //Crypto::an_slow_hash(&hash_1, sizeof(&hash_1), &hash_2, m_cost3, t_cost, res);
+  //Crypto::extra_hashes[hash_1.data[0] & 3](&hash_2, 64, reinterpret_cast<char *>(&res));
+ 
   return true;
 }
 
