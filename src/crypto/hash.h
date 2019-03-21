@@ -73,6 +73,9 @@ namespace Crypto {
     argon2d_hash(in, inlen, salt, saltlen, m_cost, lanes, threads, t_cost, reinterpret_cast<char *>(&hash));
   }
 
+  inline void blake2b_hash(Hash &hash, size_t outlen, const void *in, size_t inlen, const void *key, size_t keylen) {
+    blake2b(reinterpret_cast<char *>(&hash), outlen, in, inlen, key, keylen);
+  }
   inline void rf_slow_hash(const void* input, Hash &hash, uint32_t len) {
     rf256_hash(reinterpret_cast<char *>(&hash), input, len);
   }
