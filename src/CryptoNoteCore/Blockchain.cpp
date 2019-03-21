@@ -1191,13 +1191,14 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // Phase 2
 
   BinaryArray pot, ba;
-  // throw our Block into common pot
+  // throw our full block into common pot (not hashing blob)
   if (!toBinaryArray(b, ba)) {
     return false;
   }
   pot.insert(std::end(pot), std::begin(ba), std::end(ba));
 
   // Splitting the hash_1 into 8 chunks and getting the corresponding 8 blocks from blockchain
+  // and throwing them into the pot too
   for (uint8_t i = 1; i <= 8; i++) {
     uint64_t cd = *reinterpret_cast<uint32_t *>(&hash_1.data[i * 4 - 4]);
     uint32_t height_i = cd % (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex - 1 - CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
@@ -1214,12 +1215,12 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
     pot.insert(std::end(pot), std::begin(ba), std::end(ba));
   }
 
-  // Phase 3 - stir the pot
+  // Phase 3
 
   Crypto::Hash hash_2;
 
-  // Hashing the eight blocks as one continous data, salt is hash_1
-  Crypto::argon2d_hash(pot.data(), 64, &hash_1, m_cost, lanes, threads, t_cost, hash_2);
+  // stir the pot - hashing the 1 + 8 blocks as one continous data, salt is hash_1
+  Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, m_cost, lanes, threads, t_cost, hash_2);
   
   // Phase 4
 	
