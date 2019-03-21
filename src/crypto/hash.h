@@ -62,7 +62,7 @@ namespace Crypto {
   };
 
   inline void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash) {
-	cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
   }
 
   inline void an_slow_hash(const void *data, size_t datalen, const void *salt, size_t saltlen, uint32_t m_cost, uint32_t t_cost, Hash &hash) {
@@ -76,7 +76,8 @@ namespace Crypto {
   inline void blake2b_hash(Hash &hash, size_t outlen, const void *in, size_t inlen, const void *key, size_t keylen) {
     blake2b(reinterpret_cast<char *>(&hash), outlen, in, inlen, key, keylen);
   }
-  inline void rf_slow_hash(const void* input, Hash &hash, uint32_t len) {
+
+  inline void rainforest_hash(const void* input, uint32_t len, Hash &hash) {
     rf256_hash(reinterpret_cast<char *>(&hash), input, len);
   }
 

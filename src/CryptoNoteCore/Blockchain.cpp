@@ -1185,8 +1185,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   Crypto::Hash hash_1;
 
   // Hashing the current blockdata (preprocessing it)
-  //Crypto::argon2d_hash(bd.data(), 64, bd.data(), m_cost1, lanes, threads, t_cost, hash_1);
-  Crypto::rf_slow_hash(bd.data(), hash_1, bd.size());
+  //Crypto::argon2d_hash(bd.data(), bd.size(), bd.data(), bd.size(), m_cost, lanes, threads, t_cost, hash_1);
+  Crypto::rainforest_hash(bd.data(), bd.size(), hash_1);
 
   // Phase 2
 
@@ -1221,13 +1221,13 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   // stir the pot - hashing the 1 + 8 blocks as one continous data, salt is hash_1
   Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(&hash_1), m_cost, lanes, threads, t_cost, hash_2);
-  
+
   // Phase 4
-	
+
   // Hashing using the generated hash_2 as a salt for argon, taking the previous hash_1 as the password for argon
   // with pseudorandom finalizer function
   Crypto::an_slow_hash(&hash_1, sizeof(&hash_1), &hash_2, sizeof(&hash_2), m_cost, t_cost, res);
- 
+
   return true;
 }
 
