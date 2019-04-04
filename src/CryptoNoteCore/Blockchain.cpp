@@ -1093,10 +1093,12 @@ if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.in
     return false;
   }
 
-  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex != height) {
-    logger(INFO, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
-      boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex << ", expected: " << height;
-    return false;
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    if (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex != height) {
+      logger(INFO, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
+        boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex << ", expected: " << height;
+      return false;
+    }
   }
 
   // starting block v5 there are inputs in coinbase tx because of stake so we check them
@@ -1131,17 +1133,17 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   }
 
   uint64_t inputsAmount = 0;
- // if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+  if (height > m_currency.upgradeHeight(b.majorVersion)) {
     for (const auto& in : b.baseTransaction.inputs) {
       if (in.type() == typeid(KeyInput)) {
         inputsAmount += boost::get<KeyInput>(in).amount;
       }
     }
     minerReward = outputsAmount - inputsAmount;
-//  }
-//  else {
-//    minerReward = outputsAmount;
-//  }
+  }
+  else {
+    minerReward = outputsAmount;
+  }
 
   std::vector<size_t> lastBlocksSizes;
   get_last_n_blocks_sizes(lastBlocksSizes, m_currency.rewardBlocksWindow());
@@ -1151,6 +1153,21 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   if (!m_currency.getBlockReward(blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
     logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
     return false;
+  }
+
+  if (height > m_currency.upgradeHeight(b.majorVersion)) {
+	  if (minerReward > reward) {
+		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction spend too much money: " << m_currency.formatAmount(minerReward) <<
+			  ", block reward is " << m_currency.formatAmount(reward);
+		  return false;
+	  }
+	  else if (minerReward < reward) {
+		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction doesn't use full amount of block reward: spent " <<
+			  m_currency.formatAmount(minerReward) << ", block reward is " << m_currency.formatAmount(reward);
+		  return false;
+	  }
+
+	  return true;
   }
 
   if (minerReward > reward) {
@@ -1241,8 +1258,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // and throwing them into the pot too
   for (uint8_t i = 1; i <= 8; i++) {
     uint32_t cd = *reinterpret_cast<uint32_t *>(&hash_1.data[i * 4 - 4]);
-    uint32_t height_i = cd % (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex - 1 - 
-		(!m_currency.isTestnet() ? m_currency.minedMoneyUnlockWindow_v1() : m_currency.minedMoneyUnlockWindow()));
+    uint32_t height_i = cd % ((b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? b.blockIndex : boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex) 
+      - 1 - !m_currency.isTestnet() ? m_currency.minedMoneyUnlockWindow_v1() : m_currency.minedMoneyUnlockWindow());
     Crypto::Hash hash_i = getBlockIdByHeight(height_i);
 
     Block bl;
