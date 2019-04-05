@@ -149,6 +149,10 @@ namespace CryptoNote {
 		}
 	}
 
+	uint32_t Currency::upgradeHeightV5() const {
+		return m_upgradeHeightV5;
+	}
+
 	bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
 		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
 		// assert(alreadyGeneratedCoins <= m_moneySupply);
@@ -203,37 +207,22 @@ namespace CryptoNote {
 	}
 
 	bool Currency::constructMinerTx(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize,
-		uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, Transaction& stake_tx, Crypto::SecretKey& secKey, 
-		const BinaryArray& extraNonce/* = BinaryArray()*/, size_t maxOuts/* = 1*/) const {
+		uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, const BinaryArray& extraNonce/* = BinaryArray()*/, size_t maxOuts/* = 1*/) const {
 
 		tx.inputs.clear();
 		tx.outputs.clear();
 		tx.extra.clear();
 
-		//tx = stake_tx; // add stake
-		tx.inputs = stake_tx.inputs;
-		tx.outputs = stake_tx.outputs;
-		tx.signatures = stake_tx.signatures;
-		
-
-		//KeyPair txkey = generateKeyPair();
-		Crypto::PublicKey pubKey;
-		if (!Crypto::secret_key_to_public_key(secKey, pubKey)) {
-			return false;
-		}
-
-		addTransactionPublicKeyToExtra(tx.extra, /*txkey.publicKey*/ pubKey);
+		KeyPair txkey = generateKeyPair();
+		addTransactionPublicKeyToExtra(tx.extra, txkey.publicKey);
 		if (!extraNonce.empty()) {
 			if (!addExtraNonceToTransactionExtra(tx.extra, extraNonce)) {
 				return false;
 			}
 		}
 
-		if (height < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-			BaseInput in;
-			in.blockIndex = height;
-			tx.inputs.push_back(in);
-		}
+		BaseInput in;
+		in.blockIndex = height;
 
 		uint64_t blockReward;
 		int64_t emissionChange;
@@ -254,16 +243,16 @@ namespace CryptoNote {
 		}
 
 		uint64_t summaryAmounts = 0;
-		for (size_t no = stake_tx.outputs.size(); no < (outAmounts.size() + stake_tx.outputs.size()); no++) {
+		for (size_t no = 0; no < outAmounts.size(); no++) {
 			Crypto::KeyDerivation derivation = boost::value_initialized<Crypto::KeyDerivation>();
 			Crypto::PublicKey outEphemeralPubKey = boost::value_initialized<Crypto::PublicKey>();
 
-			bool r = Crypto::generate_key_derivation(minerAddress.viewPublicKey, /*txkey.secretKey*/secKey, derivation);
+			bool r = Crypto::generate_key_derivation(minerAddress.viewPublicKey, txkey.secretKey, derivation);
 
 			if (!(r)) {
 				logger(ERROR, BRIGHT_RED)
 					<< "while creating outs: failed to generate_key_derivation("
-					<< minerAddress.viewPublicKey << ", " << /*txkey.secretKey*/secKey << ")";
+					<< minerAddress.viewPublicKey << ", " << txkey.secretKey << ")";
 				return false;
 			}
 
@@ -281,7 +270,7 @@ namespace CryptoNote {
 			tk.key = outEphemeralPubKey;
 
 			TransactionOutput out;
-			summaryAmounts += out.amount = outAmounts[no - stake_tx.outputs.size()];
+			summaryAmounts += out.amount = outAmounts[no];
 			out.target = tk;
 			tx.outputs.push_back(out);
 		}
@@ -952,12 +941,11 @@ namespace CryptoNote {
 
 	Transaction CurrencyBuilder::generateGenesisTransaction() {
 		CryptoNote::Transaction tx;
-		CryptoNote::Transaction st;
 		CryptoNote::AccountPublicAddress ac = boost::value_initialized<CryptoNote::AccountPublicAddress>();
-		KeyPair txkey = generateKeyPair();
-		m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx, st, txkey.secretKey, BinaryArray(), 14); // zero fee in genesis
+		m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx); // zero fee in genesis
 		return tx;
 	}
+
 	CurrencyBuilder& CurrencyBuilder::emissionSpeedFactor(unsigned int val) {
 		if (val <= 0 || val > 8 * sizeof(uint64_t)) {
 			throw std::invalid_argument("val at emissionSpeedFactor()");
