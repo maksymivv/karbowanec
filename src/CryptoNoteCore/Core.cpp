@@ -1286,13 +1286,16 @@ bool core::fillBlockDetails(const Block &block, BlockDetails2& blockDetails) {
   }
 
   blockDetails.baseReward = maxReward;
-  if (maxReward == 0 && currentReward == 0) {
-    blockDetails.penalty = static_cast<double>(0);
-  } else {
-    if (maxReward < currentReward) {
-      return false;
-    }
-    blockDetails.penalty = static_cast<double>(maxReward - currentReward) / static_cast<double>(maxReward);
+  if (blockDetails.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      if (maxReward == 0 && currentReward == 0) {
+          blockDetails.penalty = static_cast<double>(0);
+      }
+      else {
+          if (maxReward < currentReward) {
+              return false;
+          }
+          blockDetails.penalty = static_cast<double>(maxReward - currentReward) / static_cast<double>(maxReward);
+      }
   }
 
   blockDetails.transactions.reserve(block.transactionHashes.size() + 1);
