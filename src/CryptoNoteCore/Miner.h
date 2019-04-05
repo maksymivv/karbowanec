@@ -84,7 +84,7 @@ namespace CryptoNote {
 
     std::string m_wallet_host;
     uint16_t m_wallet_port;
-    size_t m_mixin;
+    size_t m_mixin = 0;
 
     std::atomic<uint32_t> m_threads_total;
     std::atomic<int32_t> m_pausers_count;
