@@ -169,7 +169,7 @@ namespace CryptoNote {
 
 		if (blockMajorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
 			emissionChange = baseReward - fee;
-			reward = baseReward;
+			reward = baseReward + fee;
 
 			return true;
 		}
