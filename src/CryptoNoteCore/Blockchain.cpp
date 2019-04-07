@@ -1087,7 +1087,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
     return false;
   }
 
-if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.inputs[0].type() == typeid(BaseInput))) {
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.inputs[0].type() == typeid(BaseInput))) {
     logger(ERROR, BRIGHT_RED)
       << "coinbase transaction in the block has the wrong type";
     return false;
@@ -1101,12 +1101,6 @@ if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.in
     }
   }
 
-  // starting block v5 there are inputs in coinbase tx because of stake so we check them
-  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 && !checkTransactionInputs(b.baseTransaction)) {
-    logger(INFO, BRIGHT_WHITE) << "coinbase stake transaction has wrong inputs";
-    return false;
-  }
-
   if (!(b.baseTransaction.unlockTime == height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()))) {
     logger(ERROR, BRIGHT_RED)
       << "coinbase transaction have wrong unlock time="
@@ -1117,6 +1111,14 @@ if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.in
 
   if (!check_outs_overflow(b.baseTransaction)) {
     logger(INFO, BRIGHT_RED) << "miner transaction have money overflow in block " << get_block_hash(b);
+    return false;
+  }
+
+  // starting block v5 there are inputs in coinbase tx because of stake so we check them
+  // this check has to be in prevalidate phase before transactions are pushed
+  // otherwise key images will be counted as spent
+  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 && !checkTransactionInputs(b.baseTransaction)) {
+    logger(INFO, BRIGHT_WHITE) << "coinbase stake transaction has wrong inputs";
     return false;
   }
 
@@ -1141,7 +1143,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
         inputsAmount += boost::get<KeyInput>(in).amount;
       }
     }
-    minerReward = outputsAmount - inputsAmount;
+    minerReward = outputsAmount - inputsAmount; // we assume that difference between inputs and outputs (of stake) is miner reward
   }
   else {
     minerReward = outputsAmount;
@@ -1158,7 +1160,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   }
 
   if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    if (minerReward > reward) {
+    if (minerReward > reward) { // check if miner reward is not bigger than expected
       logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction spend too much money: " << m_currency.formatAmount(minerReward) <<
         ", block reward is " << m_currency.formatAmount(reward);
       return false;
@@ -1852,7 +1854,7 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
       if (!(!in_to_key.outputIndexes.empty())) { logger(ERROR, BRIGHT_RED) << "empty in_to_key.outputIndexes in transaction with id " << getObjectHash(tx); return false; }
 
       if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
-        logger(DEBUGGING) <<
+        logger(INFO, BRIGHT_WHITE) <<
           "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
         return false;
       }
