@@ -401,14 +401,10 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
   struct request {
     uint64_t reserve_size; //max 255 bytes
     std::string wallet_address;
-    std::string tx_as_hex;
-    std::string tx_key;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(reserve_size)
       KV_MEMBER(wallet_address)
-      KV_MEMBER(tx_as_hex)
-      KV_MEMBER(tx_key)
     }
   };
 

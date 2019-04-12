@@ -536,7 +536,7 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
      block size, so first miner transaction generated with fake amount of money, and with phase we know think we know expected block size
      */
   //make blocks coin-base tx looks close to real coinbase tx to get truthful blob size
-  bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, stake_tx, stake_tx_key, ex_nonce, 14);
+  bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, ex_nonce, 14);
   if (!r) { 
     logger(ERROR, BRIGHT_RED) << "Failed to construct miner tx, first chance"; 
     return false; 
@@ -545,7 +545,7 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
 
   // now after we estimated the size of coinbase tx with stake let's attempt to create real one
   for (size_t try_count = 0; try_count != 10; ++try_count) {
-    r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, cumulative_size, fee, adr, b.baseTransaction, stake_tx, stake_tx_key, ex_nonce, 14);
+    r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, cumulative_size, fee, adr, b.baseTransaction, ex_nonce, 14);
     if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to construct miner tx, second chance"; return false; }
     size_t coinbase_blob_size = getObjectBinarySize(b.baseTransaction);
     if (coinbase_blob_size > cumulative_size - txs_size) {
