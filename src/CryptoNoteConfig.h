@@ -32,6 +32,7 @@ const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
 const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 111; // addresses start with "K"
 const size_t   CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
+const size_t   CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1       = 100;
 const size_t   CRYPTONOTE_TX_SPENDABLE_AGE                   = 6;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = DIFFICULTY_TARGET * 7;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V1         = DIFFICULTY_TARGET * 3;
@@ -73,13 +74,16 @@ const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DI
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; // blocks
 const size_t   DIFFICULTY_WINDOW_V2                          = 17;  // blocks
 const size_t   DIFFICULTY_WINDOW_V3                          = 60;  // blocks
+const size_t   DIFFICULTY_WINDOW_V4                          = 90;  // blocks
 const size_t   DIFFICULTY_CUT                                = 60;  // timestamps to cut after sorting
 const size_t   DIFFICULTY_LAG                                = 15;  // !!!
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
-static constexpr uint64_t POISSON_CHECK_TRIGGER = 10; // Reorg size that triggers poisson timestamp check
-static constexpr uint64_t POISSON_CHECK_DEPTH = 60;   // Main-chain depth of the poisson check. The attacker will have to tamper 50% of those blocks
-static constexpr double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
+const uint64_t AVERAGE_DIFFICULTY_WINDOW                     = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 7 * 4;
+
+const uint64_t POISSON_CHECK_TRIGGER = 10; // Reorg size that triggers poisson timestamp check
+const uint64_t POISSON_CHECK_DEPTH = 60;   // Main-chain depth of the poisson check. The attacker will have to tamper 50% of those blocks
+const double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
 
 const size_t   MAX_BLOCK_SIZE_INITIAL                        = 1000000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
@@ -134,6 +138,14 @@ const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
 const int      P2P_DEFAULT_PORT                              =  32347;
 const int      RPC_DEFAULT_PORT                              =  32348;
+const int      RPC_DEFAULT_SSL_PORT                          =  32448;
+const int      WALLET_RPC_DEFAULT_PORT                       =  15000;
+const int      WALLET_RPC_DEFAULT_SSL_PORT                   =  15100;
+const int      GATE_RPC_DEFAULT_PORT                         =  16000;
+const int      GATE_RPC_DEFAULT_SSL_PORT                     =  16100;
+const char     RPC_DEFAULT_CHAIN_FILE[]                      = "rpc_server.crt";
+const char     RPC_DEFAULT_KEY_FILE[]                        = "rpc_server.key";
+const char     RPC_DEFAULT_DH_FILE[]                         = "rpc_server.pem";
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;

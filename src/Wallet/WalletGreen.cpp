@@ -638,6 +638,8 @@ void WalletGreen::loadWalletCache(std::unordered_set<Crypto::PublicKey>& addedKe
 }
 
 void WalletGreen::saveWalletCache(ContainerStorage& storage, const Crypto::chacha8_key& key, WalletSaveLevel saveLevel, const std::string& extra) {
+  m_logger(DEBUGGING) << "Saving cache...";
+
   WalletTransactions transactions;
   WalletTransfers transfers;
 
@@ -689,6 +691,14 @@ void WalletGreen::saveWalletCache(ContainerStorage& storage, const Crypto::chach
 
 void WalletGreen::copyContainerStorageKeys(ContainerStorage& src, const chacha8_key& srcKey, ContainerStorage& dst, const chacha8_key& dstKey) {
   dst.reserve(src.size());
+
+  dst.setAutoFlush(false);
+  Tools::ScopeExit exitHandler([&dst] {
+    dst.setAutoFlush(true);
+    dst.flush();
+  });
+
+  size_t counter = 0;
 
   for (auto& encryptedSpendKeys : src) {
     Crypto::PublicKey publicKey;
@@ -1044,34 +1054,83 @@ std::string WalletGreen::createAddress(const Crypto::PublicKey& spendPublicKey) 
   return doCreateAddress(spendPublicKey, NULL_SECRET_KEY, 0);
 }
 
+std::vector<std::string> WalletGreen::createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys, bool reset) {
+  std::vector<NewAddressData> addressDataList(spendSecretKeys.size());
+  for (size_t i = 0; i < spendSecretKeys.size(); ++i) {
+    Crypto::PublicKey spendPublicKey;
+    if (!Crypto::secret_key_to_public_key(spendSecretKeys[i], spendPublicKey)) {
+      m_logger(ERROR, BRIGHT_RED) << "createAddressList(): failed to convert secret key to public key, secret key " << spendSecretKeys[i];
+      throw std::system_error(make_error_code(CryptoNote::error::KEY_GENERATION_ERROR));
+    }
+
+    addressDataList[i].spendSecretKey = spendSecretKeys[i];
+    addressDataList[i].spendPublicKey = spendPublicKey;
+    addressDataList[i].creationTimestamp = reset ? 0 : static_cast<uint64_t>(time(nullptr));
+  }
+
+  return doCreateAddressList(addressDataList);
+}
+
 std::string WalletGreen::doCreateAddress(const Crypto::PublicKey& spendPublicKey, const Crypto::SecretKey& spendSecretKey, uint64_t creationTimestamp) {
   assert(creationTimestamp <= std::numeric_limits<uint64_t>::max() - m_currency.blockFutureTimeLimit());
 
+  std::vector<NewAddressData> addressDataList;
+  addressDataList.push_back(NewAddressData{ spendPublicKey, spendSecretKey, creationTimestamp });
+  std::vector<std::string> addresses = doCreateAddressList(addressDataList);
+  assert(addresses.size() == 1);
+
+  return addresses.front();
+}
+
+std::vector<std::string> WalletGreen::doCreateAddressList(const std::vector<NewAddressData>& addressDataList) {
   throwIfNotInitialized();
   throwIfStopped();
 
   stopBlockchainSynchronizer();
 
-  std::string address;
+  std::vector<std::string> addresses;
   try {
-    address = addWallet(spendPublicKey, spendSecretKey, creationTimestamp);
-    auto currentTime = static_cast<uint64_t>(time(nullptr));
+    uint64_t minCreationTimestamp = std::numeric_limits<uint64_t>::max();
 
-    if (creationTimestamp + m_currency.blockFutureTimeLimit() < currentTime) {
+    {
+      if (addressDataList.size() > 1) {
+        m_containerStorage.setAutoFlush(false);
+      }
+
+      Tools::ScopeExit exitHandler([this] {
+        if (!m_containerStorage.getAutoFlush()) {
+          m_containerStorage.setAutoFlush(true);
+          m_containerStorage.flush();
+        }
+      });
+
+      for (auto& addressData : addressDataList) {
+        assert(addressData.creationTimestamp <= std::numeric_limits<uint64_t>::max() - m_currency.blockFutureTimeLimit());
+        std::string address = addWallet(addressData.spendPublicKey, addressData.spendSecretKey, addressData.creationTimestamp);
+        m_logger(INFO, BRIGHT_WHITE) << "New wallet added " << address << ", creation timestamp " << addressData.creationTimestamp;
+        addresses.push_back(std::move(address));
+
+        minCreationTimestamp = std::min(minCreationTimestamp, addressData.creationTimestamp);
+      }
+    }
+
+    m_containerStorage.setAutoFlush(true);
+    auto currentTime = static_cast<uint64_t>(time(nullptr));
+    if (minCreationTimestamp + m_currency.blockFutureTimeLimit() < currentTime) {
+      m_logger(DEBUGGING) << "Reset is required";
       save(WalletSaveLevel::SAVE_KEYS_AND_TRANSACTIONS, m_extra);
       shutdown();
       load(m_path, m_password);
     }
   } catch (const std::exception& e) {
-    m_logger(ERROR, BRIGHT_RED) << "Failed to add wallet: " << e.what();
+    m_logger(ERROR, BRIGHT_RED) << "Failed to add wallets: " << e.what();
     startBlockchainSynchronizer();
     throw;
   }
 
   startBlockchainSynchronizer();
-  m_logger(INFO, BRIGHT_WHITE) << "New wallet added " << address << ", creation timestamp " << creationTimestamp;
 
-  return address;
+  return addresses;
 }
 
 std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, const Crypto::SecretKey& spendSecretKey, uint64_t creationTimestamp) {
@@ -1331,7 +1390,7 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
   preparedTransaction.neededMoney = countNeededMoney(preparedTransaction.destinations, fee);
 
   std::vector<OutputToTransfer> selectedTransfers;
-  uint64_t foundMoney = selectTransfers(preparedTransaction.neededMoney, mixIn == 0, m_currency.defaultDustThreshold(), std::move(wallets), selectedTransfers);
+  uint64_t foundMoney = selectTransfers(preparedTransaction.neededMoney, mixIn == 0, 0, std::move(wallets), selectedTransfers);
 
   if (foundMoney < preparedTransaction.neededMoney) {
     m_logger(ERROR, BRIGHT_RED) << "Failed to create transaction: not enough money. Needed " << m_currency.formatAmount(preparedTransaction.neededMoney) <<
@@ -1352,7 +1411,7 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
   uint64_t donationAmount = pushDonationTransferIfPossible(donation, foundMoney - preparedTransaction.neededMoney, m_currency.defaultDustThreshold(), preparedTransaction.destinations);
   preparedTransaction.changeAmount = foundMoney - preparedTransaction.neededMoney - donationAmount;
 
-  std::vector<ReceiverAmounts> decomposedOutputs = splitDestinations(preparedTransaction.destinations, m_currency.defaultDustThreshold(), m_currency);
+  std::vector<ReceiverAmounts> decomposedOutputs = splitDestinations(preparedTransaction.destinations, 0, m_currency);
   if (preparedTransaction.changeAmount != 0) {
     WalletTransfer changeTransfer;
     changeTransfer.type = WalletTransferType::CHANGE;
@@ -1360,7 +1419,7 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
     changeTransfer.amount = static_cast<int64_t>(preparedTransaction.changeAmount);
     preparedTransaction.destinations.emplace_back(std::move(changeTransfer));
 
-    auto splittedChange = splitAmount(preparedTransaction.changeAmount, changeDestination, m_currency.defaultDustThreshold());
+    auto splittedChange = splitAmount(preparedTransaction.changeAmount, changeDestination, 0);
     decomposedOutputs.emplace_back(std::move(splittedChange));
   }
 
@@ -2294,7 +2353,7 @@ std::vector<CryptoNote::WalletGreen::ReceiverAmounts> WalletGreen::splitDestinat
   std::vector<ReceiverAmounts> decomposedOutputs;
   for (const auto& destination: destinations) {
     AccountPublicAddress address = parseAccountAddressString(destination.address);
-    decomposedOutputs.push_back(splitAmount(destination.amount, address, dustThreshold));
+    decomposedOutputs.push_back(splitAmount(destination.amount, address, 0));
   }
 
   return decomposedOutputs;
@@ -2308,7 +2367,7 @@ CryptoNote::WalletGreen::ReceiverAmounts WalletGreen::splitAmount(
   ReceiverAmounts receiverAmounts;
 
   receiverAmounts.receiver = destination;
-  decomposeAmount(amount, dustThreshold, receiverAmounts.amounts);
+  decomposeAmount(amount, 0, receiverAmounts.amounts);
   return receiverAmounts;
 }
 
