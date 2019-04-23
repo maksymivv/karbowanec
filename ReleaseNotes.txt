@@ -1,4 +1,156 @@
-Release notes Karbowanec 1.4.6
+Release notes Karbo 1.6.4
+
+- SSL support for JSON RPC interface
+- New GreenWallet for CLI Suite backed by WalletGreen (port of zedwallet from TurtleCoin)
+- Patch for timestamp locked invalid inputs in transactions
+- Patch for arbitrary number of (dummy) signatures in transaction (potential blockchain bloat)
+- Option of deterministic keys and mnemonic phrase for walletd
+- Export wallet and Create adresses from list in walletd
+- RPC methods to get transactrion secret key, transaction proof and balance proof in walletd
+- Reworked Blockchain Explorer Data
+- Update of NodeRpcProxy and InProcessNode
+- Various fixes and code cleanup (to be continued)
+
+
+Release notes Karbo 1.6.3
+
+- Proof of payment
+- Proof of funds
+- Fixed synchronization issues
+- Added new startup flag --contact to set node admin contact information (e.g. e-mail)
+
+
+Release notes Karbo 1.6.2
+
+- Fusion transactions for WalletLegacy which powers the simplewallet and Classic GUI
+
+
+Release notes Karbo 1.6.1
+
+- Limit reorganization depth to mined money unlock window
+- Do not reorganize to alternative chain if it lacks at least one transaction from the public chain (51%-attack protection)
+- Disallow merged mining tag in the coinbase transaction
+- LWMA difficulty algorithm fix
+
+This update has a softfork update at height 300000
+
+
+Release notes Karbo 1.6.0
+
+- Difficulty algorithm tweaks
+
+
+Release notes Karbo 1.5.9
+
+- Fixed sync issues in previous version 1.5.8 due to fusion transactions
+- Updated burning bug patch - now it will compare with all wallet transactions during check
+- Fixed refresh of large wallets with burning check
+- Fusion transactions backward compatibility
+- Sync without checkpoints option in daemon
+- Fixed case of '[O]pen wallet' command in simplewallet
+
+
+Release notes Karbo 1.5.8
+
+- Fixed burning bug:
+  -  Doesn't process burning transactions in a wallet
+  -  Wallet throws an error if duplicate output key is found
+  -  Checks against outputs keys stored in memory while the wallet is on
+  -  Upon reset it will check all transactions against all output keys
+  -  Leave double-counting fix intact just in case (check for duplicate output key in the scope of one transaction)
+- Fixed sending of large amounts in walletd, and WalletGreen based GUI wallets (Karbo wallet 2 and Lite wallet)
+- Added new JSON RPC methods
+- Fixed search by Payment ID in transactions memory pool etc.
+
+
+Release notes Karbo 1.5.7
+
+- Sign/verify message
+- Json parsing fixed
+- Transaction fee verification updated to fix synchronization issues
+- Other misc bugfixes
+
+
+Release notes Karbo 1.5.6
+
+- Hotfix of minimal fee function
+- Fix sending error "SwappedVector::operator[]"
+- Use transaction private key to prove sending
+
+
+Release notes Karbo 1.5.5
+
+This is release with the minor but important update of the LWMA-2 difficulty algorithm.
+
+What's new:
+
+- Use only symmetrical limits in LWMA-2
+- Correct types conversion in Minimal Fee calculation
+- RPC methods to check transaction with its private key or private view key
+- Various small fixes
+
+
+Release notes Karbo 1.5.4
+
+This is hotfix release for the previous v. 1.5.3 with:
+
+- Correction of creation and handling of Fusion transactions
+- Fixed moving of the data folder to the correct location on Mac
+- Correct umixable balance in simplewallet is added
+- Revert optimizations that break compatibility with third-party GUI and Lite wallets
+
+
+Release notes Karbo 1.5.3
+
+- HARDFORK V4 AT HEIGHT 266000
+- Stopping offline timestamp attacks with Poisson check by RYO Currency Project (https://github.com/ryo-currency/ryo-writeups/blob/master/poisson-writeup.md)
+- Adaptive minimal transaction fee
+- LWMA-2 Difficulty Algorithm by Zawy (zawy12/difficulty-algorithms#3)
+- New FTL and MTP limits
+- Minimum mixin limit
+- Changed dust threshold
+- Changed block template
+- Various fixes and improvements
+
+
+Release notes Karbo 1.5.2
+
+- Load checkpoints from DNS and from CSV file
+- status command for daemon
+- Dust now is not included in transactions by default (use sweep_dust in simplewallet to send it to youself). This allows for pools to set payout mixin higher.
+- Triangular distribution for mixins
+- Various fixes and improvements
+
+
+Release notes Karbo 1.5.1
+
+- temporarily to prevent spam minimum transaction fee is set to 0.1 krb (100000000000 atomic units)
+- replaced checkpoint
+- minimum fee validation
+- fixed synchronization
+
+
+Release notes Karbo 1.5.0
+
+- temporarily to prevent spam minimum transaction fee is set to 0.1 krb
+- replaced checkpoint
+
+
+Release notes Karbo 1.4.9
+
+- Mixin size limit
+
+
+Release notes Karbo 1.4.8
+
+- New difficulty algo LWMA with harmonic mean difficulty (scheduled hardfork at height 216000)
+- New future block time limit
+- Default dust threshold reduced to zero
+- Simplewallet improvements, new commands and RPC methods
+- Various bugfixes
+
+
+Release notes Karbo 1.4.6
 
 - Android platform support
 - Added logging to blockchain synchronizer
@@ -9,6 +161,7 @@ Release notes Karbowanec 1.4.6
 - Minor optimization of JSON KV-serializer
 - LoggerMessage implementation is now platform-independent
 
+
 Release notes Karbowanec 1.4.5
 
 - Deterministic wallets and Mnemonic seed, courtesy of Monero Developers
@@ -18,24 +171,29 @@ Release notes Karbowanec 1.4.5
 - New RPC methods
 - Support for solo GPU mining
 
+
 Release notes Karbowanec 1.4.4
 
 - Transaction size limit
 - Additional validation and attribution
+
 
 Release notes Karbowanec 1.4.3
 
 - Change of the Network ID
 - Security update to address Disclosure of a Major Bug in CryptoNote Based Currencies by Monero developers
 
+
 Release notes Karbowanec 1.4.2
 
 - OpenAlias support in simplewallet
 - More friendly simplewallet prompt
 
+
 Release notes Karbowanec 1.4.1
 
 - Additional transaction validation
+
 
 Release notes Karbowanec 1.4.0
 
@@ -46,7 +204,6 @@ Release notes Karbowanec 1.4.0
 - Change password in simplewallet
 
 
-
 Release notes Karbowanec 1.3.0
 
 - Bytecoin core 1.0.11 transition
@@ -54,6 +211,35 @@ Release notes Karbowanec 1.3.0
 - Tail emission
 - Daemon restricted RPC mode
 - Fees for open remote node
+
+
+Release notes Karbowanec 1.2.5
+
+- Linux version now should not nag about 'error while loading shared libraries' on some systems.
+- Added simple authentication for simplewallet RPC to prevent CSRF Vulnerability just in case, courtesy of XDN
+
+
+Release notes Karbowanec 1.2.4
+
+- Default data location is moved back to it's usual place
+
+
+Release notes Karbowanec 1.2.3
+
+- Some minor changes and bugfixes
+- Checkpoint of first large block
+
+
+Release notes Karbowanec 1.2.2
+
+- Cyrillic filenames
+- Update of walletd
+
+Release notes Karbowanec 1.2.1
+
+- Updated CLI wallets with solo mining
+- Increased max block size limit
+
 
 Release notes 1.0.11
 
