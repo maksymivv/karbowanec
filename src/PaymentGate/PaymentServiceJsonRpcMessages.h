@@ -497,4 +497,19 @@ struct EstimateFusion {
   };
 };
 
+struct CreateIntegrated {
+  struct Request {
+    std::string address;
+    std::string payment_id;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string integrated_address;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
 } //namespace PaymentService

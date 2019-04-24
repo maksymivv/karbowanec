@@ -19,20 +19,27 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <list>
+#include <fstream>
 #include <boost/algorithm/string/predicate.hpp>
+
 #include "WalletRpcServer.h"
+
 #include "crypto/hash.h"
+#include "Common/SignalHandler.h"
 #include "Common/CommandLine.h"
 #include "Common/StringTools.h"
-#include "CryptoNoteCore/CryptoNoteFormatUtils.h"
-#include "CryptoNoteCore/CryptoNoteBasicImpl.h"
-#include "CryptoNoteCore/Account.h"
-#include "Rpc/JsonRpc.h"
-#include "WalletLegacy/WalletHelper.h"
-#include "WalletLegacy/WalletLegacy.h"
-#include "Common/StringTools.h"
+#include "Common/PathTools.h"
 #include "Common/Base58.h"
 #include "Common/Util.h"
+#include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
+#include "CryptoNoteCore/CryptoNoteFormatUtils.h"
+#include "CryptoNoteCore/CryptoNoteBasicImpl.h"
+#include "CryptoNoteCore/CryptoNoteBasic.h"
+#include "CryptoNoteCore/CryptoNoteTools.h"
+#include "CryptoNoteCore/Account.h"
+#include "WalletLegacy/WalletHelper.h"
+#include "WalletLegacy/WalletLegacy.h"
+#include "Rpc/JsonRpc.h"
 
 #include "ITransfersContainer.h"
 
@@ -153,6 +160,7 @@ void wallet_rpc_server::processRequest(const CryptoNote::HttpRequest& request, C
             { "change_password"  , makeMemberMethod(&wallet_rpc_server::on_change_password)   },
             { "estimate_fusion"  , makeMemberMethod(&wallet_rpc_server::on_estimate_fusion)   },
             { "send_fusion"      , makeMemberMethod(&wallet_rpc_server::on_send_fusion)       },
+            { "create_integrated", makeMemberMethod(&wallet_rpc_server::on_create_integrated) },
 		};
 
 		auto it = s_methods.find(jsonRequest.getMethod());
@@ -716,6 +724,37 @@ bool wallet_rpc_server::on_send_fusion(const wallet_rpc::COMMAND_RPC_SEND_FUSION
 	catch (const std::exception& e)
 	{
 		throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_GENERIC_TRANSFER_ERROR, e.what());
+	}
+	return true;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------
+bool wallet_rpc_server::on_create_integrated(const wallet_rpc::COMMAND_RPC_CREATE_INTEGRATED::request& req, wallet_rpc::COMMAND_RPC_CREATE_INTEGRATED::response& res)
+{
+	if (!req.payment_id.empty() && !req.address.empty())
+	{
+		std::string payment_id_str = req.payment_id;
+		std::string address_str = req.address;
+
+		uint64_t prefix;
+		CryptoNote::AccountPublicAddress addr;
+
+		// get the spend and view public keys from the address
+		const bool valid = CryptoNote::parseAccountAddressString(prefix,
+			addr,
+			address_str);
+
+		CryptoNote::BinaryArray ba;
+		CryptoNote::toBinaryArray(addr, ba);
+		std::string keys = Common::asString(ba);
+
+		// create the integrated address the same way you make a public address
+		std::string integratedAddress = Tools::Base58::encode_addr(
+			CryptoNote::parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX,
+			payment_id_str + keys
+		);
+
+		res.integrated_address = integratedAddress;
 	}
 	return true;
 }

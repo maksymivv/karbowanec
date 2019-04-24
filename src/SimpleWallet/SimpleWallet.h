@@ -124,6 +124,7 @@ namespace CryptoNote
     bool reset(const std::vector<std::string> &args);
     bool set_log(const std::vector<std::string> &args);
     bool payment_id(const std::vector<std::string> &args);
+	bool create_integrated(const std::vector<std::string> &args = std::vector<std::string>());
     bool change_password(const std::vector<std::string> &args);
     bool sweep_dust(const std::vector<std::string> &args);
 	bool estimate_fusion(const std::vector<std::string> &args);
