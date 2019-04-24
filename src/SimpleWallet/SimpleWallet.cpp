@@ -1913,7 +1913,7 @@ void simple_wallet::synchronizationProgressUpdated(uint32_t current, uint32_t to
 }
 /* ------------------------------------------------------------------------------------------- */
 // take a payment Id as an argument and generate an integrated wallet address
-bool simple_wallet::create_integrated(const std::vector<std::string>& args/* = std::vector<std::string>()*/) 
+bool simple_wallet::create_integrated(const std::vector<std::string>& args) 
 {
 
   /* check if there is a payment id */
@@ -1925,6 +1925,14 @@ bool simple_wallet::create_integrated(const std::vector<std::string>& args/* = s
   }
 
   std::string paymentID = args[0];
+  Crypto::Hash paymentIdHash;
+
+  /* validate paymentId */
+  if (!parsePaymentId(paymentID, paymentIdHash)) {
+    fail_msg_writer() << "Invalid payment Id";
+    return true;
+  }
+
   std::string address = m_wallet->getAddress();
   uint64_t prefix;
   CryptoNote::AccountPublicAddress addr;
