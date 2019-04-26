@@ -51,7 +51,7 @@
 #include "WalletLegacy/WalletRequest.h"
 #include "Common/StringTools.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
-#include "mnemonics/electrum-words.h"
+#include "Mnemonics/electrum-words.h"
 #include "Serialization/SerializationTools.h"
 
 extern "C"

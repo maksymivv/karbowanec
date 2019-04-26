@@ -27,7 +27,7 @@
 #include <Logging/LoggerRef.h>
 #include "ITransaction.h"
 #include "CoreRpcServerCommandsDefinitions.h"
-
+#include "BlockchainExplorer/BlockchainExplorerDataBuilder.h"
 
 #include "Common/Math.h"
 
@@ -40,7 +40,7 @@ class ICryptoNoteProtocolQuery;
 
 class RpcServer : public HttpServer {
 public:
-  RpcServer(System::Dispatcher& dispatcher, Logging::ILogger& log, core& c, NodeServer& p2p, const ICryptoNoteProtocolQuery& protocolQuery);
+  RpcServer(System::Dispatcher& dispatcher, Logging::ILogger& log, core& c, NodeServer& p2p, ICryptoNoteProtocolQuery& protocolQuery);
 
   typedef std::function<bool(RpcServer*, const HttpRequest& request, HttpResponse& response)> HandlerFunction;
   bool restrictRPC(const bool is_resctricted);
@@ -123,11 +123,10 @@ private:
   bool on_validate_address(const COMMAND_RPC_VALIDATE_ADDRESS::request& req, COMMAND_RPC_VALIDATE_ADDRESS::response& res);
   bool on_verify_message(const COMMAND_RPC_VERIFY_MESSAGE::request& req, COMMAND_RPC_VERIFY_MESSAGE::response& res);
 
-  bool f_getMixin(const Transaction& transaction, uint64_t& mixin);
-
   Logging::LoggerRef logger;
   core& m_core;
   NodeServer& m_p2p;
+  BlockchainExplorerDataBuilder blockchainExplorerDataBuilder;
   const ICryptoNoteProtocolQuery& m_protocolQuery;
   bool m_restricted_rpc;
   std::string m_cors_domain;
