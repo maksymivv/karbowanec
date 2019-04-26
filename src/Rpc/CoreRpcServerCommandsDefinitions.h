@@ -24,8 +24,6 @@
 #include "CryptoNoteCore/Difficulty.h"
 #include "crypto/hash.h"
 
-#include "BlockchainExplorerData2.h"
-
 #include "Serialization/SerializationOverloads.h"
 #include "Serialization/BlockchainExplorerDataSerialization.h"
 
@@ -951,7 +949,7 @@ struct COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HEIGHTS {
   };
 
   struct response {
-    std::vector<BlockDetails2> blocks;
+    std::vector<BlockDetails> blocks;
     std::string status;
 
     void serialize(ISerializer& s) {
@@ -971,7 +969,7 @@ struct COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HASHES {
   };
 
   struct response {
-    std::vector<BlockDetails2> blocks;
+    std::vector<BlockDetails> blocks;
     std::string status;
 
     void serialize(ISerializer& s) {
@@ -991,7 +989,7 @@ struct COMMAND_RPC_GET_BLOCK_DETAILS_BY_HEIGHT {
   };
 
   struct response {
-    BlockDetails2 block;
+    BlockDetails block;
     std::string status;
 
     void serialize(ISerializer& s) {
@@ -1057,7 +1055,7 @@ struct COMMAND_RPC_GET_TRANSACTIONS_DETAILS_BY_HASHES {
   };
 
   struct response {
-    std::vector<TransactionDetails2> transactions;
+    std::vector<TransactionDetails> transactions;
     std::string status;
 
     void serialize(ISerializer &s) {
@@ -1077,7 +1075,7 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
 	};
 
 	struct response {
-		TransactionDetails2 transaction;
+		TransactionDetails transaction;
 		std::string status;
 
 		void serialize(ISerializer &s) {

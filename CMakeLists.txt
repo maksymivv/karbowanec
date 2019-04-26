@@ -94,7 +94,7 @@ set(CMAKE_CONFIGURATION_TYPES Debug RelWithDebInfo Release CACHE TYPE INTERNAL)
 set(CMAKE_SKIP_INSTALL_RULES ON)
 set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON)
 set(CMAKE_SUPPRESS_REGENERATION ON)
-# enable_testing()
+
 # copy CTestCustom.cmake to build dir to disable long running tests in 'make test'
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -229,8 +229,6 @@ if(STATIC OR IOS)
 if(MSVC)
   set (CMAKE_MSVC_FLAGS_BASE "/D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__")
   set (CMAKE_MSVC_FLAGS_EXT "/bigobj /MP /W3 /GS-")
-  #add_definitions("/bigobj /MP /W3 /GS- /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__")
-  #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Dinline=__inline")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_MSVC_FLAGS_BASE} ${CMAKE_MSVC_FLAGS_EXT}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_MSVC_FLAGS_BASE} ${CMAKE_MSVC_FLAGS_EXT}")
   set(CMAKE_RC_FLAGS ${CMAKE_MSVC_FLAGS_BASE})
@@ -253,7 +251,9 @@ else()
   else()
     set(ARCH_FLAG "-march=${ARCH}")
   endif()
+
   set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Wno-error=extra -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+  
   if(NOT MINGW)
     set(WARNINGS_AS_ERRORS_FLAG "-Werror")
   endif()
@@ -569,8 +569,8 @@ option(BUILD_TESTS "Build tests." OFF)
 
 if(BUILD_TESTS)
   add_subdirectory(tests)
+  enable_testing()
 endif()
-
 
 
 set(COMMIT_ID_IN_VERSION ON CACHE BOOL "Include commit ID in version")
