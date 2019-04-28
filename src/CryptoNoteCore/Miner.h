@@ -74,8 +74,6 @@ namespace CryptoNote {
 
     const Currency& m_currency;
     Logging::LoggerRef logger;
-	
-	System::Dispatcher* m_dispatcher = nullptr;
 
     std::atomic<bool> m_stop;
     std::mutex m_template_lock;

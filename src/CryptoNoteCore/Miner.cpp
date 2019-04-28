@@ -70,7 +70,7 @@ namespace CryptoNote
     m_current_hash_rate(0),
     m_update_block_template_interval(5),
     m_update_merge_hr_interval(2)
-  {
+  {  
   }
   //-----------------------------------------------------------------------------------------------------
   miner::~miner() {
@@ -121,11 +121,9 @@ namespace CryptoNote
     req.reward = reward;
 
     try {
-
       System::Dispatcher dispatcher;
-      //m_dispatcher = &dispatcher;
 
-      HttpClient httpClient(/* *m_dispatcher*/ dispatcher, m_wallet_host, m_wallet_port);
+      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
 
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
@@ -157,7 +155,7 @@ namespace CryptoNote
       return false;
     }
     catch (const std::exception& e) {
-      logger(ERROR) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
+      //logger(ERROR) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
       return false;
     }
 
@@ -195,7 +193,7 @@ namespace CryptoNote
 
       // request stake tx from wallet
       if (!requestStakeTransaction(blockReward, height, stake_tx)) {
-        logger(ERROR) << "Failed to request stake transaction from wallet, stopping mining";
+        //logger(ERROR) << "Failed to request stake transaction from wallet, stopping mining";
         return false;
       }
 
@@ -246,7 +244,7 @@ namespace CryptoNote
 
       if(m_do_print_hashrate) {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), static_cast<uint64_t>(0));
-        float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size())/(float)1000;
+        float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size())/static_cast<float>(1000);
         std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << " kH/s" << ENDL;
       }
     }
