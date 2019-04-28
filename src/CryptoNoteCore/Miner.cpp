@@ -337,8 +337,9 @@ namespace CryptoNote
 	m_mixin = mixin;
 
     if (!m_template_no) {
-      if (!request_block_template()) //lets update block template
-        return false;
+      if (!request_block_template()) { //lets update block template
+        //return false;
+      }
     }
 
     m_stop = false;
