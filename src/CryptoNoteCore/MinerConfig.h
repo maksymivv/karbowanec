@@ -34,6 +34,9 @@ public:
   std::string extraMessages;
   std::string startMining;
   uint32_t miningThreads;
+  std::string walletHost;
+  uint16_t walletPort;
+  size_t stakeMixin;
 };
 
 } //namespace CryptoNote

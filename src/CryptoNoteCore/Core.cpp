@@ -33,9 +33,12 @@
 #include "CryptoNoteFormatUtils.h"
 #include "CryptoNoteTools.h"
 #include "CryptoNoteStatInfo.h"
+#include "CryptoNote.h"
+#include "CryptoTypes.h"
 #include "Miner.h"
 #include "TransactionExtra.h"
 #include "IBlock.h"
+#include "Serialization/SerializationTools.h"
 
 #undef ERROR
 
@@ -284,7 +287,7 @@ bool core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
 	uint64_t outputs_amount = get_outs_money_amount(tx);
 
 	if (outputs_amount > inputs_amount) {
-		logger(DEBUGGING) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
+		logger(ERROR) << "transaction use more money than it has: use " << m_currency.formatAmount(outputs_amount) <<
 			", have " << m_currency.formatAmount(inputs_amount);
 		tvc.m_verification_failed = true;
 		return false;
@@ -488,6 +491,10 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     b.previousBlockHash = get_tail_id();
     b.timestamp = time(NULL);
 
+    if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      b.blockIndex = height;
+    }
+
     // Don't generate a block template with invalid timestamp
     // Fix by Jagerman
     // https://github.com/graft-project/GraftNetwork/pull/118/commits
@@ -513,7 +520,7 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     return false;
   }
 
-  // After block v 5 don't penalize reward and simplify miner tx generation.
+  // After block v 5 don't penalize reward and simplify miner tx generation
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
     bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, ex_nonce, 14);
     if (!r) {
@@ -538,7 +545,6 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
   size_t cumulative_size = txs_size + getObjectBinarySize(b.baseTransaction);
   for (size_t try_count = 0; try_count != 10; ++try_count) {
     r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, cumulative_size, fee, adr, b.baseTransaction, ex_nonce, 14);
-
     if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to construct miner tx, second chance"; return false; }
     size_t coinbase_blob_size = getObjectBinarySize(b.baseTransaction);
     if (coinbase_blob_size > cumulative_size - txs_size) {

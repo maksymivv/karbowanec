@@ -25,6 +25,7 @@
 #include "../Common/Base58.h"
 #include "../Common/int-util.h"
 #include "../Common/StringTools.h"
+#include "crypto/crypto.h"
 
 #include "Account.h"
 #include "CryptoNoteBasicImpl.h"
@@ -32,6 +33,7 @@
 #include "CryptoNoteTools.h"
 #include "TransactionExtra.h"
 #include "UpgradeDetector.h"
+#include "Serialization/SerializationTools.h"
 
 #undef ERROR
 
@@ -147,14 +149,18 @@ namespace CryptoNote {
 		}
 	}
 
+	uint32_t Currency::upgradeHeightV5() const {
+		return m_upgradeHeightV5;
+	}
+
 	bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
 		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
 		// assert(alreadyGeneratedCoins <= m_moneySupply);
 		assert(m_emissionSpeedFactor > 0 && m_emissionSpeedFactor <= 8 * sizeof(uint64_t));
 
-		// Tail emission
-
 		uint64_t baseReward = (m_moneySupply - alreadyGeneratedCoins) >> m_emissionSpeedFactor;
+
+		// Tail emission
 		if (alreadyGeneratedCoins + CryptoNote::parameters::TAIL_EMISSION_REWARD >= m_moneySupply || baseReward < CryptoNote::parameters::TAIL_EMISSION_REWARD)
 		{
 			// flat rate tail emission reward
@@ -169,11 +175,11 @@ namespace CryptoNote {
 		size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
 		medianSize = std::max(medianSize, blockGrantedFullRewardZone);
 		if (currentBlockSize > UINT64_C(2) * medianSize) {
-			logger(TRACE) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
+			logger(INFO) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
 			return false;
 		}
 
-		if (blockMajorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+		if (blockMajorVersion == CryptoNote::BLOCK_MAJOR_VERSION_5) {
 			emissionChange = baseReward - fee;
 			reward = baseReward + fee;
 

@@ -781,7 +781,7 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
 	}
 
 	// calculate average difficulty for ~last month
-	uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
+	uint64_t avgDifficultyCurrent = getAvgDifficulty(height, m_currency.averageDifficultyWindow());
 	
 	// historical reference moving average difficulty
 	uint64_t avgDifficultyHistorical = getAvgCumulativeDifficulty(height);
@@ -1075,40 +1075,50 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
 
 bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) {
 
-  if (!(b.baseTransaction.inputs.size() == 1)) {
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.inputs.size() == 1)) {
     logger(ERROR, BRIGHT_RED)
       << "coinbase transaction in the block has no inputs";
     return false;
   }
 
-  if (!(b.baseTransaction.signatures.empty())) {
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.signatures.empty())) {
     logger(ERROR, BRIGHT_RED)
       << "coinbase transaction in the block shouldn't have signatures";
     return false;
   }
 
-  if (!(b.baseTransaction.inputs[0].type() == typeid(BaseInput))) {
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.inputs[0].type() == typeid(BaseInput))) {
     logger(ERROR, BRIGHT_RED)
       << "coinbase transaction in the block has the wrong type";
     return false;
   }
 
-  if (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex != height) {
-    logger(INFO, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
-      boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex << ", expected: " << height;
-    return false;
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    if (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex != height) {
+      logger(INFO, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
+        boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex << ", expected: " << height;
+      return false;
+    }
   }
 
-  if (!(b.baseTransaction.unlockTime == height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()))) {
+  if (!(b.baseTransaction.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
     logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction transaction have wrong unlock time="
+      << "coinbase transaction have wrong unlock time="
       << b.baseTransaction.unlockTime << ", expected "
-      << height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1());
+      << height + m_currency.minedMoneyUnlockWindow();
     return false;
   }
 
   if (!check_outs_overflow(b.baseTransaction)) {
     logger(INFO, BRIGHT_RED) << "miner transaction have money overflow in block " << get_block_hash(b);
+    return false;
+  }
+
+  // starting block v5 there are inputs in coinbase tx because of stake so we check them
+  // this check has to be in prevalidate phase before transactions are pushed
+  // otherwise key images will be counted as spent
+  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 && !checkTransactionInputs(b.baseTransaction)) {
+    logger(INFO, BRIGHT_WHITE) << "coinbase stake transaction has wrong inputs";
     return false;
   }
 
@@ -1119,8 +1129,24 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange) {
 
   uint64_t minerReward = 0;
+  uint64_t inputsAmount = 0;
+  uint64_t outputsAmount = 0;
+  uint64_t stake = getDifficultyForNextBlock() * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO;
+
   for (auto& o : b.baseTransaction.outputs) {
-    minerReward += o.amount;
+    outputsAmount += o.amount;
+  }
+
+  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    for (const auto& in : b.baseTransaction.inputs) {
+      if (in.type() == typeid(KeyInput)) {
+        inputsAmount += boost::get<KeyInput>(in).amount;
+      }
+    }
+    minerReward = outputsAmount - inputsAmount; // we assume that difference between inputs and outputs (of stake) is miner reward
+  }
+  else {
+    minerReward = outputsAmount;
   }
 
   std::vector<size_t> lastBlocksSizes;
@@ -1128,9 +1154,42 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   size_t blocksSizeMedian = Common::medianValue(lastBlocksSizes);
 
   auto blockMajorVersion = getBlockMajorVersionForHeight(height);
-  if (!m_currency.getBlockReward(blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
-    logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
-    return false;
+  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+	  difficulty_type allTimeAvgDifficulty = getAvgCumulativeDifficulty(static_cast<uint32_t>(m_blocks.size() - 1));
+	  difficulty_type currentAvgDifficulty = getAvgDifficulty(static_cast<uint32_t>(m_blocks.size() - 1), m_currency.averageDifficultyWindow());
+
+	  if (!m_currency.getBlockReward(allTimeAvgDifficulty, currentAvgDifficulty, height, blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
+		  logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
+		  return false;
+	  }
+  }
+  else {
+	  if (!m_currency.getBlockReward(1, 1, height, blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
+		  logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
+		  return false;
+	  }
+
+  }
+
+  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+	  if (minerReward > reward) { // check if miner reward is not bigger than expected
+		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction spend too much money: " << m_currency.formatAmount(minerReward) <<
+			  ", block reward is " << m_currency.formatAmount(reward);
+		  return false;
+	  }
+	  else if (minerReward < reward) {
+		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction doesn't use full amount of block reward: spent " <<
+			  m_currency.formatAmount(minerReward) << ", block reward is " << m_currency.formatAmount(reward);
+		  return false;
+	  }
+
+	  if (inputsAmount < stake) { // check stake, we don't care what's actually stake and what's change as both will be locked
+		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction doesn't have enough stake: input amount " <<
+			  m_currency.formatAmount(inputsAmount) << ", minimal stake " << m_currency.formatAmount(stake);
+		  return false;
+	  }
+
+	  return true;
   }
 
   if (minerReward > reward) {
@@ -1219,19 +1278,21 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   // Splitting the hash_1 into 8 chunks and getting the corresponding 8 blocks from blockchain
   // and throwing them into the pot too
+
+  size_t currentMinedMoneyUnlockWindow = !m_currency.isTestnet() ? m_currency.minedMoneyUnlockWindow_v1() : m_currency.minedMoneyUnlockWindow();
+  uint32_t currentHeight = b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? b.blockIndex : boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
+  uint32_t allowedHeight = currentHeight - 1 - currentMinedMoneyUnlockWindow;
   for (uint8_t i = 1; i <= 8; i++) {
     uint32_t cd = *reinterpret_cast<uint32_t *>(&hash_1.data[i * 4 - 4]);
-    uint32_t height_i = cd % (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex - 1 - 
-		(!m_currency.isTestnet() ? m_currency.minedMoneyUnlockWindow_v1() : m_currency.minedMoneyUnlockWindow()));
+    uint32_t height_i = cd % allowedHeight;
     Crypto::Hash hash_i = getBlockIdByHeight(height_i);
-
     Block bl;
     if (!getBlockByHash(hash_i, bl)) {
       return false;
     }
     BinaryArray ba;
 	if (!get_block_hashing_blob(bl, ba)) {
-		return false;
+      return false;
 	}
     pot.insert(std::end(pot), std::begin(ba), std::end(ba));
   }
@@ -1274,11 +1335,12 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
 
   // get fresh checkpoints from DNS - the best we have right now
 #ifndef __ANDROID__
-  m_checkpoints.load_checkpoints_from_dns();
+  if (!m_currency.isTestnet())
+    m_checkpoints.load_checkpoints_from_dns();
 #endif
 
-  if (!m_checkpoints.is_alternative_block_allowed(getCurrentBlockchainHeight(), block_height)) {
-    logger(TRACE) << "Block with id: " << id << std::endl <<
+  if (!m_checkpoints.is_alternative_block_allowed(getCurrentBlockchainHeight(), block_height) && !m_currency.isTestnet()) {
+    logger(INFO) << "Block with id: " << id << std::endl <<
       " can't be accepted for alternative chain, block height: " << block_height << std::endl <<
       " blockchain height: " << getCurrentBlockchainHeight();
     bvc.m_verification_failed = true;
@@ -1537,7 +1599,7 @@ bool Blockchain::add_out_to_get_random_outs(std::vector<std::pair<TransactionInd
   if (!(tx.outputs[amount_outs[i].second].target.type() == typeid(KeyOutput))) { logger(ERROR, BRIGHT_RED) << "unknown tx out type"; return false; }
 
   //check if transaction is unlocked
-  if (!is_tx_spendtime_unlocked(tx.unlockTime))
+  if (!is_tx_spendtime_unlocked(tx.unlockTime, getCurrentBlockchainHeight()))
     return false;
 
   COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry& oen = *result_outs.outs.insert(result_outs.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry());
@@ -1807,7 +1869,7 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
       if (!(!in_to_key.outputIndexes.empty())) { logger(ERROR, BRIGHT_RED) << "empty in_to_key.outputIndexes in transaction with id " << getObjectHash(tx); return false; }
 
       if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
-        logger(DEBUGGING) <<
+        logger(INFO, BRIGHT_WHITE) <<
           "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
         return false;
       }
@@ -1835,10 +1897,10 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
   return true;
 }
 
-bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
+bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
   if (unlock_time < m_currency.maxBlockHeight()) {
     //interpret as block index
-    if (getCurrentBlockchainHeight() - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
+    if (height - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
       return true;
     else
       return false;
@@ -1868,9 +1930,17 @@ bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_pre
 
     bool handle_output(const Transaction& tx, const TransactionOutput& out, size_t transactionOutputIndex) {
       //check tx unlock time
-      if (!m_bch.is_tx_spendtime_unlocked(tx.unlockTime)) {
+      Crypto::Hash txId, blockId;
+	  txId = getObjectHash(tx);
+      uint32_t blockHeight;
+      if (!m_bch.getBlockContainingTransaction(txId, blockId, blockHeight)) {
         logger(INFO, BRIGHT_WHITE) <<
-          "One of outputs for one of inputs have wrong tx.unlockTime = " << tx.unlockTime;
+          "Can not get block containing transaction " << Common::podToHex(txId);
+        return false;
+      }
+      if (!m_bch.is_tx_spendtime_unlocked(tx.unlockTime, blockHeight + tx.unlockTime)) {
+        logger(INFO, BRIGHT_WHITE) <<
+          "One of outputs for one of inputs have wrong tx.unlockTime = " << tx.unlockTime << ", output tx height is " << blockHeight;
         return false;
       }
 
@@ -1971,7 +2041,7 @@ bool Blockchain::checkBlockVersion(const Block& b, const Crypto::Hash& blockHash
   uint32_t height = get_block_height(b);
   const uint8_t expectedBlockVersion = getBlockMajorVersionForHeight(height);
   if (b.majorVersion != expectedBlockVersion) {
-    logger(TRACE) << "Block " << blockHash << " has wrong major version: " << static_cast<int>(b.majorVersion) <<
+    logger(INFO) << "Block " << blockHash << " has wrong major version: " << static_cast<int>(b.majorVersion) <<
       ", at height " << height << " expected version is " << static_cast<int>(expectedBlockVersion);
     return false;
   }
@@ -2075,8 +2145,8 @@ bool Blockchain::addNewBlock(const Block& bl_, block_verification_context& bvc) 
     //check that block refers to chain tail
     if (!(bl.previousBlockHash == getTailId())) {
       //chain switching or wrong block
-      logger(DEBUGGING) << "handling alternative block " << Common::podToHex(id)
-                   << " at height " << boost::get<BaseInput>(bl.baseTransaction.inputs.front()).blockIndex 
+      logger(INFO) << "handling alternative block " << Common::podToHex(id)
+                   << " at height " << (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? bl.blockIndex : boost::get<BaseInput>(bl.baseTransaction.inputs.front()).blockIndex) 
                    << " as it doesn't refer to chain tail " << Common::podToHex(getTailId())
                    << ", its prev. block hash: " << Common::podToHex(bl.previousBlockHash);
       bvc.m_added_to_main_chain = false;
@@ -2145,7 +2215,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
     return false;
   }
-  
+
   if (blockData.previousBlockHash != getTailId()) {
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " has wrong previousBlockHash: " << blockData.previousBlockHash << ", expected: " << getTailId();
@@ -2170,7 +2240,6 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     logger(ERROR, BRIGHT_RED) << "!!!!!!!!! difficulty overhead !!!!!!!!!";
     return false;
   }
-
 
   auto longhashTimeStart = std::chrono::steady_clock::now();
   Crypto::Hash proof_of_work = NULL_HASH;
@@ -2514,8 +2583,15 @@ bool Blockchain::validateInput(const MultisignatureInput& input, const Crypto::H
     return false;
   }
 
+  Crypto::Hash blockId;
+  uint32_t blockHeight;
+  if (!getBlockContainingTransaction(transactionHash, blockId, blockHeight)) {
+    logger(INFO, BRIGHT_WHITE) <<
+      "Can not get block containing transaction " << Common::podToHex(transactionHash);
+    return false;
+  }
   const Transaction& outputTransaction = m_blocks[outputIndex.transactionIndex.block].transactions[outputIndex.transactionIndex.transaction].tx;
-  if (!is_tx_spendtime_unlocked(outputTransaction.unlockTime)) {
+  if (!is_tx_spendtime_unlocked(outputTransaction.unlockTime, blockHeight)) {
     logger(DEBUGGING) <<
       "Transaction << " << transactionHash << " contains multisignature input which points to a locked transaction.";
     return false;

@@ -700,19 +700,18 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   
   Block blk;
   if (!m_core.getBlockByHash(last_block_hash, blk)) {
-	  throw JsonRpc::JsonRpcError{
-		CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-		"Internal error: can't get last block by hash." };
+    throw JsonRpc::JsonRpcError{
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last block by hash." };
   }
-
-  if (blk.baseTransaction.inputs.front().type() != typeid(BaseInput)) {
-	  throw JsonRpc::JsonRpcError{
-		CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-		"Internal error: coinbase transaction in the block has the wrong type" };
+  
+  if (blk.baseTransaction.inputs.front().type() != typeid(BaseInput) && blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    throw JsonRpc::JsonRpcError{
+    CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+      "Internal error: coinbase transaction in the block has the wrong type" };
   }
 
   block_header_response block_header;
-  uint32_t last_block_height = boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
+  uint32_t last_block_height = blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? blk.blockIndex : boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
 
   Crypto::Hash tmp_hash = m_core.getBlockIdByHeight(last_block_height);
   bool is_orphaned = last_block_hash != tmp_hash;
@@ -828,7 +827,7 @@ bool RpcServer::on_start_mining(const COMMAND_RPC_START_MINING::request& req, CO
     return true;
   }
 
-  if (!m_core.get_miner().start(adr, static_cast<size_t>(req.threads_count))) {
+  if (!m_core.get_miner().start(adr, static_cast<size_t>(req.threads_count), req.wallet_host, req.wallet_port, req.mixin)) {
     res.status = "Failed, mining not started";
     return true;
   }
@@ -972,17 +971,21 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
       "Internal error: can't get block by hash. Hash = " + req.hash + '.' };
   }
 
-  if (blk.baseTransaction.inputs.front().type() != typeid(BaseInput)) {
+  if (blk.baseTransaction.inputs.front().type() != typeid(BaseInput) && blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
     throw JsonRpc::JsonRpcError{
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
       "Internal error: coinbase transaction in the block has the wrong type" };
   }
 
   block_header_response block_header;
-  res.block.height = boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
+  res.block.height = blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? blk.blockIndex : boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
 
   Crypto::Hash tmp_hash = m_core.getBlockIdByHeight(res.block.height);
   bool is_orphaned = hash != tmp_hash;
+  uint32_t block_height;
+  m_core.getBlockHeight(hash, block_height);
+  res.block.height = block_height;
+
   fill_block_header_response(blk, is_orphaned, res.block.height, hash, block_header);
 
   res.block.major_version = block_header.major_version;
@@ -1033,27 +1036,39 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
   uint64_t maxReward = 0;
   uint64_t currentReward = 0;
   int64_t emissionChange = 0;
+  uint64_t stake = 0;
   size_t blockGrantedFullRewardZone =  CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
   res.block.effectiveSizeMedian = std::max(res.block.sizeMedian, blockGrantedFullRewardZone);
 
-  if (!m_core.getBlockReward(res.block.major_version, res.block.sizeMedian, 0, prevBlockGeneratedCoins, 0, maxReward, emissionChange)) {
+  if (!m_core.getBlockReward(res.block.height, res.block.major_version, res.block.sizeMedian, 0, prevBlockGeneratedCoins, 0, maxReward, emissionChange)) {
     return false;
   }
-  if (!m_core.getBlockReward(res.block.major_version, res.block.sizeMedian, res.block.transactionsCumulativeSize, prevBlockGeneratedCoins, 0, currentReward, emissionChange)) {
-    return false;
+  if (blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    if (!m_core.getBlockReward(res.block.height, res.block.major_version, res.block.sizeMedian, res.block.transactionsCumulativeSize, prevBlockGeneratedCoins, 0, currentReward, emissionChange)) {
+      return false;
+    }
   }
 
   res.block.baseReward = maxReward;
-  if (maxReward == 0 && currentReward == 0) {
-    res.block.penalty = static_cast<double>(0);
-  } else {
-    if (maxReward < currentReward) {
+  if (blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    if (maxReward == 0 && currentReward == 0) {
+      res.block.penalty = static_cast<double>(0);
+    }
+    else {
+      if (maxReward < currentReward) {
+        return false;
+      }
+      res.block.penalty = static_cast<double>(maxReward - currentReward) / static_cast<double>(maxReward);
+    }
+  }
+  else {
+    if (!get_inputs_money_amount(blk.baseTransaction, stake)) {
       return false;
     }
-    res.block.penalty = static_cast<double>(maxReward - currentReward) / static_cast<double>(maxReward);
+	res.block.stake = stake;
+	res.block.penalty = static_cast<double>(0);
   }
 
-  // Base transaction adding
   f_transaction_short_response transaction_short;
   transaction_short.hash = Common::podToHex(getObjectHash(blk.baseTransaction));
   transaction_short.fee = 0;
@@ -1137,7 +1152,7 @@ bool RpcServer::f_on_transaction_json(const F_COMMAND_RPC_GET_TRANSACTION_DETAIL
   uint64_t amount_out = get_outs_money_amount(res.tx);
 
   res.txDetails.hash = Common::podToHex(getObjectHash(res.tx));
-  res.txDetails.fee = amount_in - amount_out;
+  res.txDetails.fee = amount_in - amount_out; //todo fix
   if (amount_in == 0)
     res.txDetails.fee = 0;
   res.txDetails.amount_out = amount_out;
@@ -1403,6 +1418,14 @@ namespace {
     for (const TransactionOutput& out : blk.baseTransaction.outputs) {
       reward += out.amount;
     }
+
+    if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      uint64_t stake;
+      if (!get_inputs_money_amount(blk.baseTransaction, stake)) {
+        return reward;
+      }
+      reward -= stake;
+    }
     return reward;
   }
 }
@@ -1422,15 +1445,14 @@ void RpcServer::fill_block_header_response(const Block& blk, bool orphan_status,
 }
 
 bool RpcServer::on_get_last_block_header(const COMMAND_RPC_GET_LAST_BLOCK_HEADER::request& req, COMMAND_RPC_GET_LAST_BLOCK_HEADER::response& res) {
-  uint32_t last_block_height;
-  Hash last_block_hash;
-  
-  m_core.get_blockchain_top(last_block_height, last_block_hash);
-
+  Crypto::Hash last_block_hash = m_core.getBlockIdByHeight(m_core.get_current_blockchain_height() - 1);
   Block last_block;
   if (!m_core.getBlockByHash(last_block_hash, last_block)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last block hash." };
   }
+
+  uint32_t last_block_height = last_block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? last_block.blockIndex : boost::get<BaseInput>(last_block.baseTransaction.inputs.front()).blockIndex;
+
   Crypto::Hash tmp_hash = m_core.getBlockIdByHeight(last_block_height);
   bool is_orphaned = last_block_hash != tmp_hash;
   fill_block_header_response(last_block, is_orphaned, last_block_height, last_block_hash, res.block_header);
@@ -1454,15 +1476,18 @@ bool RpcServer::on_get_block_header_by_hash(const COMMAND_RPC_GET_BLOCK_HEADER_B
       "Internal error: can't get block by hash. Hash = " + req.hash + '.' };
   }
 
-  if (blk.baseTransaction.inputs.front().type() != typeid(BaseInput)) {
+  if (blk.baseTransaction.inputs.front().type() != typeid(BaseInput) && blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
     throw JsonRpc::JsonRpcError{
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
       "Internal error: coinbase transaction in the block has the wrong type" };
   }
 
-  uint64_t block_height = boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
-  Crypto::Hash tmp_hash = m_core.getBlockIdByHeight(block_height);
+  uint64_t tmp_height = blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? blk.blockIndex : boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
+  Crypto::Hash tmp_hash = m_core.getBlockIdByHeight(tmp_height);
   bool is_orphaned = block_hash != tmp_hash;
+  uint32_t block_height;
+  m_core.getBlockHeight(block_hash, block_height);
+
   fill_block_header_response(blk, is_orphaned, block_height, block_hash, res.block_header);
   res.status = CORE_RPC_STATUS_OK;
   return true;

@@ -250,10 +250,16 @@ struct COMMAND_RPC_START_MINING {
   struct request {
     std::string miner_address;
     uint64_t threads_count;
+	std::string wallet_host;
+	uint16_t wallet_port;
+	size_t mixin;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(miner_address)
       KV_MEMBER(threads_count)
+      KV_MEMBER(wallet_host)
+      KV_MEMBER(wallet_port)
+      KV_MEMBER(mixin)
     }
   };
 
@@ -586,8 +592,9 @@ struct f_block_details_response {
   difficulty_type difficulty;
   difficulty_type cumulativeDifficulty;
   uint64_t reward;
+  uint64_t stake;
   uint64_t blockSize;
-  size_t sizeMedian;
+  uint64_t sizeMedian;
   uint64_t effectiveSizeMedian;
   uint64_t transactionsCumulativeSize;
   std::string alreadyGeneratedCoins;
@@ -610,6 +617,7 @@ struct f_block_details_response {
     KV_MEMBER(difficulty)
     KV_MEMBER(cumulativeDifficulty)
     KV_MEMBER(reward)
+    KV_MEMBER(stake)
     KV_MEMBER(blockSize)
     KV_MEMBER(sizeMedian)
     KV_MEMBER(effectiveSizeMedian)

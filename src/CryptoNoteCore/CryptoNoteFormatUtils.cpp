@@ -227,10 +227,10 @@ bool constructTransaction(
   }
 
   //check money
-  if (summary_outs_money > summary_inputs_money) {
-    logger(ERROR) << "Transaction inputs money (" << summary_inputs_money << ") less than outputs money (" << summary_outs_money << ")";
-    return false;
-  }
+  //if (summary_outs_money > summary_inputs_money) {
+  //  logger(ERROR) << "Transaction inputs money (" << summary_inputs_money << ") less than outputs money (" << summary_outs_money << ")";
+  //  return false;
+  //}
 
   //generate ring signatures
   Hash tx_prefix_hash;
@@ -272,14 +272,15 @@ bool get_inputs_money_amount(const Transaction& tx, uint64_t& money) {
 }
 
 uint32_t get_block_height(const Block& b) {
-  if (b.baseTransaction.inputs.size() != 1) {
-    return 0;
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    const auto& in = b.baseTransaction.inputs[0];
+    if (in.type() != typeid(BaseInput)) {
+      return 0;
+    }
+    return boost::get<BaseInput>(in).blockIndex;
+  } else {
+    return b.blockIndex;
   }
-  const auto& in = b.baseTransaction.inputs[0];
-  if (in.type() != typeid(BaseInput)) {
-    return 0;
-  }
-  return boost::get<BaseInput>(in).blockIndex;
 }
 
 bool check_inputs_types_supported(const TransactionPrefix& tx) {

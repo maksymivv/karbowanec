@@ -185,6 +185,65 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::makeSendFusionRequest(Tr
 	return doSendTransaction(context, events);
 }
 
+bool WalletTransactionSender::makeStakeTransaction(std::shared_ptr<SendTransactionContext>& context, std::deque<std::shared_ptr<WalletLegacyEvent>>& events,
+	const AccountPublicAddress& address, Transaction& stakeTx, Crypto::SecretKey& stakeTxKey, uint64_t reward, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+	if (m_isStoping) {
+		events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, make_error_code(error::TX_CANCELLED)));
+		throw std::system_error(make_error_code(error::INTERNAL_WALLET_ERROR));
+		return false;
+	}
+
+	try
+	{
+		WalletLegacyTransaction& transaction = m_transactionsCache.getTransaction(context->transactionId);
+
+		std::vector<TransactionSourceEntry> sources;
+		prepareInputs(context->selectedTransfers, context->outs, sources, context->mixIn);
+
+		TransactionDestinationEntry changeDts;
+		changeDts.amount = 0;
+		uint64_t totalAmount = -transaction.totalAmount;
+		createChangeDestinations(m_keys.address, totalAmount, context->foundMoney, changeDts);
+
+		
+		TransactionDestinationEntry rewardDts;
+		rewardDts.addr = address;
+		rewardDts.amount = reward;
+
+		std::vector<TransactionDestinationEntry> splittedDests;
+		splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, splittedDests);
+		uint64_t dust = 0;
+
+		decompose_amount_into_digits(rewardDts.amount, 0,
+			[&](uint64_t chunk) { splittedDests.push_back(TransactionDestinationEntry(chunk, rewardDts.addr)); },
+			[&](uint64_t a_dust) { dust = a_dust; });
+		if (0 != dust && !context->dustPolicy.addToFee) {
+			splittedDests.push_back(TransactionDestinationEntry(dust, context->dustPolicy.addrForDust));
+		}
+
+		constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, stakeTx, context->tx_key);
+		getObjectHash(stakeTx, transaction.hash);
+		stakeTxKey = context->tx_key;
+
+		m_transactionsCache.updateTransaction(context->transactionId, stakeTx, totalAmount, context->selectedTransfers, context->tx_key);
+
+		notifyBalanceChanged(events);
+	}
+	catch (std::system_error& ec) {
+		events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, ec.code()));
+		std::cout << "system_error during making stake transaction: " << ec.what() << ENDL;
+		return false;
+	}
+	catch (std::exception& e) {
+		events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, make_error_code(error::INTERNAL_WALLET_ERROR)));
+		std::cout << "exception during making stake transaction: " << e.what() << ENDL;
+		throw std::system_error(make_error_code(error::INTERNAL_WALLET_ERROR));
+		return false;
+	}
+
+	return true;
+}
+
 std::shared_ptr<WalletRequest> WalletTransactionSender::makeGetRandomOutsRequest(std::shared_ptr<SendTransactionContext> context) {
   uint64_t outsCount = context->mixIn + 1;// add one to make possible (if need) to skip real output key
   std::vector<uint64_t> amounts;

@@ -29,6 +29,8 @@
 #include <boost/limits.hpp>
 #include <boost/utility/value_init.hpp>
 
+#include "../CryptoNoteConfig.h"
+
 #include "crypto/crypto.h"
 #include "Common/CommandLine.h"
 #include "Common/StringTools.h"
@@ -36,6 +38,14 @@
 
 #include "CryptoNoteFormatUtils.h"
 #include "TransactionExtra.h"
+
+#include "Wallet/WalletRpcServerCommandsDefinitions.h"
+#include "Rpc/HttpClient.h"
+#include "Rpc/JsonRpc.h"
+
+#ifndef AUTO_VAL_INIT
+#define AUTO_VAL_INIT(n) boost::value_initialized<decltype(n)>()
+#endif
 
 using namespace Logging;
 
@@ -109,11 +119,79 @@ namespace CryptoNote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    if(!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce)) {
+	// TODO: add extra_nonce to stake tx
+
+	System::Dispatcher dispatcher;
+
+    // 1) First, create block template with dummy coinbase tx
+    if (!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce)) {
       logger(ERROR) << "Failed to get_block_template(), stopping mining";
       return false;
     }
 
+	// 2) Get stake tx from wallet RPC
+	Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
+	Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
+	Transaction stake_tx;
+	Crypto::SecretKey stake_tx_key;
+
+	// for blocks prior v5 skip these steps
+	if (bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5)
+		goto out;
+
+    req.address = m_currency.accountAddressAsString(m_mine_address);
+    m_diffic = m_handler.getNextBlockDifficulty();
+    req.stake = m_diffic * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO;
+	req.mixin = m_mixin;
+    // get block reward from coinbase tx and pass it to wallet
+    uint64_t blockReward = 0;
+    for (const auto& o : bl.baseTransaction.outputs) {
+      blockReward += o.amount;
+    }
+	req.reward = blockReward;
+	req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
+
+    // TODO create also functions for InProcessNode
+
+    try {
+      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
+
+      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+
+      BinaryArray tx_blob;
+      if (!Common::fromHex(res.tx_as_hex, tx_blob))
+      {
+        logger(ERROR) << "Failed to parse tx from hexbuff";
+        return false;
+      }
+      Crypto::Hash tx_hash = NULL_HASH;
+      Crypto::Hash tx_prefixt_hash = NULL_HASH;
+      if (!parseAndValidateTransactionFromBinaryArray(tx_blob, stake_tx, tx_hash, tx_prefixt_hash)) {
+        logger(ERROR) << "Could not parse tx from blob";
+        return false;
+      }
+      Crypto::Hash tx_key_hash;
+      size_t size;
+      if (!Common::fromHex(res.tx_key, &tx_key_hash, sizeof(tx_key_hash), size) || size != sizeof(tx_key_hash)) {
+        logger(ERROR) << "Failed to parse tx_key";
+        return false;
+      }
+      stake_tx_key = *(struct Crypto::SecretKey *) &tx_key_hash;
+    }
+    catch (const ConnectException&) {
+      logger(ERROR) << "Failed to connect to wallet";
+      return false;
+    }
+    catch (const std::exception& e) {
+      logger(ERROR) << "Failed to invoke rpc method: " << e.what();
+      return false;
+    }
+
+    // 3) Replace coibase tx with stake tx in block template
+    bl.baseTransaction = stake_tx;
+
+	out:
+    // 4) Set block template
     set_block_template(bl, di);
     return true;
   }
@@ -122,8 +200,7 @@ namespace CryptoNote
   {
     m_update_block_template_interval.call([&](){
       if(is_mining()) 
-        request_block_template();
-      return true;
+        return request_block_template();
     });
 
     m_update_merge_hr_interval.call([&](){
@@ -156,8 +233,8 @@ namespace CryptoNote
 
       if(m_do_print_hashrate) {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), static_cast<uint64_t>(0));
-        float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size());
-        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << ENDL;
+        float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size())/(float)1000;
+        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << " kH/s" << ENDL;
       }
     }
     
@@ -206,6 +283,18 @@ namespace CryptoNote
       }
     }
 
+    if (!config.walletHost.empty()) {
+      m_wallet_host = config.walletHost;
+    }
+
+    if (!config.walletPort > 0) {
+      m_wallet_port = config.walletPort;
+    }
+
+    if (!config.stakeMixin > 0) {
+      m_mixin = config.stakeMixin;
+    }
+   
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -214,7 +303,7 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::start(const AccountPublicAddress& adr, size_t threads_count)
+  bool miner::start(const AccountPublicAddress& adr, size_t threads_count, std::string wallet_host, uint16_t wallet_port, size_t mixin)
   {   
     if (is_mining()) {
       logger(ERROR) << "Starting miner but it's already started";
@@ -232,8 +321,13 @@ namespace CryptoNote
     m_threads_total = static_cast<uint32_t>(threads_count);
     m_starter_nonce = Crypto::rand<uint32_t>();
 
+    m_wallet_host = wallet_host;
+    m_wallet_port = wallet_port;
+	m_mixin = mixin;
+
     if (!m_template_no) {
-      request_block_template(); //lets update block template
+      if (!request_block_template()) //lets update block template
+        return false;
     }
 
     m_stop = false;
@@ -337,7 +431,7 @@ namespace CryptoNote
   void miner::on_synchronized()
   {
     if(m_do_mining) {
-      start(m_mine_address, m_threads_total);
+      start(m_mine_address, m_threads_total, m_wallet_host, m_wallet_port, m_mixin);
     }
   }
   //-----------------------------------------------------------------------------------------------------
