@@ -109,49 +109,16 @@ namespace CryptoNote
     return request_block_template();
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::request_block_template() {
-    Block bl = boost::value_initialized<Block>();
-    difficulty_type di = 0;
-    uint32_t height;
-    CryptoNote::BinaryArray extra_nonce;
-
-    if(m_extra_messages.size() && m_config.current_extra_message_index < m_extra_messages.size()) {
-      extra_nonce = m_extra_messages[m_config.current_extra_message_index];
-    }
-
-	// TODO: add extra_nonce to stake tx
-
-	System::Dispatcher dispatcher;
-
-    // 1) First, create block template with dummy coinbase tx
-    if (!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce)) {
-      logger(ERROR) << "Failed to get_block_template(), stopping mining";
-      return false;
-    }
-
-	// 2) Get stake tx from wallet RPC
-	Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
+  bool miner::requestStakeTransaction(System::Dispatcher& dispatcher, uint64_t& reward, uint32_t& height, Transaction& transaction) {
+    Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
 	Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
-	Transaction stake_tx;
-	Crypto::SecretKey stake_tx_key;
-
-	// for blocks prior v5 skip these steps
-	if (bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5)
-		goto out;
 
     req.address = m_currency.accountAddressAsString(m_mine_address);
-    m_diffic = m_handler.getNextBlockDifficulty();
-    req.stake = m_diffic * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO;
-	req.mixin = m_mixin;
-    // get block reward from coinbase tx and pass it to wallet
-    uint64_t blockReward = 0;
-    for (const auto& o : bl.baseTransaction.outputs) {
-      blockReward += o.amount;
-    }
-	req.reward = blockReward;
-	req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
-
-    // TODO create also functions for InProcessNode
+    uint64_t diff = m_handler.getNextBlockDifficulty();
+    req.stake = diff * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO;
+    req.mixin = m_mixin;
+    req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
+    req.reward = reward;
 
     try {
       HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
@@ -166,10 +133,12 @@ namespace CryptoNote
       }
       Crypto::Hash tx_hash = NULL_HASH;
       Crypto::Hash tx_prefixt_hash = NULL_HASH;
-      if (!parseAndValidateTransactionFromBinaryArray(tx_blob, stake_tx, tx_hash, tx_prefixt_hash)) {
+      if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
         logger(ERROR) << "Could not parse tx from blob";
         return false;
       }
+      /*
+      Crypto::SecretKey stake_tx_key;
       Crypto::Hash tx_key_hash;
       size_t size;
       if (!Common::fromHex(res.tx_key, &tx_key_hash, sizeof(tx_key_hash), size) || size != sizeof(tx_key_hash)) {
@@ -177,6 +146,7 @@ namespace CryptoNote
         return false;
       }
       stake_tx_key = *(struct Crypto::SecretKey *) &tx_key_hash;
+      */
     }
     catch (const ConnectException&) {
       logger(ERROR) << "Failed to connect to wallet";
@@ -186,11 +156,49 @@ namespace CryptoNote
       logger(ERROR) << "Failed to invoke rpc method: " << e.what();
       return false;
     }
+  }
+  //-----------------------------------------------------------------------------------------------------
+  bool miner::request_block_template() {
+    Block bl = boost::value_initialized<Block>();
+    difficulty_type di = 0;
+    uint32_t height;
+    CryptoNote::BinaryArray extra_nonce;
 
-    // 3) Replace coibase tx with stake tx in block template
-    bl.baseTransaction = stake_tx;
+    if(m_extra_messages.size() && m_config.current_extra_message_index < m_extra_messages.size()) {
+      extra_nonce = m_extra_messages[m_config.current_extra_message_index];
+    }
 
-	out:
+    // 1) First, create block template with coinbase tx
+    if (!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce)) {
+      logger(ERROR) << "Failed to get_block_template(), stopping mining";
+      return false;
+    }
+
+    // 2) Get stake tx from wallet RPC
+    // for blocks prior v5 skip these steps
+    // TODO: add extra_nonce to stake tx
+    // TODO create also functions for InProcessNode
+    if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      Transaction stake_tx = boost::value_initialized<Transaction>();
+
+      System::Dispatcher dispatcher;
+
+      // get block reward from coinbase tx and pass it to wallet
+      uint64_t blockReward = 0;
+      for (const auto& o : bl.baseTransaction.outputs) {
+        blockReward += o.amount;
+      }
+
+      // request stake tx from wallet
+      if (!requestStakeTransaction(dispatcher, blockReward, height, stake_tx)) {
+        logger(ERROR) << "Failed to request stake transaction from wallet, stopping mining";
+        return false;
+      }
+
+      // 3) Replace coibase tx with stake tx in block template
+      bl.baseTransaction = stake_tx;
+    }
+
     // 4) Set block template
     set_block_template(bl, di);
     return true;
