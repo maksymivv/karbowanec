@@ -155,7 +155,7 @@ namespace CryptoNote
       return false;
     }
     catch (const std::exception& e) {
-      //logger(ERROR) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
+      logger(DEBUGGING) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
       return false;
     }
 
@@ -193,7 +193,7 @@ namespace CryptoNote
 
       // request stake tx from wallet
       if (!requestStakeTransaction(blockReward, height, stake_tx)) {
-        //logger(ERROR) << "Failed to request stake transaction from wallet, stopping mining";
+        logger(DEBUGGING) << "Failed to request stake transaction from wallet";
         return false;
       }
 
