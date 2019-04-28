@@ -109,7 +109,7 @@ namespace CryptoNote
     return request_block_template();
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::requestStakeTransaction(System::Dispatcher& dispatcher, uint64_t& reward, uint32_t& height, Transaction& transaction) {
+  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction) {
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
 	Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
@@ -121,7 +121,11 @@ namespace CryptoNote
     req.reward = reward;
 
     try {
-      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
+
+      System::Dispatcher dispatcher;
+      //m_dispatcher = &dispatcher;
+
+      HttpClient httpClient(/* *m_dispatcher*/ dispatcher, m_wallet_host, m_wallet_port);
 
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
@@ -154,7 +158,7 @@ namespace CryptoNote
     }
     catch (const std::exception& e) {
       logger(ERROR) << "Failed to invoke rpc method: " << e.what();
-      return false;
+      return true;
     }
 
 	return true;
@@ -183,8 +187,6 @@ namespace CryptoNote
     if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
       Transaction stake_tx = boost::value_initialized<Transaction>();
 
-      System::Dispatcher dispatcher;
-
       // get block reward from coinbase tx and pass it to wallet
       uint64_t blockReward = 0;
       for (const auto& o : bl.baseTransaction.outputs) {
@@ -192,7 +194,7 @@ namespace CryptoNote
       }
 
       // request stake tx from wallet
-      if (!requestStakeTransaction(dispatcher, blockReward, height, stake_tx)) {
+      if (!requestStakeTransaction(blockReward, height, stake_tx)) {
         logger(ERROR) << "Failed to request stake transaction from wallet, stopping mining";
         return false;
       }

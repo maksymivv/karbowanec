@@ -62,7 +62,7 @@ namespace CryptoNote {
     bool worker_thread(uint32_t th_local_index);
 	bool request_block_template();
     void merge_hr();
-	bool requestStakeTransaction(System::Dispatcher& dispatcher, uint64_t& reward, uint32_t& height, Transaction& transaction);
+	bool requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction);
 
     struct miner_config
     {
@@ -74,6 +74,8 @@ namespace CryptoNote {
 
     const Currency& m_currency;
     Logging::LoggerRef logger;
+	
+	//System::Dispatcher* m_dispatcher = nullptr;
 
     std::atomic<bool> m_stop;
     std::mutex m_template_lock;
