@@ -157,7 +157,7 @@ namespace CryptoNote
       return false;
     }
     catch (const std::exception& e) {
-      logger(ERROR) << "Failed to invoke rpc method: " << e.what();
+      logger(ERROR) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
       return true;
     }
 
