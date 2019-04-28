@@ -156,6 +156,8 @@ namespace CryptoNote
       logger(ERROR) << "Failed to invoke rpc method: " << e.what();
       return false;
     }
+
+	return true;
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::request_block_template() {
@@ -208,7 +210,8 @@ namespace CryptoNote
   {
     m_update_block_template_interval.call([&](){
       if(is_mining()) 
-        return request_block_template();
+        request_block_template();
+      return true;
     });
 
     m_update_merge_hr_interval.call([&](){
