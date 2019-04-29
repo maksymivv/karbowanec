@@ -1347,7 +1347,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
 
   size_t cumulativeSize;
   if (!getBlockCumulativeSize(b, cumulativeSize)) {
-    logger(TRACE) << "Block with id: " << id << " has at least one unknown transaction. Cumulative size is calculated imprecisely";
+    logger(INFO) << "Block with id: " << id << " has at least one unknown transaction. Cumulative size is calculated imprecisely";
   }
 
   if (!checkCumulativeBlockSize(id, cumulativeSize, block_height)) {
@@ -1414,11 +1414,11 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     }
 
     // Disable merged mining
-    TransactionExtraMergeMiningTag mmTag;
-    if (getMergeMiningTagFromExtra(bei.bl.baseTransaction.extra, mmTag) && bei.bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
-      return false;
-    }
+    //TransactionExtraMergeMiningTag mmTag;
+    //if (getMergeMiningTagFromExtra(bei.bl.baseTransaction.extra, mmTag) && bei.bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    //  logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
+    //  return false;
+    //}
 
     // Always check PoW for alternative blocks
     m_is_in_checkpoint_zone = false;
@@ -2198,11 +2198,11 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   }
 
   // Disable merged mining
-  TransactionExtraMergeMiningTag mmTag;
-  if (getMergeMiningTagFromExtra(blockData.baseTransaction.extra, mmTag) && blockData.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
-    return false;
-  }
+  //TransactionExtraMergeMiningTag mmTag;
+  //if (getMergeMiningTagFromExtra(blockData.baseTransaction.extra, mmTag) && blockData.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+  //  logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
+  //  return false;
+  //}
 
   if (blockData.previousBlockHash != getTailId()) {
     logger(INFO, BRIGHT_WHITE) <<
