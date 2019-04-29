@@ -518,7 +518,7 @@ namespace CryptoNote
 
 		Crypto::Hash id;
 		if (get_block_hash(b, id)) 
-			logger(INFO, GREEN) << ", hash: " << Common::podToHex(id);
+			logger(INFO, GREEN) << "hash: " << Common::podToHex(id);
 
         if(!m_handler.handle_block_found(b)) {
           --m_config.current_extra_message_index;
