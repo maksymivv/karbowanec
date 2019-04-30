@@ -28,12 +28,12 @@
 #include "CryptoNoteCore/IMinerHandler.h"
 #include "CryptoNoteCore/MinerConfig.h"
 #include "CryptoNoteCore/OnceInInterval.h"
-
-#include <Logging/LoggerRef.h>
-
+#include "Logging/LoggerRef.h"
+#include "Rpc/HttpClient.h"
+#include "Rpc/JsonRpc.h"
 #include "Serialization/ISerializer.h"
-
 #include <System/Dispatcher.h>
+#include "System/EventLock.h"
 #include <System/Ipv4Address.h>
 
 namespace CryptoNote {
@@ -60,9 +60,9 @@ namespace CryptoNote {
 
   private:
     bool worker_thread(uint32_t th_local_index);
-	bool request_block_template();
+    bool request_block_template();
     void merge_hr();
-	bool requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction);
+    bool requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction);
 
     struct miner_config
     {
@@ -107,7 +107,5 @@ namespace CryptoNote {
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
-
-	
   };
 }

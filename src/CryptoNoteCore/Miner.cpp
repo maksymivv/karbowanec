@@ -40,8 +40,6 @@
 #include "TransactionExtra.h"
 
 #include "Wallet/WalletRpcServerCommandsDefinitions.h"
-#include "Rpc/HttpClient.h"
-#include "Rpc/JsonRpc.h"
 
 #ifndef AUTO_VAL_INIT
 #define AUTO_VAL_INIT(n) boost::value_initialized<decltype(n)>()
@@ -70,7 +68,7 @@ namespace CryptoNote
     m_current_hash_rate(0),
     m_update_block_template_interval(5),
     m_update_merge_hr_interval(2)
-  {  
+  {
   }
   //-----------------------------------------------------------------------------------------------------
   miner::~miner() {
@@ -124,7 +122,9 @@ namespace CryptoNote
       System::Dispatcher dispatcher;
 
       HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
-
+	  System::Event httpEvent(dispatcher);
+	  httpEvent.set();
+	  System::EventLock eventLock(httpEvent);
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
       BinaryArray tx_blob;
@@ -150,12 +150,12 @@ namespace CryptoNote
       stake_tx_key = *(struct Crypto::SecretKey *) &tx_key_hash;
       */
     }
-    catch (const ConnectException&) {
-      logger(ERROR) << "Failed to connect to wallet";
+    catch (const ConnectException& e) {
+      logger(ERROR) << "Failed to connect to wallet: " << e.what();
       return false;
     }
     catch (const std::exception& e) {
-      logger(DEBUGGING) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
+      logger(WARNING) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
       return false;
     }
 
