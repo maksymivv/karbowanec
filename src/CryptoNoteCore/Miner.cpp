@@ -119,10 +119,10 @@ namespace CryptoNote
     req.reward = reward;
 
     try {
-      System::Dispatcher dispatcher;
+      System::Dispatcher* dispatcher = new System::Dispatcher();
 
-      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
-	  System::Event httpEvent(dispatcher);
+      HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
+	  System::Event httpEvent(*dispatcher);
 	  httpEvent.set();
 	  System::EventLock eventLock(httpEvent);
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
@@ -149,6 +149,7 @@ namespace CryptoNote
       }
       stake_tx_key = *(struct Crypto::SecretKey *) &tx_key_hash;
       */
+	  delete dispatcher;
     }
     catch (const ConnectException& e) {
       logger(ERROR) << "Failed to connect to wallet: " << e.what();
