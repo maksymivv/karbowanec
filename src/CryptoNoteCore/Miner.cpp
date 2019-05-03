@@ -118,9 +118,8 @@ namespace CryptoNote
     req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     req.reward = reward;
 
-    System::Dispatcher dispatcher;
-
     try {
+      System::Dispatcher dispatcher;
       HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
