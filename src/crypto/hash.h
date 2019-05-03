@@ -23,6 +23,8 @@
 
 #include <CryptoTypes.h>
 #include "generic-ops.h"
+#include "argon2/argon2.h"
+#include "argon2/blake2.h"
 
 namespace Crypto {
 
@@ -65,7 +67,26 @@ namespace Crypto {
   }
 
   inline void argon2d_hash(const void *in, const size_t inlen, const void *salt, const size_t saltlen, uint32_t m_cost, uint32_t lanes, uint32_t threads, uint32_t t_cost, Hash &hash) {
-    argon2d_hash(in, inlen, salt, saltlen, m_cost, lanes, threads, t_cost, reinterpret_cast<char *>(&hash));
+    argon2_context context;
+    context.outlen = (uint32_t)32;
+    context.pwd = (uint8_t *)in;
+    context.pwdlen = (uint32_t)inlen;
+    context.salt = (uint8_t *)salt;
+    context.saltlen = (uint32_t)saltlen;
+    context.secret = NULL;
+    context.secretlen = 0;
+    context.ad = NULL;
+    context.adlen = 0;
+    context.allocate_cbk = NULL;
+    context.free_cbk = NULL;
+    context.flags = 2;
+    context.m_cost = m_cost;        // Memory in KiB
+    context.lanes = lanes;          // Degree of Parallelism
+    context.threads = threads;      // Threads
+    context.t_cost = t_cost;        // Iterations
+    argon2_ctx(&context, Argon2_d);
+	
+    hash = *reinterpret_cast<Hash *>(&context.out);
   }
 
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {

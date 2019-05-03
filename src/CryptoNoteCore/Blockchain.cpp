@@ -1288,8 +1288,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // Phase 3
 
   // stir the pot - hashing the 1 + 8 blocks as one continous data, salt is hash_1
-  //Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(&hash_1), m_cost, lanes, threads, t_cost, res);
-  cn_slow_hash(context, pot.data(), pot.size(), res);
+  Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(&hash_1), m_cost, lanes, threads, t_cost, res);
 
   return true;
 }

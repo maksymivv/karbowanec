@@ -40,8 +40,6 @@
 #include "oaes_lib.h"
 #include "aesb.h"
 #include "keccak.h"
-#include "argon2/argon2.h"
-#include "argon2/blake2.h"
 
 #define MEMORY         (1 << 21) // 2MB scratchpad
 #define ITER           (1 << 20)
@@ -49,28 +47,6 @@
 #define AES_KEY_SIZE    32
 #define INIT_SIZE_BLK   8
 #define INIT_SIZE_BYTE (INIT_SIZE_BLK * AES_BLOCK_SIZE)
-
-void argon2d_hash(const void *in, const size_t inlen, const void *salt, const size_t saltlen, uint32_t m_cost, uint32_t lanes, uint32_t threads, uint32_t t_cost, char *hash) {
-  argon2_context context;
-  context.out = (uint8_t *)hash;
-  context.outlen = (uint32_t)32;
-  context.pwd = (uint8_t *)in;
-  context.pwdlen = (uint32_t)inlen;
-  context.salt = (uint8_t *)salt;
-  context.saltlen = (uint32_t)saltlen;
-  context.secret = NULL;
-  context.secretlen = 0;
-  context.ad = NULL;
-  context.adlen = 0;
-  context.allocate_cbk = NULL;
-  context.free_cbk = NULL;
-  context.flags = 2;
-  context.m_cost = m_cost;        // Memory in KiB
-  context.lanes = lanes;          // Degree of Parallelism
-  context.threads = threads;      // Threads
-  context.t_cost = t_cost;        // Iterations
-  argon2_ctx(&context, Argon2_d);
-}
 
 #pragma pack(push, 1)
 union cn_slow_hash_state
