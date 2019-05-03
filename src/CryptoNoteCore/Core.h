@@ -45,7 +45,7 @@ namespace CryptoNote {
 
   class core : public ICore, public IMinerHandler, public IBlockchainStorageObserver, public ITxPoolObserver {
    public:
-     core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, bool blockchainIndexesEnabled);
+     core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher& dispatcher, bool blockchainIndexesEnabled);
      ~core();
 
      bool on_idle() override;
@@ -203,8 +203,7 @@ namespace CryptoNote {
 
      const Currency& m_currency;
      Logging::LoggerRef logger;
-     System::Dispatcher* dispatcher;
-     System::Event* stopEvent;
+     System::Dispatcher& m_dispatcher;
      CryptoNote::RealTimeProvider m_timeProvider;
      tx_memory_pool m_mempool;
      Blockchain m_blockchain;
