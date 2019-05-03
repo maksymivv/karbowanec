@@ -109,7 +109,7 @@ namespace CryptoNote
   //-----------------------------------------------------------------------------------------------------
   bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction) {
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
-	Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
+    Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
     req.address = m_currency.accountAddressAsString(m_mine_address);
     uint64_t diff = m_handler.getNextBlockDifficulty();
@@ -118,13 +118,10 @@ namespace CryptoNote
     req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     req.reward = reward;
 
-    try {
-      System::Dispatcher* dispatcher = new System::Dispatcher();
+    System::Dispatcher dispatcher;
 
-      HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
-	  System::Event httpEvent(*dispatcher);
-	  httpEvent.set();
-	  System::EventLock eventLock(httpEvent);
+    try {
+      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
       BinaryArray tx_blob;
@@ -139,17 +136,6 @@ namespace CryptoNote
         logger(ERROR) << "Could not parse tx from blob";
         return false;
       }
-      /*
-      Crypto::SecretKey stake_tx_key;
-      Crypto::Hash tx_key_hash;
-      size_t size;
-      if (!Common::fromHex(res.tx_key, &tx_key_hash, sizeof(tx_key_hash), size) || size != sizeof(tx_key_hash)) {
-        logger(ERROR) << "Failed to parse tx_key";
-        return false;
-      }
-      stake_tx_key = *(struct Crypto::SecretKey *) &tx_key_hash;
-      */
-	  delete dispatcher;
     }
     catch (const ConnectException& e) {
       logger(ERROR) << "Failed to connect to wallet: " << e.what();
@@ -160,7 +146,7 @@ namespace CryptoNote
       return false;
     }
 
-	return true;
+    return true;
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::request_block_template() {
@@ -283,6 +269,18 @@ namespace CryptoNote
       logger(INFO) << "Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index;
     }
 
+    if (!config.walletHost.empty()) {
+      m_wallet_host = config.walletHost;
+    }
+
+    if (!config.walletPort > 0) {
+      m_wallet_port = config.walletPort;
+    }
+
+    if (!config.stakeMixin > 0) {
+      m_mixin = config.stakeMixin;
+    }
+
     if(!config.startMining.empty()) {
       if (!m_currency.parseAccountAddressString(config.startMining, m_mine_address)) {
         logger(ERROR) << "Target account address " << config.startMining << " has wrong format, starting daemon canceled";
@@ -295,18 +293,6 @@ namespace CryptoNote
       }
     }
 
-    if (!config.walletHost.empty()) {
-      m_wallet_host = config.walletHost;
-    }
-
-    if (!config.walletPort > 0) {
-      m_wallet_port = config.walletPort;
-    }
-
-    if (!config.stakeMixin > 0) {
-      m_mixin = config.stakeMixin;
-    }
-   
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -335,7 +321,7 @@ namespace CryptoNote
 
     m_wallet_host = wallet_host;
     m_wallet_port = wallet_port;
-	m_mixin = mixin;
+	  m_mixin = mixin;
 
     if (!m_template_no) {
       if (!request_block_template()) { //lets update block template
