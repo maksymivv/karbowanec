@@ -39,7 +39,7 @@
 namespace CryptoNote {
   class miner {
   public:
-    miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log);
+    miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log, System::Dispatcher& dispatcher);
     ~miner();
 
     bool init(const MinerConfig& config);
@@ -74,7 +74,7 @@ namespace CryptoNote {
 
     const Currency& m_currency;
     Logging::LoggerRef logger;
-
+    System::Dispatcher& m_dispatcher;
     std::atomic<bool> m_stop;
     std::mutex m_template_lock;
     Block m_template;

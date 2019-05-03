@@ -50,8 +50,9 @@ using namespace Logging;
 namespace CryptoNote
 {
 
-  miner::miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log) :
+  miner::miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log, System::Dispatcher& dispatcher) :
     m_currency(currency),
+    m_dispatcher(dispatcher),
     logger(log, "miner"),
     m_stop(true),
     m_template(boost::value_initialized<Block>()),
@@ -118,10 +119,8 @@ namespace CryptoNote
     req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     req.reward = reward;
 
-    System::Dispatcher dispatcher;
-
     try {
-      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
+      HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port);
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
       BinaryArray tx_blob;

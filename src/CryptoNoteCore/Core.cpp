@@ -74,9 +74,10 @@ private:
 core::core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, bool blockchainIndexesEnabled) :
 m_currency(currency),
 logger(logger, "core"),
+dispatcher(nullptr),
 m_mempool(currency, m_blockchain, *this, m_timeProvider, logger, blockchainIndexesEnabled),
 m_blockchain(currency, m_mempool, logger, blockchainIndexesEnabled),
-m_miner(new miner(currency, *this, logger)),
+m_miner(new miner(currency, *this, logger, *dispatcher)),
 m_starter_message_showed(false) {
   set_cryptonote_protocol(pprotocol);
   m_blockchain.addObserver(this);
@@ -150,15 +151,24 @@ std::time_t core::getStartTime() const {
 
   //-----------------------------------------------------------------------------------------------
 bool core::init(const CoreConfig& config, const MinerConfig& minerConfig, bool load_existing) {
-    m_config_folder = config.configFolder;
-    bool r = m_mempool.init(m_config_folder);
+  m_config_folder = config.configFolder;
+  bool r = m_mempool.init(m_config_folder);
   if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to initialize memory pool"; return false; }
 
   r = m_blockchain.init(m_config_folder, load_existing);
   if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to initialize blockchain storage"; return false; }
 
-    r = m_miner->init(minerConfig);
-  if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to initialize blockchain storage"; return false; }
+  System::Dispatcher localDispatcher;
+  System::Event localStopEvent(localDispatcher);
+
+  this->dispatcher = &localDispatcher;
+  this->stopEvent = &localStopEvent;
+
+  r = m_miner->init(minerConfig);
+  if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to initialize miner"; return false; }
+
+  this->dispatcher = nullptr;
+  this->stopEvent = nullptr;
 
   start_time = std::time(nullptr);
 
@@ -175,6 +185,13 @@ bool core::load_state_data() {
 }
 
 bool core::deinit() {
+  if (dispatcher != nullptr) {
+    dispatcher->remoteSpawn([&]() {
+      if (stopEvent != nullptr) {
+        stopEvent->set();
+      }
+    });
+  }
   m_miner->stop();
   m_mempool.deinit();
   m_blockchain.deinit();

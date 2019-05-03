@@ -203,6 +203,8 @@ namespace CryptoNote {
 
      const Currency& m_currency;
      Logging::LoggerRef logger;
+     System::Dispatcher* dispatcher;
+     System::Event* stopEvent;
      CryptoNote::RealTimeProvider m_timeProvider;
      tx_memory_pool m_mempool;
      Blockchain m_blockchain;
@@ -213,6 +215,6 @@ namespace CryptoNote {
      friend class tx_validate_inputs;
      std::atomic<bool> m_starter_message_showed;
      Tools::ObserverManager<ICoreObserver> m_observerManager;
-	 time_t start_time;
+     time_t start_time;
    };
 }
