@@ -136,6 +136,11 @@ namespace CryptoNote
         return false;
       }
     }
+    catch (const std::runtime_error& e) {
+      // Just stop nagging in console
+      logger(DEBUGGING) << "runtime_error in requestStakeTransaction(): " << e.what();
+      return false;
+    }
     catch (const ConnectException& e) {
       logger(ERROR) << "Failed to connect to wallet: " << e.what();
       return false;
