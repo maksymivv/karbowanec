@@ -33,8 +33,9 @@
 #include "Rpc/JsonRpc.h"
 #include "Serialization/ISerializer.h"
 #include <System/Dispatcher.h>
-#include "System/EventLock.h"
+#include <System/EventLock.h>
 #include <System/Ipv4Address.h>
+#include <System/ContextGroup.h>
 
 namespace CryptoNote {
   class miner {
@@ -72,9 +73,19 @@ namespace CryptoNote {
       }
     };
 
+	void workerThread();
+
     const Currency& m_currency;
     Logging::LoggerRef logger;
 
+
+    mutable std::mutex m_mutex;
+    std::thread m_workerThread;
+    System::Dispatcher* m_dispatcher = nullptr;
+    System::ContextGroup* m_context_group = nullptr;
+    HttpClient* m_httpClient = nullptr;
+    System::Event* m_httpEvent = nullptr;
+	
     std::atomic<bool> m_stop;
     std::mutex m_template_lock;
     Block m_template;
@@ -84,7 +95,7 @@ namespace CryptoNote {
 
     std::string m_wallet_host;
     uint16_t m_wallet_port;
-	size_t m_mixin;
+    size_t m_mixin;
 
     std::atomic<uint32_t> m_threads_total;
     std::atomic<int32_t> m_pausers_count;

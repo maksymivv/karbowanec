@@ -109,7 +109,7 @@ namespace CryptoNote
   //-----------------------------------------------------------------------------------------------------
   bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction) {
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
-	Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
+    Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
     req.address = m_currency.accountAddressAsString(m_mine_address);
     uint64_t diff = m_handler.getNextBlockDifficulty();
@@ -119,13 +119,8 @@ namespace CryptoNote
     req.reward = reward;
 
     try {
-      System::Dispatcher* dispatcher = new System::Dispatcher();
-
-      HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
-	  System::Event httpEvent(*dispatcher);
-	  httpEvent.set();
-	  System::EventLock eventLock(httpEvent);
-      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      System::EventLock eventLock(*m_httpEvent);
+      invokeJsonRpcCommand(*m_httpClient, "construct_stake_tx", req, res);
 
       BinaryArray tx_blob;
       if (!Common::fromHex(res.tx_as_hex, tx_blob))
@@ -149,7 +144,6 @@ namespace CryptoNote
       }
       stake_tx_key = *(struct Crypto::SecretKey *) &tx_key_hash;
       */
-	  delete dispatcher;
     }
     catch (const ConnectException& e) {
       logger(ERROR) << "Failed to connect to wallet: " << e.what();
@@ -283,6 +277,22 @@ namespace CryptoNote
       logger(INFO) << "Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index;
     }
 
+    if (!config.walletHost.empty()) {
+      m_wallet_host = config.walletHost;
+    }
+
+    if (!config.walletPort > 0) {
+      m_wallet_port = config.walletPort;
+    }
+
+    if (!config.stakeMixin > 0) {
+      m_mixin = config.stakeMixin;
+    }
+
+    m_workerThread = std::thread([this] {
+      workerThread();
+    });
+
     if(!config.startMining.empty()) {
       if (!m_currency.parseAccountAddressString(config.startMining, m_mine_address)) {
         logger(ERROR) << "Target account address " << config.startMining << " has wrong format, starting daemon canceled";
@@ -295,18 +305,6 @@ namespace CryptoNote
       }
     }
 
-    if (!config.walletHost.empty()) {
-      m_wallet_host = config.walletHost;
-    }
-
-    if (!config.walletPort > 0) {
-      m_wallet_port = config.walletPort;
-    }
-
-    if (!config.stakeMixin > 0) {
-      m_mixin = config.stakeMixin;
-    }
-   
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -373,6 +371,17 @@ namespace CryptoNote
   {
     send_stop_signal();
     std::lock_guard<std::mutex> lk(m_threads_lock);
+
+    if (m_dispatcher != nullptr) {
+      m_dispatcher->remoteSpawn([this]() {
+        // Run all spawned contexts
+        m_dispatcher->yield();
+      });
+    }
+
+	  if (m_workerThread.joinable()) {
+		  m_workerThread.join();
+	  }
 
     for (auto& th : m_threads) {
       th.join();
@@ -536,4 +545,37 @@ namespace CryptoNote
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
+  void miner::workerThread() {
+    try {
+      System::Dispatcher dispatcher;
+      m_dispatcher = &dispatcher;
+      System::ContextGroup contextGroup(dispatcher);
+      m_context_group = &contextGroup;
+      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
+      m_httpClient = &httpClient;
+      System::Event httpEvent(dispatcher);
+      m_httpEvent = &httpEvent;
+      m_httpEvent->set();
+
+      {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+      }
+
+      contextGroup.spawn([this]() {
+        // do nothing?
+      });
+
+      contextGroup.wait();
+      // Make sure all remote spawns are executed
+      m_dispatcher->yield();
+    } catch (std::exception&) {
+    }
+
+    m_dispatcher = nullptr;
+    m_context_group = nullptr;
+    m_httpClient = nullptr;
+    m_httpEvent = nullptr;
+  }
+
 }
