@@ -71,13 +71,12 @@ private:
   friend class core;
 };
 
-core::core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher& dispatcher, bool blockchainIndexesEnabled) :
+core::core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher* dispatcher, bool blockchainIndexesEnabled) :
 m_currency(currency),
 logger(logger, "core"),
-m_dispatcher(dispatcher),
 m_mempool(currency, m_blockchain, *this, m_timeProvider, logger, blockchainIndexesEnabled),
 m_blockchain(currency, m_mempool, logger, blockchainIndexesEnabled),
-m_miner(new miner(currency, *this, logger, m_dispatcher)),
+m_miner(new miner(currency, *this, logger, *dispatcher)),
 m_starter_message_showed(false) {
   set_cryptonote_protocol(pprotocol);
   m_blockchain.addObserver(this);
@@ -161,8 +160,6 @@ bool core::init(const CoreConfig& config, const MinerConfig& minerConfig, bool l
   r = m_miner->init(minerConfig);
   if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to initialize miner"; return false; }
 
-  //this->dispatcher = nullptr;
- 
   start_time = std::time(nullptr);
 
   return load_state_data();
