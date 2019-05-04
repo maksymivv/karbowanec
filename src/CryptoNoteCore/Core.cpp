@@ -810,8 +810,7 @@ std::string core::print_pool(bool short_format) {
 }
 
 bool core::update_miner_block_template() {
-  m_miner->on_block_chain_update();
-  return true;
+  return m_miner->on_block_chain_update();
 }
 
 bool core::on_idle() {
