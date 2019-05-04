@@ -137,8 +137,7 @@ namespace CryptoNote
       }
     }
     catch (const std::runtime_error& e) {
-      // Just stop nagging in console
-      logger(DEBUGGING) << "runtime_error in requestStakeTransaction(): " << e.what();
+      logger(ERROR) << "Failed to invoke rpc method, runtime_error in requestStakeTransaction(): " << e.what();
       return false;
     }
     catch (const ConnectException& e) {
@@ -146,7 +145,7 @@ namespace CryptoNote
       return false;
     }
     catch (const std::exception& e) {
-      logger(WARNING) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
+      logger(ERROR) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
       return false;
     }
 
