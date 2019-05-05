@@ -227,7 +227,7 @@ bool WalletTransactionSender::makeStakeTransaction(std::shared_ptr<SendTransacti
 
 		m_transactionsCache.updateTransaction(context->transactionId, stakeTx, totalAmount, context->selectedTransfers, context->tx_key);
 
-		notifyBalanceChanged(events);
+		// notifyBalanceChanged(events);
 	}
 	catch (std::system_error& ec) {
 		events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, ec.code()));

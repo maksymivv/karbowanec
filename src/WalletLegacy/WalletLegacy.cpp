@@ -822,6 +822,14 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
 		return false;
 	}
 
+  // delete this transaction from cache not to deplete wallet
+  // the one that makes into the block will be added via synchronization
+  Crypto::Hash stakeTxHash = getObjectHash(stakeTransaction);
+  std::lock_guard<std::mutex> lock(m_cacheMutex);
+  if (!m_transactionsCache.deleteUnconfirmedTransaction(stakeTxHash)) {
+    return false;
+  }
+
   return true;
 }
 
