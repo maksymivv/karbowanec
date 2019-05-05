@@ -1143,7 +1143,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
         inputsAmount += boost::get<KeyInput>(in).amount;
       }
     }
-    minerReward = outputsAmount - inputsAmount; // we assume that difference between inputs and outputs (of stake) is miner reward
+    minerReward = outputsAmount - inputsAmount; // we assume that the difference between inputs and outputs (of stake) is miner reward
   }
   else {
     minerReward = outputsAmount;
@@ -1160,24 +1160,27 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   }
 
   if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-	  if (minerReward > reward) { // check if miner reward is not bigger than expected
-		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction spend too much money: " << m_currency.formatAmount(minerReward) <<
-			  ", block reward is " << m_currency.formatAmount(reward);
-		  return false;
-	  }
-	  else if (minerReward < reward) {
-		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction doesn't use full amount of block reward: spent " <<
-			  m_currency.formatAmount(minerReward) << ", block reward is " << m_currency.formatAmount(reward);
-		  return false;
-	  }
+    if (minerReward > reward) { // check if miner reward is not bigger than expected
+      logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction spend too much money: " << m_currency.formatAmount(minerReward) <<
+        ", block reward is " << m_currency.formatAmount(reward);
+      return false;
+    }
+    else if (minerReward < reward) {
+      logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction doesn't use full amount of block reward: spent " <<
+        m_currency.formatAmount(minerReward) << ", block reward is " << m_currency.formatAmount(reward);
+      return false;
+    }
 
-	  if (inputsAmount < stake) { // check stake, we don't care what's actually stake and what's change as both will be locked
-		  logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction doesn't have enough stake: input amount " <<
-			  m_currency.formatAmount(inputsAmount) << ", minimal stake " << m_currency.formatAmount(stake);
-		  return false;
-	  }
+    // check stake, we don't care what's actually stake and what's change as both will be locked
+    if (inputsAmount < stake) {
+      logger(ERROR, BRIGHT_RED) << "Insufficient stake in coinbase transaction: " 
+                                << m_currency.formatAmount(inputsAmount) 
+                                << ", whereas minimum is " 
+                                << m_currency.formatAmount(stake);
+      return false;
+    }
 
-	  return true;
+    return true;
   }
 
   if (minerReward > reward) {
