@@ -1214,15 +1214,15 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // throw our block into common pot
   pot.insert(std::end(pot), std::begin(bd), std::end(bd));
 
-  // Splitting the hash_1 into 8 chunks and getting the corresponding 8 blocks from blockchain
+  // Splitting the hash_1 into 32 chunks and getting the corresponding 32 blocks from blockchain
   // and throwing them into the pot too
 
   size_t currentMinedMoneyUnlockWindow = !m_currency.isTestnet() ? m_currency.minedMoneyUnlockWindow_v1() : m_currency.minedMoneyUnlockWindow();
   uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
   uint32_t allowedHeight = std::min(m_blocks.size(), currentHeight - 1 - currentMinedMoneyUnlockWindow);
 
-  for (uint8_t i = 1; i <= 8; i++) {
-    uint32_t chunk = *reinterpret_cast<uint32_t *>(&hash_1.data[i * 4 - 4]);
+  for (auto i = 1; i <= sizeof(hash_1.data); i++) {
+    uint32_t chunk = *reinterpret_cast<uint8_t *>(&hash_1.data[i]);
     uint32_t height_i = chunk % allowedHeight;
     Crypto::Hash hash_i = getBlockIdByHeight(height_i);
 
@@ -1245,7 +1245,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t lanes = 2;
   uint32_t t_cost = 2;
 
-  // stir the pot - hashing the 1 + 8 blocks as one continous data, salt is hash_1
+  // stir the pot - hashing the 33 blocks as one continuous data, salt is hash_1
   Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(&hash_1), m_cost, lanes, t_cost, res);
 
   return true;
