@@ -1219,7 +1219,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   size_t currentMinedMoneyUnlockWindow = !m_currency.isTestnet() ? m_currency.minedMoneyUnlockWindow_v1() : m_currency.minedMoneyUnlockWindow();
   uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
-  uint32_t allowedHeight = currentHeight - 1 - currentMinedMoneyUnlockWindow;
+  uint32_t allowedHeight = std::min(m_blocks.size(), currentHeight - 1 - currentMinedMoneyUnlockWindow);
 
   for (uint8_t i = 1; i <= 8; i++) {
     uint32_t chunk = *reinterpret_cast<uint32_t *>(&hash_1.data[i * 4 - 4]);
