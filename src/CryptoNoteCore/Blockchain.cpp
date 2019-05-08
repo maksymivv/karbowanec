@@ -1253,7 +1253,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t maxHeight = std::min(m_blocks.size(), currentHeight - 1 - m_currency.minedMoneyUnlockWindow_v1());
   std::vector<uint64_t> heights;
 
-  fillHeights(&hash_1, sizeof(hash_1), maxHeight, heights, 32);
+  fillHeights(hash_1.data, sizeof(hash_1), maxHeight, heights, 32);
 
   for (auto i = 0; i < 32; ++i) {
     Crypto::Hash hash_i = getBlockIdByHeight(static_cast<uint32_t>(heights[i]));
@@ -1278,7 +1278,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t t_cost = 2;
 
   // stir the pot - hashing the 1 + 32 blocks as one continuous data, salt is hash_1
-  Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(hash_1), m_cost, lanes, t_cost, res);
+  Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, res);
 
   return true;
 }
