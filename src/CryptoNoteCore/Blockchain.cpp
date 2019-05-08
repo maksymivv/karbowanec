@@ -1191,7 +1191,7 @@ bool Blockchain::checkProofOfWork(Crypto::cn_context& context, const Block& bloc
   return true;
 }
 
-void fillHeights(const void* seed, size_t seedSize, uint64_t maxHeight, std::vector<uint32_t>& heights, size_t heightCount)
+void fillHeights(const void* seed, size_t seedSize, uint64_t maxHeight, std::vector<uint64_t>& heights, size_t heightCount)
 {
   heights.clear();
 
@@ -1251,12 +1251,12 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
   uint32_t maxHeight = std::min(m_blocks.size(), currentHeight - 1 - m_currency.minedMoneyUnlockWindow_v1());
-  std::vector<uint32_t> heights;
+  std::vector<uint64_t> heights;
 
   fillHeights(&hash_1, sizeof(hash_1), maxHeight, heights, 32);
 
   for (auto i = 0; i < 32; ++i) {
-    Crypto::Hash hash_i = getBlockIdByHeight(heights[i]);
+    Crypto::Hash hash_i = getBlockIdByHeight(static_cast<uint32_t>(heights[i]));
 
     Block bl;
     if (!getBlockByHash(hash_i, bl)) {
@@ -1277,8 +1277,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t lanes = 2;
   uint32_t t_cost = 2;
 
-  // stir the pot - hashing the 1 + 8 blocks as one continous data, salt is hash_1
-  Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(&hash_1), m_cost, lanes, t_cost, res);
+  // stir the pot - hashing the 1 + 32 blocks as one continuous data, salt is hash_1
+  Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(hash_1), m_cost, lanes, t_cost, res);
 
   return true;
 }

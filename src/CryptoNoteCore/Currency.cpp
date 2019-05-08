@@ -723,8 +723,10 @@ namespace CryptoNote {
 		
 		// Hard code D if there are not at least N+1 BLOCKS after fork (or genesis)
 		// This helps a lot in preventing a very common problem in CN forks from conflicting difficulties.
+
     uint64_t difficulty_guess = 10000;// !isTestnet() ? 1000000000 : 10000;
-		if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + N) { return difficulty_guess; }
+
+    if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + N) { return difficulty_guess; }
 
     // Genesis should be the only time sizes are < N+1.
     assert(timestamps.size() == cumulativeDifficulties.size());// && timestamps.size() == N + 1);
