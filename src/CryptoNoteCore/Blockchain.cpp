@@ -1277,8 +1277,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t lanes = 2;
   uint32_t t_cost = 2;
 
-  // stir the pot - hashing the 1 + 8 blocks as one continous data, salt is hash_1
-  Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(&hash_1), m_cost, lanes, t_cost, res);
+  // stir the pot - hashing the 1 + 32 blocks as one continuous data, salt is hash_1
+  Crypto::argon2d_hash(pot.data(), pot.size(), &hash_1, sizeof(hash_1), m_cost, lanes, t_cost, res);
 
   return true;
 }
