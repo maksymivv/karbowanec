@@ -1250,7 +1250,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // and throw them into the pot too
 
   uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
-  uint32_t maxHeight = std::min(m_blocks.size(), currentHeight - 1 - m_currency.minedMoneyUnlockWindow());
+  uint32_t maxHeight = std::min<uint32_t>(m_blocks.size(), currentHeight - 1 - m_currency.minedMoneyUnlockWindow());
   std::vector<uint64_t> heights;
 
   fillHeights(hash_1.data, sizeof(hash_1), maxHeight, heights, 32);
