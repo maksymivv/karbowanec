@@ -1,3 +1,0 @@
-[submodule "external/argon2"]
-	path = external/argon2
-	url = https://github.com/WOnder93/argon2.git
