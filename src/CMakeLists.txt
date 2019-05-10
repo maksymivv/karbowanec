@@ -74,7 +74,7 @@ add_executable(Miner ${Miner})
 add_executable(GreenWallet ${GreenWallet})
 endif()
 
-target_link_libraries(Crypto argon2)
+target_link_libraries(Crypto argon2-static)
 
 if(MSVC)
   target_link_libraries(System ws2_32)
