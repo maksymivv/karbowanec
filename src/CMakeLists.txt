@@ -75,6 +75,7 @@ add_executable(GreenWallet ${GreenWallet})
 endif()
 
 target_link_libraries(Crypto argon2-static)
+target_link_libraries(CryptoNoteCore argon2-static)
 
 if(MSVC)
   target_link_libraries(System ws2_32)
