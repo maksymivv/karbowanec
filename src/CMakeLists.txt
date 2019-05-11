@@ -74,7 +74,7 @@ add_executable(Miner ${Miner})
 add_executable(GreenWallet ${GreenWallet})
 endif()
 
-target_link_libraries(Crypto argon2)
+target_link_libraries(Crypto argon2-static)
 
 if(MSVC)
   target_link_libraries(System ws2_32)
@@ -112,7 +112,7 @@ add_dependencies(PaymentGateService version)
 add_dependencies(P2P version)
 add_dependencies(GreenWallet version)
 
-set_property(TARGET Daemon PROPERTY OUTPUT_NAME "karbowanecd")
+set_property(TARGET Daemon PROPERTY OUTPUT_NAME "krbcoind")
 set_property(TARGET SimpleWallet PROPERTY OUTPUT_NAME "simplewallet")
 set_property(TARGET PaymentGateService PROPERTY OUTPUT_NAME "walletd")
 set_property(TARGET Miner PROPERTY OUTPUT_NAME "miner")
