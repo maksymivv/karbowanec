@@ -140,8 +140,6 @@ endif()
 # elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
 #   set(BSDI TRUE)
 
-#include_directories(include src contrib/epee/include external "${CMAKE_BINARY_DIR}/version")
-
 if(APPLE OR FREEBSD)
   include_directories(SYSTEM /usr/include/malloc)
   if(POLICY CMP0042)
