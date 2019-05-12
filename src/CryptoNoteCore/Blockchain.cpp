@@ -1236,7 +1236,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   // Phase 1
 
-  Crypto::Hash hash_1;
+  Crypto::Hash hash_1, hash_2;
 
   // Hashing the current blockdata (preprocessing it)
   cn_fast_hash(bd.data(), bd.size(), hash_1);
@@ -1278,7 +1278,9 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t t_cost = 2;
 
   // stir the pot - hashing the 1 + 32 blocks as one continuous data, salt is hash_1
-  Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, res);
+  Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, hash_2);
+
+  res = hash_2;
 
   return true;
 }
