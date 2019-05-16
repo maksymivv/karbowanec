@@ -1180,7 +1180,7 @@ bool Blockchain::checkProofOfWork(Crypto::cn_context& context, const Block& bloc
     return m_currency.checkProofOfWork(context, block, currentDiffic, proofOfWork);
   }
 
-  if (!getBlockLongHash(context, block, proofOfWork)) {
+  if (!getBlockLongHash(context, block, NULL, proofOfWork)) {
     return false;
   }
 
@@ -1223,7 +1223,7 @@ void fillHeights(const void* seed, size_t seedSize, uint64_t maxHeight, std::vec
   }
 }
 
-bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res) {
+bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, uint64_t* dataset_64, Crypto::Hash& res) {
   if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
     return get_block_longhash(context, b, res);
   }
@@ -1278,9 +1278,12 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t t_cost = 2;
 
   // stir the pot - hashing the 1 + 32 blocks as one continuous data, salt is hash_1
-  Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, hash_2);
+  //Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, hash_2);
 
-  //logger(INFO, BRIGHT_GREEN) << "getBlockLongHash: " << res;
+  if (!dataset_64)
+    squash_lite(pot.data(), pot.size(), hash_2, currentHeight);
+  else
+    squash_full(pot.data(), pot.size(), hash_2, dataset_64);
 
   res = hash_2;
 

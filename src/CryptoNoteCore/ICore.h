@@ -129,7 +129,7 @@ public:
 
   virtual void rollbackBlockchain(const uint32_t height) = 0;
 
-  virtual bool getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res) = 0;
+  virtual bool getBlockLongHash(Crypto::cn_context &context, const Block& b, uint64_t* dataset, Crypto::Hash& res) = 0;
 
   virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) = 0;
 };

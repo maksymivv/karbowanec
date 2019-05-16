@@ -280,6 +280,18 @@ namespace CryptoNote
 
     unsigned nthreads = std::thread::hardware_concurrency();
 
+    uint64_t* dataset_64;
+
+    if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      uint32_t currentHeight = boost::get<BaseInput>(bl.baseTransaction.inputs[0]).blockIndex;
+      dataset_64 = (uint64_t*)calloc(536870912, 8);
+      if (!dataset_64) exit(1);
+      logger(Logging::INFO) << "Initialising dataset";
+      Crypto::dataset_height(currentHeight, dataset_64);
+      logger(Logging::INFO) << "Finished one-time initialisation";
+      logger(Logging::INFO) << "Started mining on dataset";
+    }
+
     if (nthreads > 0 && diffic > 5) {
       std::vector<std::future<void>> threads(nthreads);
       std::atomic<uint32_t> foundNonce;
@@ -296,13 +308,15 @@ namespace CryptoNote
           for (uint32_t nonce = startNonce + i; !found; nonce += nthreads) {
             lb.nonce = nonce;
 
-            if (!m_handler.getBlockLongHash(localctx, lb, h)) {
+            if (!m_handler.getBlockLongHash(localctx, lb, dataset_64, h)) {
               return;
             }
 
             if (check_hash(h, diffic)) {
               foundNonce = nonce;
               found = true;
+              if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5)
+                free(dataset_64);
               return;
             }
           }
@@ -321,11 +335,13 @@ namespace CryptoNote
     } else {
       for (; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++) {
         Crypto::Hash h;
-        if (!m_handler.getBlockLongHash(context, bl, h)) {
+        if (!m_handler.getBlockLongHash(context, bl, dataset_64, h)) {
           return false;
         }
 
         if (check_hash(h, diffic)) {
+          if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5)
+            free(dataset_64);
           return true;
         }
       }
@@ -371,6 +387,18 @@ namespace CryptoNote
     Crypto::cn_context context;
     Block b;
 
+    uint64_t* dataset_64;
+
+    if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
+      dataset_64 = (uint64_t*)calloc(536870912, 8);
+      if (!dataset_64) exit(1);
+      logger(Logging::INFO) << "Initialising dataset";
+      Crypto::dataset_height(currentHeight, dataset_64);
+      logger(Logging::INFO) << "Finished one-time initialisation";
+      logger(Logging::INFO) << "Started mining on dataset";
+    }
+
     while(!m_stop)
     {
       if(m_pausers_count) //anti split workaround
@@ -398,8 +426,9 @@ namespace CryptoNote
 
       b.nonce = nonce;
       Crypto::Hash h;
-      if (!m_stop && !m_handler.getBlockLongHash(context, b, h)) {
+      if (!m_stop && !m_handler.getBlockLongHash(context, b, dataset_64, h)) {
         logger(ERROR) << "Failed to get block long hash";
+        if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) { free(dataset_64); }
         m_stop = true;
       }
 
@@ -415,6 +444,8 @@ namespace CryptoNote
         Crypto::Hash id;
         if (get_block_hash(b, id))
           logger(INFO, GREEN) << "hash: " << Common::podToHex(id);
+
+        if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) { free(dataset_64); }
 
         if(!m_handler.handle_block_found(b)) {
           --m_config.current_extra_message_index;

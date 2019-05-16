@@ -69,6 +69,16 @@ namespace Crypto {
     argon2d_hash_raw(t_cost, m_cost, lanes, in, inlen, salt, saltlen, reinterpret_cast<char *>(&hash), 64);
   }
 
+  inline void squash_lite(const void* data, size_t length, Hash &hash, uint32_t height) {
+    squash_light_api(data, (uint32_t)length, reinterpret_cast<uint8_t*>(&hash), height);
+  }
+  inline void squash_full(const void* data, size_t length, Hash &hash, uint64_t* dataset) {
+    squash_full_api(data, (uint32_t)length, reinterpret_cast<uint8_t*>(&hash), dataset);
+  }
+  inline void dataset_height(uint32_t height, uint64_t* dataset) {
+    dataset_from_height(height, dataset);
+  }
+
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
     tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
   }
