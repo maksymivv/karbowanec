@@ -1,156 +1,164 @@
-/*
- * Argon2 reference source code package - reference C implementations
- *
- * Copyright 2015
- * Daniel Dinu, Dmitry Khovratovich, Jean-Philippe Aumasson, and Samuel Neves
- *
- * You may use this work under the terms of a Creative Commons CC0 1.0
- * License/Waiver or the Apache Public License 2.0, at your option. The terms of
- * these licenses can be found at:
- *
- * - CC0 1.0 Universal : http://creativecommons.org/publicdomain/zero/1.0
- * - Apache 2.0        : http://www.apache.org/licenses/LICENSE-2.0
- *
- * You should have received a copy of both of these licenses along with this
- * software. If not, they may be obtained at the above URLs.
- */
+#if defined(HAVE_SSE2)
 
-#ifndef PORTABLE_BLAKE2_IMPL_H
-#define PORTABLE_BLAKE2_IMPL_H
+/*
+   BLAKE2 reference source code package - reference C implementations
+
+   Copyright 2012, Samuel Neves <sneves@dei.uc.pt>.  You may use this under the
+   terms of the CC0, the OpenSSL Licence, or the Apache Public License 2.0, at
+   your option.  The terms of these licenses can be found at:
+
+   - CC0 1.0 Universal : http://creativecommons.org/publicdomain/zero/1.0
+   - OpenSSL license   : https://www.openssl.org/source/license.html
+   - Apache 2.0        : http://www.apache.org/licenses/LICENSE-2.0
+
+   More information about the BLAKE2 hash function can be found at
+   https://blake2.net.
+*/
+#ifndef BLAKE2_IMPL_H
+#define BLAKE2_IMPL_H
 
 #include <stdint.h>
 #include <string.h>
 
-#if defined(_MSC_VER)
-#define BLAKE2_INLINE __inline
-#elif defined(__GNUC__) || defined(__clang__)
-#define BLAKE2_INLINE __inline__
+#if !defined(__cplusplus) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L)
+  #if   defined(_MSC_VER)
+    #define BLAKE2_INLINE __inline
+  #elif defined(__GNUC__)
+    #define BLAKE2_INLINE __inline__
+  #else
+    #define BLAKE2_INLINE
+  #endif
 #else
-#define BLAKE2_INLINE
+  #define BLAKE2_INLINE inline
 #endif
 
-/* Argon2 Team - Begin Code */
-/*
-   Not an exhaustive list, but should cover the majority of modern platforms
-   Additionally, the code will always be correct---this is only a performance
-   tweak.
-*/
-#if (defined(__BYTE_ORDER__) &&                                                \
-     (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)) ||                           \
-    defined(__LITTLE_ENDIAN__) || defined(__ARMEL__) || defined(__MIPSEL__) || \
-    defined(__AARCH64EL__) || defined(__amd64__) || defined(__i386__) ||       \
-    defined(_M_IX86) || defined(_M_X64) || defined(_M_AMD64) ||                \
-    defined(_M_ARM)
-#define NATIVE_LITTLE_ENDIAN
-#endif
-/* Argon2 Team - End Code */
-
-static BLAKE2_INLINE uint32_t load32(const void *src) {
+static BLAKE2_INLINE uint32_t load32( const void *src )
+{
 #if defined(NATIVE_LITTLE_ENDIAN)
-    uint32_t w;
-    memcpy(&w, src, sizeof w);
-    return w;
+  uint32_t w;
+  memcpy(&w, src, sizeof w);
+  return w;
 #else
-    const uint8_t *p = (const uint8_t *)src;
-    uint32_t w = *p++;
-    w |= (uint32_t)(*p++) << 8;
-    w |= (uint32_t)(*p++) << 16;
-    w |= (uint32_t)(*p++) << 24;
-    return w;
+  const uint8_t *p = ( const uint8_t * )src;
+  return (( uint32_t )( p[0] ) <<  0) |
+         (( uint32_t )( p[1] ) <<  8) |
+         (( uint32_t )( p[2] ) << 16) |
+         (( uint32_t )( p[3] ) << 24) ;
 #endif
 }
 
-static BLAKE2_INLINE uint64_t load64(const void *src) {
+static BLAKE2_INLINE uint64_t load64( const void *src )
+{
 #if defined(NATIVE_LITTLE_ENDIAN)
-    uint64_t w;
-    memcpy(&w, src, sizeof w);
-    return w;
+  uint64_t w;
+  memcpy(&w, src, sizeof w);
+  return w;
 #else
-    const uint8_t *p = (const uint8_t *)src;
-    uint64_t w = *p++;
-    w |= (uint64_t)(*p++) << 8;
-    w |= (uint64_t)(*p++) << 16;
-    w |= (uint64_t)(*p++) << 24;
-    w |= (uint64_t)(*p++) << 32;
-    w |= (uint64_t)(*p++) << 40;
-    w |= (uint64_t)(*p++) << 48;
-    w |= (uint64_t)(*p++) << 56;
-    return w;
+  const uint8_t *p = ( const uint8_t * )src;
+  return (( uint64_t )( p[0] ) <<  0) |
+         (( uint64_t )( p[1] ) <<  8) |
+         (( uint64_t )( p[2] ) << 16) |
+         (( uint64_t )( p[3] ) << 24) |
+         (( uint64_t )( p[4] ) << 32) |
+         (( uint64_t )( p[5] ) << 40) |
+         (( uint64_t )( p[6] ) << 48) |
+         (( uint64_t )( p[7] ) << 56) ;
 #endif
 }
 
-static BLAKE2_INLINE void store32(void *dst, uint32_t w) {
+static BLAKE2_INLINE uint16_t load16( const void *src )
+{
 #if defined(NATIVE_LITTLE_ENDIAN)
-    memcpy(dst, &w, sizeof w);
+  uint16_t w;
+  memcpy(&w, src, sizeof w);
+  return w;
 #else
-    uint8_t *p = (uint8_t *)dst;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
+  const uint8_t *p = ( const uint8_t * )src;
+  return ( uint16_t )((( uint32_t )( p[0] ) <<  0) |
+                      (( uint32_t )( p[1] ) <<  8));
 #endif
 }
 
-static BLAKE2_INLINE void store64(void *dst, uint64_t w) {
+static BLAKE2_INLINE void store16( void *dst, uint16_t w )
+{
 #if defined(NATIVE_LITTLE_ENDIAN)
-    memcpy(dst, &w, sizeof w);
+  memcpy(dst, &w, sizeof w);
 #else
-    uint8_t *p = (uint8_t *)dst;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
+  uint8_t *p = ( uint8_t * )dst;
+  *p++ = ( uint8_t )w; w >>= 8;
+  *p++ = ( uint8_t )w;
 #endif
 }
 
-static BLAKE2_INLINE uint64_t load48(const void *src) {
-    const uint8_t *p = (const uint8_t *)src;
-    uint64_t w = *p++;
-    w |= (uint64_t)(*p++) << 8;
-    w |= (uint64_t)(*p++) << 16;
-    w |= (uint64_t)(*p++) << 24;
-    w |= (uint64_t)(*p++) << 32;
-    w |= (uint64_t)(*p++) << 40;
-    return w;
+static BLAKE2_INLINE void store32( void *dst, uint32_t w )
+{
+#if defined(NATIVE_LITTLE_ENDIAN)
+  memcpy(dst, &w, sizeof w);
+#else
+  uint8_t *p = ( uint8_t * )dst;
+  p[0] = (uint8_t)(w >>  0);
+  p[1] = (uint8_t)(w >>  8);
+  p[2] = (uint8_t)(w >> 16);
+  p[3] = (uint8_t)(w >> 24);
+#endif
 }
 
-static BLAKE2_INLINE void store48(void *dst, uint64_t w) {
-    uint8_t *p = (uint8_t *)dst;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
-    w >>= 8;
-    *p++ = (uint8_t)w;
+static BLAKE2_INLINE void store64( void *dst, uint64_t w )
+{
+#if defined(NATIVE_LITTLE_ENDIAN)
+  memcpy(dst, &w, sizeof w);
+#else
+  uint8_t *p = ( uint8_t * )dst;
+  p[0] = (uint8_t)(w >>  0);
+  p[1] = (uint8_t)(w >>  8);
+  p[2] = (uint8_t)(w >> 16);
+  p[3] = (uint8_t)(w >> 24);
+  p[4] = (uint8_t)(w >> 32);
+  p[5] = (uint8_t)(w >> 40);
+  p[6] = (uint8_t)(w >> 48);
+  p[7] = (uint8_t)(w >> 56);
+#endif
 }
 
-static BLAKE2_INLINE uint32_t rotr32(const uint32_t w, const unsigned c) {
-    return (w >> c) | (w << (32 - c));
+static BLAKE2_INLINE uint64_t load48( const void *src )
+{
+  const uint8_t *p = ( const uint8_t * )src;
+  return (( uint64_t )( p[0] ) <<  0) |
+         (( uint64_t )( p[1] ) <<  8) |
+         (( uint64_t )( p[2] ) << 16) |
+         (( uint64_t )( p[3] ) << 24) |
+         (( uint64_t )( p[4] ) << 32) |
+         (( uint64_t )( p[5] ) << 40) ;
 }
 
-static BLAKE2_INLINE uint64_t rotr64(const uint64_t w, const unsigned c) {
-    return (w >> c) | (w << (64 - c));
+static BLAKE2_INLINE void store48( void *dst, uint64_t w )
+{
+  uint8_t *p = ( uint8_t * )dst;
+  p[0] = (uint8_t)(w >>  0);
+  p[1] = (uint8_t)(w >>  8);
+  p[2] = (uint8_t)(w >> 16);
+  p[3] = (uint8_t)(w >> 24);
+  p[4] = (uint8_t)(w >> 32);
+  p[5] = (uint8_t)(w >> 40);
 }
 
-void clear_internal_memory(void *v, size_t n);
+static BLAKE2_INLINE uint32_t rotr32( const uint32_t w, const unsigned c )
+{
+  return ( w >> c ) | ( w << ( 32 - c ) );
+}
+
+static BLAKE2_INLINE uint64_t rotr64( const uint64_t w, const unsigned c )
+{
+  return ( w >> c ) | ( w << ( 64 - c ) );
+}
+
+/* prevents compiler optimizing out memset() */
+static BLAKE2_INLINE void secure_zero_memory(void *v, size_t n)
+{
+  static void *(*const volatile memset_v)(void *, int, size_t) = &memset;
+  memset_v(v, 0, n);
+}
 
 #endif
+
+#endif // defined(HAVE_SSE2)

@@ -12,8 +12,8 @@
 #define HASH_BYTES      32                 // hash length in bytes
 #define CACHE_ROUNDS    4                  // number of rounds in cache production
 #define EPOCH_LENGTH    60                 // blocks per epoch
-#define DATASET_PARENTS 16                 // number of hashes before calculating dataset entry
-#define ACCESSES        256
+#define DATASET_PARENTS 4                  // number of hashes before calculating dataset entry
+#define ACCESSES        1024
 // Assuming 4 blocks per second, an epoch estimates 15 minutes
 
 

@@ -59,6 +59,8 @@ namespace CryptoNote {
     bool worker_thread(uint32_t th_local_index);
     bool request_block_template();
     void merge_hr();
+    void initDataset();
+    void freeDataset();
 
     struct miner_config
     {
@@ -77,6 +79,7 @@ namespace CryptoNote {
     std::atomic<uint32_t> m_template_no;
     std::atomic<uint32_t> m_starter_nonce;
     difficulty_type m_diffic;
+    uint64_t* dataset_64;
 
     std::atomic<uint32_t> m_threads_total;
     std::atomic<int32_t> m_pausers_count;

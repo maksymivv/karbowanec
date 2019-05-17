@@ -214,6 +214,23 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
+  void miner::initDataset() {
+    if (m_template.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      dataset_64 = (uint64_t*)calloc(536870912, 8);
+      if (!dataset_64) exit(1);
+      uint32_t currentHeight = boost::get<BaseInput>(m_template.baseTransaction.inputs[0]).blockIndex;
+      logger(Logging::INFO) << "Initialising dataset";
+      Crypto::dataset_height(currentHeight, dataset_64);
+      logger(Logging::INFO) << "Finished one-time initialisation";
+      logger(Logging::INFO) << "Started mining on dataset";
+    }
+  }
+
+  void miner::freeDataset() {
+    if (dataset_64)
+      free(dataset_64);
+  }
+
   bool miner::start(const AccountPublicAddress& adr, size_t threads_count)
   {   
     if (is_mining()) {
@@ -235,6 +252,8 @@ namespace CryptoNote
     if (!m_template_no) {
       request_block_template(); //lets update block template
     }
+
+    
 
     m_stop = false;
 
@@ -280,17 +299,7 @@ namespace CryptoNote
 
     unsigned nthreads = std::thread::hardware_concurrency();
 
-    uint64_t* dataset_64;
-
-    if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      uint32_t currentHeight = boost::get<BaseInput>(bl.baseTransaction.inputs[0]).blockIndex;
-      dataset_64 = (uint64_t*)calloc(536870912, 8);
-      if (!dataset_64) exit(1);
-      logger(Logging::INFO) << "Initialising dataset";
-      Crypto::dataset_height(currentHeight, dataset_64);
-      logger(Logging::INFO) << "Finished one-time initialisation";
-      logger(Logging::INFO) << "Started mining on dataset";
-    }
+    initDataset();
 
     if (nthreads > 0 && diffic > 5) {
       std::vector<std::future<void>> threads(nthreads);
@@ -315,8 +324,11 @@ namespace CryptoNote
             if (check_hash(h, diffic)) {
               foundNonce = nonce;
               found = true;
-              if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5)
-                free(dataset_64);
+              if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+                freeDataset();
+                initDataset();
+              }
+
               return;
             }
           }
@@ -340,8 +352,10 @@ namespace CryptoNote
         }
 
         if (check_hash(h, diffic)) {
-          if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5)
-            free(dataset_64);
+          if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+            freeDataset();
+            initDataset();
+          }
           return true;
         }
       }
@@ -387,17 +401,7 @@ namespace CryptoNote
     Crypto::cn_context context;
     Block b;
 
-    uint64_t* dataset_64;
-
-    if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
-      dataset_64 = (uint64_t*)calloc(536870912, 8);
-      if (!dataset_64) exit(1);
-      logger(Logging::INFO) << "Initialising dataset";
-      Crypto::dataset_height(currentHeight, dataset_64);
-      logger(Logging::INFO) << "Finished one-time initialisation";
-      logger(Logging::INFO) << "Started mining on dataset";
-    }
+    initDataset();
 
     while(!m_stop)
     {
@@ -428,7 +432,9 @@ namespace CryptoNote
       Crypto::Hash h;
       if (!m_stop && !m_handler.getBlockLongHash(context, b, dataset_64, h)) {
         logger(ERROR) << "Failed to get block long hash";
-        if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) { free(dataset_64); }
+        if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+          freeDataset();
+        }
         m_stop = true;
       }
 
@@ -445,14 +451,18 @@ namespace CryptoNote
         if (get_block_hash(b, id))
           logger(INFO, GREEN) << "hash: " << Common::podToHex(id);
 
-        if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) { free(dataset_64); }
-
         if(!m_handler.handle_block_found(b)) {
           --m_config.current_extra_message_index;
         } else {
           //success update, lets update config
           Common::saveStringToFile(m_config_folder_path + "/" + CryptoNote::parameters::MINER_CONFIG_FILE_NAME, storeToJson(m_config));
         }
+
+        if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+          freeDataset();
+          initDataset();
+        }
+
       }
 
       nonce += m_threads_total;
