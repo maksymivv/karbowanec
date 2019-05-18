@@ -1223,7 +1223,7 @@ void fillHeights(const void* seed, size_t seedSize, uint64_t maxHeight, std::vec
   }
 }
 
-#define ITER 1048576  // 1Mi or 1<<20
+#define ITER 256
 
 bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res) {
   // Sanity Check
