@@ -1317,24 +1317,25 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   }
 
   // The very different style is caused by a different programmer (https://github.com/ClashLuke/).
+
   // Variable Initialisation
   Crypto::Hash hashInit, hashIter0, hashIter1;
   uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
-  uint32_t maxHeight = std::min<uint32_t>(m_blocks.size() - 1, currentHeight - 1 - m_currency.minedMoneyUnlockWindow());
-  uint8_t*  hashi0_8 = hashIter0.data;  // reinterpret_cast<uint8_t*>(&hashIter0);
-  uint64_t* hashi0_64_0 = reinterpret_cast<uint64_t*>(&hashIter0);
-  uint64_t* hashi0_64_1 = &(reinterpret_cast<uint64_t*>(&hashIter0))[1];
-  uint64_t* hashi0_64_2 = &(reinterpret_cast<uint64_t*>(&hashIter0))[2];
-  uint64_t* hashi0_64_3 = &(reinterpret_cast<uint64_t*>(&hashIter0))[3];
-  uint64_t* hashi1_64_0 = reinterpret_cast<uint64_t*>(&hashIter1);
-  uint64_t* hashi1_64_1 = &(reinterpret_cast<uint64_t*>(&hashIter1))[1];
-  uint64_t* hashi1_64_2 = &(reinterpret_cast<uint64_t*>(&hashIter1))[2];
-  uint64_t* hashi1_64_3 = &(reinterpret_cast<uint64_t*>(&hashIter1))[3];
-  uint32_t* hasht_32 = reinterpret_cast<uint32_t*>(&hashInit);
-  uint64_t* hasht_64_0 = reinterpret_cast<uint64_t*>(&hashInit);
-  uint64_t* hasht_64_1 = &(reinterpret_cast<uint64_t*>(&hashInit))[1];
-  uint64_t* hasht_64_2 = &(reinterpret_cast<uint64_t*>(&hashInit))[2];
-  uint64_t* hasht_64_3 = &(reinterpret_cast<uint64_t*>(&hashInit))[3];
+  uint32_t  maxHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex - 1 - m_currency.minedMoneyUnlockWindow_v1();
+  uint8_t*  hashi0_8 = (uint8_t*)hashIter0.data;
+  uint64_t* hashi0_64_0 = (uint64_t*)hashIter0.data;
+  uint64_t* hashi0_64_1 = &((uint64_t*)hashIter0.data)[1];
+  uint64_t* hashi0_64_2 = &((uint64_t*)hashIter0.data)[2];
+  uint64_t* hashi0_64_3 = &((uint64_t*)hashIter0.data)[3];
+  uint64_t* hashi1_64_0 = (uint64_t*)hashIter1.data;
+  uint64_t* hashi1_64_1 = &((uint64_t*)hashIter1.data)[1];
+  uint64_t* hashi1_64_2 = &((uint64_t*)hashIter1.data)[2];
+  uint64_t* hashi1_64_3 = &((uint64_t*)hashIter1.data)[3];
+  uint32_t* hasht_32 = (uint32_t*)hashInit.data;
+  uint64_t* hasht_64_0 = (uint64_t*)hashInit.data;
+  uint64_t* hasht_64_1 = &((uint64_t*)hashInit.data)[1];
+  uint64_t* hasht_64_2 = &((uint64_t*)hashInit.data)[2];
+  uint64_t* hasht_64_3 = &((uint64_t*)hashInit.data)[3];
   uint32_t  height_0 = 0;
   uint32_t  height_1 = 0;
   uint32_t  height_2 = 0;
