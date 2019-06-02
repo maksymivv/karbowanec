@@ -715,7 +715,7 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
   std::vector<difficulty_type> cumulative_difficulties;
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(m_blocks.size()));
   size_t offset;
-  offset = m_blocks.size() - std::min(m_blocks.size(), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
+  offset = m_blocks.size() - std::min(m_blocks.size(), static_cast<uint64_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
 
   if (offset == 0) {
     ++offset;
@@ -738,12 +738,12 @@ difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window) {
   }
 
   size_t offset;
-  offset = height - std::min(height, std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size()), window));
+  offset = height - std::min(height, std::min<uint32_t>(m_blocks.size(), window));
   if (offset == 0) {
     ++offset;
   }
   difficulty_type cumulDiffForPeriod = m_blocks[height].cumulative_difficulty - m_blocks[offset].cumulative_difficulty;
-  return cumulDiffForPeriod / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size()), window);
+  return cumulDiffForPeriod / std::min<uint32_t>(m_blocks.size(), window);
 }
 
 difficulty_type Blockchain::getAvgCumulativeDifficulty(uint32_t height) {
@@ -765,13 +765,13 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
 	    return 0;
 	}
 
-	if (height > static_cast<uint32_t>(m_blocks.size()) - 1) {
-		height = static_cast<uint32_t>(m_blocks.size()) - 1;
+	if (height > m_blocks.size() - 1) {
+		height = m_blocks.size() - 1;
 	}
 	if (height < 3) {
 		height = 3;
 	}
-  uint32_t window = std::min(height, std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size()), static_cast<uint32_t>(m_currency.expectedNumberOfBlocksPerDay())));
+	size_t window = std::min(height, std::min<uint32_t>(m_blocks.size(), m_currency.expectedNumberOfBlocksPerDay()));
 	if (window == 0) {
 		++window;
 	}
@@ -1180,7 +1180,7 @@ bool Blockchain::checkProofOfWork(Crypto::cn_context& context, const Block& bloc
     return m_currency.checkProofOfWork(context, block, currentDiffic, proofOfWork);
   }
 
-  if (!getBlockLongHash(context, block, proofOfWork)) {
+  if (!getBlockLongHash(context, block, NULL, proofOfWork)) {
     return false;
   }
 
@@ -1223,7 +1223,7 @@ void fillHeights(const void* seed, size_t seedSize, uint64_t maxHeight, std::vec
   }
 }
 
-bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res) {
+bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, uint64_t* dataset_64, Crypto::Hash& res) {
   if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
     return get_block_longhash(context, b, res);
   }
@@ -1250,38 +1250,40 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // and throw them into the pot too
 
   uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
-  uint32_t maxHeight = std::min<uint32_t>(m_blocks.size(), currentHeight - 1 - m_currency.minedMoneyUnlockWindow_v1());
+  uint32_t maxHeight = std::min<uint32_t>(m_blocks.size(), currentHeight - 1 - m_currency.minedMoneyUnlockWindow());
   std::vector<uint64_t> heights;
 
   fillHeights(hash_1.data, sizeof(hash_1), maxHeight, heights, 32);
 
-  for (size_t i = 0; i < 32; ++i) {
-    Crypto::Hash hi = getBlockIdByHeight(static_cast<uint32_t>(heights[i]));
-    Block bi;
-    if (!getBlockByHash(hi, bi)) {
-      logger(ERROR, BRIGHT_RED) << "Failed to getBlockByHash " << Common::podToHex(hi) << " at height " << heights[i];
+  for (auto i = 0; i < 32; ++i) {
+    Crypto::Hash hash_i = getBlockIdByHeight(static_cast<uint32_t>(heights[i]));
+
+    Block bl;
+    if (!getBlockByHash(hash_i, bl)) {
+      logger(ERROR, BRIGHT_RED) << "Failed to getBlockByHash " << Common::podToHex(hash_i) << " at height " << heights[i];
       return false;
     }
     BinaryArray ba;
-    if (!get_block_hashing_blob(bi, ba)) {
+    if (!get_block_hashing_blob(bl, ba)) {
       logger(ERROR, BRIGHT_RED) << "Failed to get_block_hashing_blob of additional block " << i << " in getBlockLongHash";
       return false;
     }
-    //if (!toBinaryArray(bi, ba)) {
-    //  logger(ERROR, BRIGHT_RED) << "Failed to convert to BinaryArray the additional block " << i << " in getBlockLongHash";
-    //  return false;
-    //}
     pot.insert(std::end(pot), std::begin(ba), std::end(ba));
   }
 
   // Phase 3
 
-  uint32_t m_cost = 1024;
+  uint32_t m_cost = currentHeight > 813 ? 512 : 128;
   uint32_t lanes = 2;
   uint32_t t_cost = 2;
 
   // stir the pot - hashing the 1 + 32 blocks as one continuous data, salt is hash_1
-  Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, hash_2);
+  //Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, hash_2);
+
+  if (!dataset_64)
+    squash_lite(pot.data(), pot.size(), hash_2, currentHeight);
+  else
+    squash_full(pot.data(), pot.size(), hash_2, dataset_64);
 
   res = hash_2;
 
