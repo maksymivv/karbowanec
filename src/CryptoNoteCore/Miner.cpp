@@ -95,11 +95,14 @@ namespace CryptoNote
     if (!is_mining()) {
       return true;
     }
-
-    return request_block_template();
+    freeDataset();
+    bool r = request_block_template();
+    initDataset();
+    return r;
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::request_block_template() {
+    
     Block bl = boost::value_initialized<Block>();
     difficulty_type di = 0;
     uint32_t height;
