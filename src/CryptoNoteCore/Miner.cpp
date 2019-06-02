@@ -95,9 +95,9 @@ namespace CryptoNote
     if (!is_mining()) {
       return true;
     }
-    freeDataset();
+    FREE_DATASET;
     bool r = request_block_template();
-    initDataset();
+    INIT_DATASET;
     return r;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -217,22 +217,19 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  void miner::initDataset() {
-    if (m_template.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      dataset_64 = (uint64_t*)calloc(536870912, 8);
-      if (!dataset_64) exit(1);
-      uint32_t currentHeight = boost::get<BaseInput>(m_template.baseTransaction.inputs[0]).blockIndex;
-      logger(Logging::INFO) << "Initialising dataset";
-      Crypto::dataset_height(currentHeight, dataset_64);
-      logger(Logging::INFO) << "Finished one-time initialisation";
-      logger(Logging::INFO) << "Started mining on dataset";
+  #define INIT_DATASET \
+    if (m_template.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {\
+      dataset_64 = (uint64_t*)calloc(536870912, 8);\
+      if (!dataset_64) exit(1);\
+      uint32_t currentHeight = boost::get<BaseInput>(m_template.baseTransaction.inputs[0]).blockIndex;\
+      logger(Logging::INFO) << "Initialising dataset";\
+      Crypto::dataset_height(currentHeight, dataset_64);\
+      logger(Logging::INFO) << "Finished one-time initialisation";\
+      logger(Logging::INFO) << "Started mining on dataset";\
     }
-  }
 
-  void miner::freeDataset() {
-    if (dataset_64)
-      free(dataset_64);
-  }
+  #define FREE_DATASET\
+    if (dataset_64) free(dataset_64);
 
   bool miner::start(const AccountPublicAddress& adr, size_t threads_count)
   {   
@@ -302,7 +299,7 @@ namespace CryptoNote
 
     unsigned nthreads = std::thread::hardware_concurrency();
 
-    initDataset();
+    INIT_DATASET;
 
     if (nthreads > 0 && diffic > 5) {
       std::vector<std::future<void>> threads(nthreads);
@@ -328,8 +325,8 @@ namespace CryptoNote
               foundNonce = nonce;
               found = true;
               if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-                freeDataset();
-                initDataset();
+                FREE_DATASET;
+                INIT_DATASET;
               }
 
               return;
@@ -356,8 +353,8 @@ namespace CryptoNote
 
         if (check_hash(h, diffic)) {
           if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-            freeDataset();
-            initDataset();
+            FREE_DATASET;
+            INIT_DATASET;
           }
           return true;
         }
@@ -404,7 +401,7 @@ namespace CryptoNote
     Crypto::cn_context context;
     Block b;
 
-    initDataset();
+    INIT_DATASET;
 
     while(!m_stop)
     {
@@ -436,7 +433,7 @@ namespace CryptoNote
       if (!m_stop && !m_handler.getBlockLongHash(context, b, dataset_64, h)) {
         logger(ERROR) << "Failed to get block long hash";
         if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-          freeDataset();
+          FREE_DATASET;
         }
         m_stop = true;
       }
@@ -462,8 +459,8 @@ namespace CryptoNote
         }
 
         if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-          freeDataset();
-          initDataset();
+          FREE_DATASET;
+          INIT_DATASET;
         }
 
       }
