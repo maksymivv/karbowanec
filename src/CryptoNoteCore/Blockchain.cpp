@@ -1240,7 +1240,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, u
 
   // Hashing the current blockdata (preprocessing it)
   cn_fast_hash(bd.data(), bd.size(), hash_1);
-  
+/*
   // Phase 2
 
   // throw our block into common pot
@@ -1279,11 +1279,11 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, u
 
   // stir the pot - hashing the 1 + 32 blocks as one continuous data, salt is hash_1
   //Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, hash_2);
-
+*/
   if (!dataset_64)
-    squash_lite(pot.data(), pot.size(), hash_2, (uint8_t*)&b.previousBlockHash);
+    squash_lite(bd.data(), bd.size(), hash_2, (uint8_t*)&b.previousBlockHash);
   else
-    squash_full(pot.data(), pot.size(), hash_2, dataset_64);
+    squash_full(bd.data(), bd.size(), hash_2, dataset_64);
 
   res = hash_2;
 
