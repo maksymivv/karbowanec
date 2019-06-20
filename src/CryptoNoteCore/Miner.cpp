@@ -115,6 +115,14 @@ namespace CryptoNote
     }
 
     set_block_template(bl, di);
+
+    // init dataset each time new block template is requested
+    // and previous block hash changed
+    if (m_prevBlockHash != bl.previousBlockHash) {
+      m_prevBlockHash = bl.previousBlockHash;
+      freeDataset();
+      initDataset();
+    }
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -215,14 +223,13 @@ namespace CryptoNote
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::initDataset() {
+    
     if (m_template.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
       dataset_64 = (uint64_t*)calloc(536870912, 8);
       if (!dataset_64) exit(1);
-      uint32_t currentHeight = boost::get<BaseInput>(m_template.baseTransaction.inputs[0]).blockIndex;
       logger(Logging::INFO) << "Initialising dataset";
-      Crypto::dataset_height(currentHeight, dataset_64);
-      logger(Logging::INFO) << "Finished one-time initialisation";
-      logger(Logging::INFO) << "Started mining on dataset";
+      Crypto::dataset_seed((uint8_t*)&m_template.previousBlockHash, dataset_64);
+      logger(Logging::INFO) << "Finished dataset initialisation";
     }
   }
 
@@ -260,7 +267,6 @@ namespace CryptoNote
     for (uint32_t i = 0; i != threads_count; i++) {
       m_threads.push_back(std::thread(std::bind(&miner::worker_thread, this, i)));
     }
-
     logger(INFO) << "Mining has started with " << threads_count << " threads, good luck!";
     return true;
   }
@@ -293,75 +299,6 @@ namespace CryptoNote
     m_threads.clear();
     logger(INFO) << "Mining has been stopped, " << m_threads.size() << " finished" ;
     return true;
-  }
-  //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(Crypto::cn_context &context, Block& bl, const difficulty_type& diffic) {
-
-    unsigned nthreads = std::thread::hardware_concurrency();
-
-    initDataset();
-
-    if (nthreads > 0 && diffic > 5) {
-      std::vector<std::future<void>> threads(nthreads);
-      std::atomic<uint32_t> foundNonce;
-      std::atomic<bool> found(false);
-      uint32_t startNonce = Crypto::rand<uint32_t>();
-
-      for (unsigned i = 0; i < nthreads; ++i) {
-        threads[i] = std::async(std::launch::async, [&, i]() {
-          Crypto::cn_context localctx;
-          Crypto::Hash h;
-
-          Block lb(bl); // copy to local block
-
-          for (uint32_t nonce = startNonce + i; !found; nonce += nthreads) {
-            lb.nonce = nonce;
-
-            if (!m_handler.getBlockLongHash(localctx, lb, dataset_64, h)) {
-              return;
-            }
-
-            if (check_hash(h, diffic)) {
-              foundNonce = nonce;
-              found = true;
-              if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-                freeDataset();
-                initDataset();
-              }
-
-              return;
-            }
-          }
-        });
-      }
-
-      for (auto& t : threads) {
-        t.wait();
-      }
-
-      if (found) {
-        bl.nonce = foundNonce.load();
-      }
-
-      return found;
-    } else {
-      for (; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++) {
-        Crypto::Hash h;
-        if (!m_handler.getBlockLongHash(context, bl, dataset_64, h)) {
-          return false;
-        }
-
-        if (check_hash(h, diffic)) {
-          if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-            freeDataset();
-            initDataset();
-          }
-          return true;
-        }
-      }
-    }
-
-    return false;
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::on_synchronized()
@@ -400,8 +337,6 @@ namespace CryptoNote
     uint32_t local_template_ver = 0;
     Crypto::cn_context context;
     Block b;
-
-    initDataset();
 
     while(!m_stop)
     {
@@ -456,11 +391,6 @@ namespace CryptoNote
         } else {
           //success update, lets update config
           Common::saveStringToFile(m_config_folder_path + "/" + CryptoNote::parameters::MINER_CONFIG_FILE_NAME, storeToJson(m_config));
-        }
-
-        if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-          freeDataset();
-          initDataset();
         }
 
       }

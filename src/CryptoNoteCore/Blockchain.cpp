@@ -1281,7 +1281,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, u
   //Crypto::argon2d_hash(pot.data(), pot.size(), hash_1.data, sizeof(hash_1), m_cost, lanes, t_cost, hash_2);
 
   if (!dataset_64)
-    squash_lite(pot.data(), pot.size(), hash_2, currentHeight);
+    squash_lite(pot.data(), pot.size(), hash_2, (uint8_t*)&b.previousBlockHash);
   else
     squash_full(pot.data(), pot.size(), hash_2, dataset_64);
 
