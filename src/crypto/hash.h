@@ -24,12 +24,13 @@
 #include <argon2.h>
 #include <CryptoTypes.h>
 #include "generic-ops.h"
+#include "crc256.h"
 
 namespace Crypto {
 
-  extern "C" {
+extern "C" {
 #include "hash-ops.h"
-  }
+}
 
   /*
     Cryptonight hash functions
@@ -67,6 +68,10 @@ namespace Crypto {
 
   inline void argon2d_hash(const void *in, const size_t inlen, const void *salt, const size_t saltlen, uint32_t m_cost, uint32_t lanes, uint32_t t_cost, Hash &hash) {
     argon2d_hash_raw(t_cost, m_cost, lanes, in, inlen, salt, saltlen, reinterpret_cast<char *>(&hash), 64);
+  }
+
+  inline void crc256_hash(uint8_t* in, uint32_t len, Hash &out) {
+    crc256(in, len, reinterpret_cast<uint8_t *>(&out));
   }
 
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
