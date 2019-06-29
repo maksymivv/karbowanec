@@ -10,9 +10,17 @@
 
 #define  SKEIN_PORT_CODE /* instantiate any code in skein_port.h */
 
-#include <stddef.h>                          /* get size_t definition */
-#include <string.h>      /* get the memcpy/memset functions */
 #include "skein.h"       /* get the Skein API definitions   */
+
+#define DISABLE_UNUSED 0
+
+#ifndef SKEIN_256_NIST_MAX_HASHBITS
+#define SKEIN_256_NIST_MAX_HASHBITS (0)
+#endif
+
+#ifndef SKEIN_512_NIST_MAX_HASHBITS
+#define SKEIN_512_NIST_MAX_HASHBITS (512)
+#endif
 
 /*   Skein APIs for (incremental) "straight hashing" */
 #if SKEIN_256_NIST_MAX_HASHBITS
@@ -1856,8 +1864,6 @@ static int Skein1024_Output(Skein1024_Ctxt_t *ctx, u08b_t *hashVal)
     }
 #endif
 #endif
-
-
 
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/

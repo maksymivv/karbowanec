@@ -42,16 +42,19 @@ void balloon_s(const unsigned char* input, char* output, int length, const unsig
 
   // Step 1: Expand input into buffer
   uint64_t cnt = 0;
-  S_Init(&ctx, length);
-  S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
-  S_Update(&ctx, input, length);
-  S_Update(&ctx, salt, salt_length);
+  HashReturn r = S_Init(&ctx, length);
+  if (r != SKEIN_SUCCESS) { 
+    // do nothing
+  }
+  r = S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
+  r = S_Update(&ctx, input, length);
+  r = S_Update(&ctx, salt, salt_length);
   S_Final(&ctx, blocks[0]);
   cnt++;
 
   for (int m = 1; m < S_COST; m++) {
-    S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
-    S_Update(&ctx, blocks[m - 1], 64);
+    r = S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
+    r = S_Update(&ctx, blocks[m - 1], 64);
     S_Final(&ctx, blocks[m]);
     cnt++;
   }
@@ -60,28 +63,28 @@ void balloon_s(const unsigned char* input, char* output, int length, const unsig
   for (uint64_t t = 0; t < T_COST; t++) {
     for (uint64_t m = 0; m < S_COST; m++) {
       // Step 2a: Hash last and current blocks
-      S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
-      S_Update(&ctx, blocks[(m - 1) % S_COST], 64);
-      S_Update(&ctx, blocks[m], 64);
+      r = S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
+      r = S_Update(&ctx, blocks[(m - 1) % S_COST], 64);
+      r = S_Update(&ctx, blocks[m], 64);
       S_Final(&ctx, blocks[m]);
       cnt++;
 
       for (uint64_t i = 0; i < DELTA; i++) {
         uint8_t index[64];
-        S_Update(&ctx, (uint8_t *)&t, sizeof((uint8_t *)&t));
-        S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
-        S_Update(&ctx, (uint8_t *)&m, sizeof((uint8_t *)&m));
-        S_Update(&ctx, salt, salt_length);
-        S_Update(&ctx, (uint8_t *)&i, sizeof((uint8_t *)&i));
+        r = S_Update(&ctx, (uint8_t *)&t, sizeof((uint8_t *)&t));
+        r = S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
+        r = S_Update(&ctx, (uint8_t *)&m, sizeof((uint8_t *)&m));
+        r = S_Update(&ctx, salt, salt_length);
+        r = S_Update(&ctx, (uint8_t *)&i, sizeof((uint8_t *)&i));
         S_Final(&ctx, index);
         cnt++;
 
         uint64_t other = u8tou64(index) % S_COST;
         cnt++;
 
-        S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
-        S_Update(&ctx, blocks[m], 64);
-        S_Update(&ctx, blocks[other], 64);
+        r = S_Update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
+        r = S_Update(&ctx, blocks[m], 64);
+        r = S_Update(&ctx, blocks[other], 64);
         S_Final(&ctx, blocks[m]);
         cnt++;
       }
