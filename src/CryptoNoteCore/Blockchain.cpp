@@ -781,7 +781,7 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
 	}
 
 	// calculate average difficulty for ~last month
-	uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
+	uint64_t avgDifficultyCurrent = getAvgDifficulty(height, m_currency.averageDifficultyWindow());
 	
 	// historical reference moving average difficulty
 	uint64_t avgDifficultyHistorical = getAvgCumulativeDifficulty(height);
@@ -1129,7 +1129,9 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   size_t blocksSizeMedian = Common::medianValue(lastBlocksSizes);
 
   auto blockMajorVersion = getBlockMajorVersionForHeight(height);
-  if (!m_currency.getBlockReward(blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
+  difficulty_type allTimeAvgDifficulty = getAvgCumulativeDifficulty(static_cast<uint32_t>(m_blocks.size() - 1));
+  difficulty_type currentAvgDifficulty = getAvgDifficulty(static_cast<uint32_t>(m_blocks.size() - 1), m_currency.expectedNumberOfBlocksPerDay());
+  if (!m_currency.getBlockReward(allTimeAvgDifficulty, currentAvgDifficulty, height, blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
     logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
     return false;
   }
