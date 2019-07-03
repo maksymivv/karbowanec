@@ -167,14 +167,14 @@ namespace CryptoNote {
     }
 
     // Adaptive difficulty driven reward
-    double factor = 1.0;
-    factor = (double)currentAvgDifficulty / (double)allTimeAvgDifficulty;
+    int64_t factor = 100;
+    factor = 100 * currentAvgDifficulty / allTimeAvgDifficulty;
 
     // limit ratio
-    factor = std::max<double>(factor, 0.0);
-    factor = std::min<double>(factor, 2.0);
+    factor = std::max<int64_t>(factor, 0);
+    factor = std::min<int64_t>(factor, 200);
 
-    const uint64_t adaptiveReward = static_cast<uint64_t>(static_cast<double>(baseReward) * factor);
+    const uint64_t adaptiveReward = static_cast<uint64_t>(baseReward * factor / 100);
 
     //TODO remove this logging
     logger(INFO, WHITE) << "Avg D: " << allTimeAvgDifficulty << ", Cur D: " << currentAvgDifficulty;
