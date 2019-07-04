@@ -167,12 +167,11 @@ namespace CryptoNote {
     }
 
     // Adaptive difficulty driven reward
-    int64_t factor = 1000;
+    uint64_t factor = 1000;
     factor = 1000 * currentAvgDifficulty / allTimeAvgDifficulty;
 
     // limit ratio
-    factor = std::max<int64_t>(factor, 0);
-    factor = std::min<int64_t>(factor, 2000);
+    factor = std::min<uint64_t>(factor, 2000);
 
     const uint64_t adaptiveReward = static_cast<uint64_t>(baseReward * factor / 1000);
 
