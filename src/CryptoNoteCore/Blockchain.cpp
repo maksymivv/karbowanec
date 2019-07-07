@@ -1205,11 +1205,12 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   // Phase 1
 
-  Crypto::Hash hash_1;
+  Crypto::Hash hash_1, hash_2;
 
   // Hashing the current blockdata (preprocessing it)
   cn_fast_hash(bd.data(), bd.size(), hash_1);
-  
+  Crypto::balloon_slow_hash(hash_1.data, hash_2);
+
   // Phase 2
 
   // throw our block into common pot
@@ -1223,10 +1224,10 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
 
   for (uint8_t i = 1; i <= 8; i++) {
     uint8_t chunk[4] = { 
-      hash_1.data[i * 4 - 4], 
-      hash_1.data[i * 4 - 3], 
-      hash_1.data[i * 4 - 2], 
-      hash_1.data[i * 4 - 1]
+      hash_2.data[i * 4 - 4],
+      hash_2.data[i * 4 - 3],
+      hash_2.data[i * 4 - 2],
+      hash_2.data[i * 4 - 1]
     };
     
     uint32_t n = (chunk[0] << 24) |
@@ -1255,7 +1256,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // Phase 3
 
   // stir the pot - hashing the 1 + 8 blocks as one continuous data
-  Crypto::extra_hashes[hash_1.data[0] & 3](pot.data(), pot.size(), reinterpret_cast<char *>(&res));
+  Crypto::extra_hashes[hash_2.data[0] & 3](pot.data(), pot.size(), reinterpret_cast<char *>(&res));
 
   return true;
 }
