@@ -15,13 +15,9 @@ uint64_t u8tou64(uint8_t const* u8){
 
 void balloon_blake(const unsigned char* input, char* output, int length, const unsigned char* salt, int salt_length)
 {
-  const uint64_t s_cost = 64;
-  const uint64_t t_cost = 2;
-  const int delta = 3;
-  
   state ctx;
-  uint8_t blocks[64][64];
-  
+  uint8_t blocks[S_COST][64];
+
   // Step 1: Expand input into buffer
   uint64_t cnt = 0;
   blake256_init(&ctx);
@@ -31,7 +27,7 @@ void balloon_blake(const unsigned char* input, char* output, int length, const u
   blake256_final(&ctx, blocks[0]);
   cnt++;
 
-  for (int m = 1; m < s_cost; m++) {
+  for (uint64_t m = 1; m < S_COST; m++) {
     blake256_update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
     blake256_update(&ctx, blocks[m - 1], 64);
     blake256_final(&ctx, blocks[m]);
@@ -39,16 +35,16 @@ void balloon_blake(const unsigned char* input, char* output, int length, const u
   }
 
   // Step 2: Mix buffer contents
-  for (uint64_t t = 0; t < t_cost; t++) {
-    for (uint64_t m = 0; m < s_cost; m++) {
+  for (uint64_t t = 0; t < T_COST; t++) {
+    for (uint64_t m = 0; m < S_COST; m++) {
       // Step 2a: Hash last and current blocks
       blake256_update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
-      blake256_update(&ctx, blocks[(m - 1) % s_cost], 64);
+      blake256_update(&ctx, blocks[(m - 1) % S_COST], 64);
       blake256_update(&ctx, blocks[m], 64);
       blake256_final(&ctx, blocks[m]);
       cnt++;
 
-      for (uint64_t i = 0; i < delta; i++) {
+      for (uint64_t i = 0; i < DELTA; i++) {
         uint8_t index[64];
         blake256_update(&ctx, (uint8_t *)&t, sizeof((uint8_t *)&t));
         blake256_update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
@@ -58,7 +54,7 @@ void balloon_blake(const unsigned char* input, char* output, int length, const u
         blake256_final(&ctx, index);
         cnt++;
 
-        uint64_t other = u8tou64(index) % s_cost;
+        uint64_t other = u8tou64(index) % S_COST;
         cnt++;
 
         blake256_update(&ctx, (uint8_t *)&cnt, sizeof((uint8_t *)&cnt));
@@ -69,6 +65,6 @@ void balloon_blake(const unsigned char* input, char* output, int length, const u
       }
     }
   }
-  
-  memcpy(output, blocks[s_cost - 1], 32);
+
+  memcpy(output, blocks[S_COST - 1], 32);
 }
