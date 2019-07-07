@@ -28,6 +28,7 @@ namespace Crypto {
 
   extern "C" {
 #include "hash-ops.h"
+#include "blake256.h"
   }
 
   /*
@@ -62,6 +63,10 @@ namespace Crypto {
 
   inline void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash) {
     cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
+  }
+
+  inline void slow_hash_blake(const void *data, size_t length, char *hash) {
+    blake256_hash((uint8_t*)hash, (uint8_t*)data, length);
   }
 
   void(*const extra_hashes[4])(const void *, size_t, char *) =

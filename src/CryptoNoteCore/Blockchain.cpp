@@ -1208,7 +1208,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   Crypto::Hash hash_1;
 
   // Hashing the current blockdata (preprocessing it)
-  cn_fast_hash(bd.data(), bd.size(), hash_1);
+  //cn_fast_hash(bd.data(), bd.size(), hash_1);
+  Crypto::slow_hash_blake(bd.data(), bd.size(), reinterpret_cast<char *>(&hash_1));
   
   // Phase 2
 
@@ -1255,7 +1256,8 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   // Phase 3
 
   // stir the pot - hashing the 1 + 8 blocks as one continuous data
-  Crypto::extra_hashes[hash_1.data[0] & 3](pot.data(), pot.size(), reinterpret_cast<char *>(&res));
+  //Crypto::extra_hashes[hash_1.data[0] & 3](pot.data(), pot.size(), reinterpret_cast<char *>(&res));
+  Crypto::slow_hash_blake(pot.data(), pot.size(), reinterpret_cast<char *>(&res));
 
   return true;
 }
