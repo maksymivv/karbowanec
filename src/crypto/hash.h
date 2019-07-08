@@ -70,7 +70,7 @@ namespace Crypto {
     hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
   };
 
-  inline void balloon_hash(const unsigned char* input, Hash &output, int length, const unsigned char* salt, int salt_length) {
+  inline void blimp_hash(const unsigned char* input, Hash &output, int length, const unsigned char* salt, int salt_length) {
     balloon_blake(input, reinterpret_cast<char *>(&output), length, salt, salt_length);
   }
 
