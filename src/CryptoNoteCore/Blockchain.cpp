@@ -1197,7 +1197,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
     return get_block_longhash(context, b, res);
   }
 
-  BinaryArray bd, pot;
+  BinaryArray bd;
   if (!get_block_hashing_blob(b, bd)) {
     logger(ERROR, BRIGHT_RED) << "Failed to get_block_hashing_blob in getBlockLongHash";
     return false;
@@ -1212,9 +1212,6 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   
   // Phase 2
 
-  // throw our block into common pot
-  pot.insert(std::end(pot), std::begin(bd), std::end(bd));
-
   // Get the corresponding 8 blocks from blockchain based on preparatory hash_1
   // and throw them into the pot too
 
@@ -1222,7 +1219,7 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
   uint32_t maxHeight = std::min<uint32_t>(m_blocks.size(), currentHeight - 1 - m_currency.minedMoneyUnlockWindow_v1());
 
   for (uint8_t i = 1; i <= 8; i++) {
-    uint8_t chunk[4] = { 
+    uint8_t chunk[4] = {
       hash_1.data[i * 4 - 4], 
       hash_1.data[i * 4 - 3], 
       hash_1.data[i * 4 - 2], 
@@ -1235,27 +1232,24 @@ bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, C
                  (chunk[3]);
 
     uint32_t height_i = n % maxHeight;
-    Crypto::Hash hash_i = getBlockIdByHeight(static_cast<uint32_t>(height_i));
-    Block bi;
 
-    if (!getBlockByHash(hash_i, bi)) {
-      logger(ERROR, BRIGHT_RED) << "Failed to getBlockByHash " << Common::podToHex(hash_i) << " at height " << height_i;
-      return false;
-    }
-
+    std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+    Block bi = m_blocks[height_i].bl;
+    
     BinaryArray ba;
     if (!get_block_hashing_blob(bi, ba)) {
-      logger(ERROR, BRIGHT_RED) << "Failed to get_block_hashing_blob of additional block " << i << " in getBlockLongHash";
+      logger(ERROR, BRIGHT_RED) << "Failed to get_block_hashing_blob of additional block " 
+                                << i << " at height " << height_i;
       return false;
     }
 
-    pot.insert(std::end(pot), std::begin(ba), std::end(ba));
+    bd.insert(std::end(bd), std::begin(ba), std::end(ba));
   }
 
   // Phase 3
 
   // stir the pot - hashing the 1 + 8 blocks as one continuous data, salt is hash_1
-  Crypto::blimp_hash(pot.data(), res, pot.size(), hash_1.data, sizeof(hash_1));
+  Crypto::blimp_hash(bd.data(), res, bd.size(), hash_1.data, sizeof(hash_1));
 
   return true;
 }
