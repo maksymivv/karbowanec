@@ -168,7 +168,7 @@ namespace CryptoNote {
 
 			// inflation 2% of total coins in circulation
 			const uint64_t blocksInOneYear = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365;
-			uint64_t twoPercentOfEmission = static_cast<double>(alreadyGeneratedCoins) / 100 * 2;
+			uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
 			baseReward = twoPercentOfEmission / blocksInOneYear;
 		}
 
@@ -629,7 +629,7 @@ namespace CryptoNote {
 		// To get an average solvetime to within +/- ~0.1%, use an adjustment factor.
 		const double adjust = 0.998;
 		// The divisor k normalizes LWMA.
-		const double k = N * (N + 1) / 2;
+		const double k = N * (N + 1) / 2.0f;
 
 		double LWMA(0), sum_inverse_D(0), harmonic_mean_D(0), nextDifficulty(0);
 		int64_t solveTime(0);
@@ -732,15 +732,17 @@ namespace CryptoNote {
 		// https://github.com/zawy12/difficulty-algorithms/issues/3
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
-		int64_t N = difficultyBlocksCount4();
+		uint64_t N = difficultyBlocksCount4();
 		
-		// Genesis should be the only time sizes are < N+1.
-		assert(timestamps.size() == cumulativeDifficulties.size() && timestamps.size() == N + 1);
-
 		// Hard code D if there are not at least N+1 BLOCKS after fork (or genesis)
 		// This helps a lot in preventing a very common problem in CN forks from conflicting difficulties.
-		//uint64_t difficulty_guess = !isTestnet() ? 1000000000 : 10000;
-		//if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + N) { return difficulty_guess; }
+
+		uint64_t difficulty_guess = 10000;// !isTestnet() ? 1000000000 : 10000;
+
+		if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + N + 1) { return difficulty_guess; }
+
+		// Genesis should be the only time sizes are < N+1.
+		assert(timestamps.size() == cumulativeDifficulties.size() && timestamps.size() == N + 1);
 
 		uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
 
@@ -769,9 +771,9 @@ namespace CryptoNote {
 		}
 
 		// minimum limit
-		if (!isTestnet() && next_D < 1000000) {
+		//if (!isTestnet() && next_D < 1000000) {
 		//	next_D = 1000000;
-		}
+		//}
 
 		return next_D;
 	}
