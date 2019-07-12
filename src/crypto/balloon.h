@@ -3,9 +3,9 @@
 #ifndef BALLOON_H
 #define BALLOON_H
 
-#define S_COST (uint64_t)9
-#define T_COST (uint64_t)3
-#define DELTA  (uint64_t)5
+#define S_COST (uint64_t)56
+#define T_COST (uint64_t)8
+#define DELTA  (uint64_t)7
 
 #ifdef __cplusplus
 extern "C" {
