@@ -753,13 +753,6 @@ difficulty_type Blockchain::getAvgCumulativeDifficulty(uint32_t height) {
   return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty / std::min<difficulty_type>(height, m_blocks.size());
 }
 
-difficulty_type Blockchain::getAvgCumulativeDifficulty(uint32_t height) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (height <= 1)
-    return 1;
-  return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty / std::min<difficulty_type>(height, m_blocks.size());
-}
-
 uint64_t Blockchain::getBlockTimestamp(uint32_t height) {
   assert(height < m_blocks.size());
   return m_blocks[height].bl.timestamp;
