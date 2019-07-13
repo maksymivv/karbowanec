@@ -107,7 +107,7 @@ namespace CryptoNote
     return request_block_template();
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction) {
+  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, Transaction& transaction) {
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
@@ -117,11 +117,22 @@ namespace CryptoNote
     req.mixin = m_mixin;
     req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     req.reward = reward;
+    req.extra_nonce = Common::toHex(extra_nonce);
 
     try {
       System::Dispatcher dispatcher;
       HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+
+      // if wallet balance is insufficient stop miner
+      if (res.balance < req.stake) {
+        logger(INFO) << "Insufficient wallet balance: " 
+                     << m_currency.formatAmount(res.balance)
+                     << ", of required "
+                     << m_currency.formatAmount(req.stake);
+        stop();
+        return false;
+      }
 
       BinaryArray tx_blob;
       if (!Common::fromHex(res.tx_as_hex, tx_blob))
@@ -133,6 +144,7 @@ namespace CryptoNote
       Crypto::Hash tx_prefixt_hash = NULL_HASH;
       if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
         logger(ERROR) << "Could not parse tx from blob";
+        stop();
         return false;
       }
     }
@@ -182,7 +194,7 @@ namespace CryptoNote
       }
 
       // request stake tx from wallet
-      if (!requestStakeTransaction(blockReward, height, stake_tx)) {
+      if (!requestStakeTransaction(blockReward, height, extra_nonce, stake_tx)) {
         logger(DEBUGGING) << "Failed to request stake transaction from wallet";
         return false;
       }
@@ -201,7 +213,7 @@ namespace CryptoNote
     m_update_block_template_interval.call([&](){
       if(is_mining()) 
         request_block_template();
-      return true;
+      return true; // TODO remove this after fixing dispatcher in request_block_template()
     });
 
     m_update_merge_hr_interval.call([&](){
@@ -328,7 +340,7 @@ namespace CryptoNote
 
     if (!m_template_no) {
       if (!request_block_template()) { //lets update block template
-        //return false;
+        return false;
       }
     }
 

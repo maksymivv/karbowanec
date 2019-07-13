@@ -62,7 +62,7 @@ namespace CryptoNote {
     bool worker_thread(uint32_t th_local_index);
     bool request_block_template();
     void merge_hr();
-    bool requestStakeTransaction(uint64_t& reward, uint32_t& height, Transaction& transaction);
+    bool requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, Transaction& transaction);
 
     struct miner_config
     {

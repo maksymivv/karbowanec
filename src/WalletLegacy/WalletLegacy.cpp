@@ -760,7 +760,7 @@ TransactionId WalletLegacy::sendFusionTransaction(const std::list<TransactionOut
 	return txId;
 }
 
-bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& stake, const uint64_t& reward, const uint64_t& mixin, uint64_t unlockTimestamp, Transaction& stakeTransaction, SecretKey& stakeKey) {
+bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& stake, const uint64_t& reward, const uint64_t& mixin, uint64_t unlockTimestamp, const std::string& extra, Transaction& stakeTransaction, SecretKey& stakeKey) {
 	TransactionId txId = 0;
 	std::deque<std::shared_ptr<WalletLegacyEvent>> events;
 	std::shared_ptr<SendTransactionContext> context = std::make_shared<SendTransactionContext>();
@@ -781,16 +781,14 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
 	}
 	destination.address = address;
 	transfers.push_back(destination);
-		
-	std::string extra;
-
+	
 	//prepare transaction
 	txId = m_transactionsCache.addNewTransaction(context->foundMoney, 0, extra, transfers, unlockTimestamp);
 	context->transactionId = txId;
 	context->mixIn = mixin;
 
 	// prepare outputs
-	if (context->mixIn != 0) {
+	if (mixin != 0) {
 		uint64_t outsCount = mixin + 1;// add one to make possible (if need) to skip real output key
 		std::vector<uint64_t> amounts;
 

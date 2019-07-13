@@ -264,23 +264,33 @@ bool wallet_rpc_server::on_transfer(const wallet_rpc::COMMAND_RPC_TRANSFER::requ
 //------------------------------------------------------------------------------------------------------------------------------
 
 bool wallet_rpc_server::on_construct_stake_tx(const wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request& req,
-	wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response& res)
+  wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response& res)
 {
-	try
-	{
-		CryptoNote::Transaction tx;
-		Crypto::SecretKey txKey;
-		if (!m_wallet.constructStakeTx(req.address, req.stake, req.reward, req.mixin, req.unlock_time, tx, txKey)) {
-			throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_GENERIC_TRANSFER_ERROR, "Couldn't construct stake transaction");
-		}
-		res.tx_as_hex = Common::toHex(toBinaryArray(tx));
-		res.tx_key = Common::podToHex(txKey);
-	}
-	catch (const std::exception& e)
-	{
-		throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_GENERIC_TRANSFER_ERROR, e.what());
-	}
-	return true;
+  try
+  {
+    CryptoNote::Transaction tx;
+    Crypto::SecretKey txKey;
+
+    uint64_t balance = m_wallet.actualBalance();
+    res.balance = balance;
+    if (balance < req.stake) {
+      res.tx_as_hex = Common::toHex(toBinaryArray(tx));
+      res.tx_key = Common::podToHex(NULL_SECRET_KEY);
+
+      return true;
+    }
+
+    if (!m_wallet.constructStakeTx(req.address, req.stake, req.reward, req.mixin, req.unlock_time, req.extra_nonce, tx, txKey)) {
+      throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_GENERIC_TRANSFER_ERROR, "Couldn't construct stake transaction");
+    }
+    res.tx_as_hex = Common::toHex(toBinaryArray(tx));
+    res.tx_key = Common::podToHex(txKey);
+  }
+  catch (const std::exception& e)
+  {
+    throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_GENERIC_TRANSFER_ERROR, e.what());
+  }
+  return true;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
