@@ -530,20 +530,14 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
     return false;
   }
 
-//  if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-//
-//	  uint32_t m_cost = 128;
-//	  uint32_t lanes = 2;
-//	  uint32_t threads = 1;
-//	  uint32_t t_cost = 2;
-//	  Crypto::Hash hash_1;
-//
-//	  cn_fast_hash(bd.data(), bd.size(), hash_1);
-//	  argon2d_hash(bd.data(), bd.size(), &hash_1, sizeof(&hash_1), m_cost, lanes, threads, t_cost, res);
-//  }
-//  else {
-	  cn_slow_hash(context, bd.data(), bd.size(), res);
-//  }
+  if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    Crypto::Hash hash_1;
+    cn_fast_hash(bd.data(), bd.size(), hash_1);
+    Crypto::blimp_hash(bd.data(), res, bd.size(), hash_1.data, sizeof(hash_1));
+  }
+  else {
+    cn_slow_hash(context, bd.data(), bd.size(), res);
+  }
 
   return true;
 }
