@@ -528,8 +528,15 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   } else {
     return false;
   }
-  
-  cn_slow_hash(context, bd.data(), bd.size(), res);
+
+  if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    Crypto::Hash hash_1;
+    cn_fast_hash(bd.data(), bd.size(), hash_1);
+    Crypto::blimp_hash(bd.data(), res, bd.size(), hash_1.data, sizeof(hash_1));
+  }
+  else {
+    cn_slow_hash(context, bd.data(), bd.size(), res);
+  }
 
   return true;
 }
