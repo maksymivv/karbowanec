@@ -20,6 +20,7 @@
 
 #include <list>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/utility/value_init.hpp>
 #include "WalletRpcServer.h"
 #include "crypto/hash.h"
 #include "Common/CommandLine.h"
@@ -268,14 +269,14 @@ bool wallet_rpc_server::on_construct_stake_tx(const wallet_rpc::COMMAND_RPC_CONS
 {
   try
   {
-    CryptoNote::Transaction tx;
-    Crypto::SecretKey txKey;
+    CryptoNote::Transaction tx = boost::value_initialized<Transaction>();
+    Crypto::SecretKey txKey = NULL_SECRET_KEY;
 
     uint64_t balance = m_wallet.actualBalance();
     res.balance = balance;
     if (balance < req.stake) {
       res.tx_as_hex = Common::toHex(toBinaryArray(tx));
-      res.tx_key = Common::podToHex(NULL_SECRET_KEY);
+      res.tx_key = Common::podToHex(txKey);
 
       return true;
     }

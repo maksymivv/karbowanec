@@ -35,8 +35,8 @@ public:
   std::string startMining;
   uint32_t miningThreads;
   std::string walletHost;
-  uint16_t walletPort;
-  size_t stakeMixin;
+  uint16_t walletPort = 0;
+  size_t stakeMixin = 0;
 };
 
 } //namespace CryptoNote

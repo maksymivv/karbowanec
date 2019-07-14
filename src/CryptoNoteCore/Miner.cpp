@@ -41,10 +41,6 @@
 
 #include "Wallet/WalletRpcServerCommandsDefinitions.h"
 
-#ifndef AUTO_VAL_INIT
-#define AUTO_VAL_INIT(n) boost::value_initialized<decltype(n)>()
-#endif
-
 using namespace Logging;
 
 namespace CryptoNote
@@ -119,20 +115,27 @@ namespace CryptoNote
     req.reward = reward;
     req.extra_nonce = Common::toHex(extra_nonce);
 
-    try {
-      System::Dispatcher dispatcher;
-      HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
+    System::Dispatcher* dispatcher = new System::Dispatcher();
+
+    try {    
+      HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
       invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
       // if wallet balance is insufficient stop miner
       if (res.balance < req.stake) {
-        logger(INFO) << "Insufficient wallet balance: " 
-                     << m_currency.formatAmount(res.balance)
-                     << ", of required "
-                     << m_currency.formatAmount(req.stake);
-        stop();
+        logger(ERROR) << "Insufficient wallet balance: "
+                      << m_currency.formatAmount(res.balance)
+                      << ", of required "
+                      << m_currency.formatAmount(req.stake);
+
         return false;
       }
+
+      // convenience log balance and stake
+      logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
+      logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
+      m_do_print_hashrate = true;
+      merge_hr();
 
       BinaryArray tx_blob;
       if (!Common::fromHex(res.tx_as_hex, tx_blob))
@@ -144,22 +147,25 @@ namespace CryptoNote
       Crypto::Hash tx_prefixt_hash = NULL_HASH;
       if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
         logger(ERROR) << "Could not parse tx from blob";
-        stop();
         return false;
       }
     }
-    catch (const std::runtime_error& e) {
-      logger(ERROR) << "Failed to invoke rpc method, runtime_error in requestStakeTransaction(): " << e.what();
-      return false;
-    }
     catch (const ConnectException& e) {
       logger(ERROR) << "Failed to connect to wallet: " << e.what();
+      delete dispatcher;
+      return false;
+    }
+    catch (const std::runtime_error& e) {
+      logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
+      delete dispatcher;
       return false;
     }
     catch (const std::exception& e) {
-      logger(ERROR) << "Failed to invoke rpc method, exception in requestStakeTransaction(): " << e.what();
+      logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
+      delete dispatcher;
       return false;
     }
+    delete dispatcher;
 
     return true;
   }
@@ -211,9 +217,9 @@ namespace CryptoNote
   bool miner::on_idle()
   {
     m_update_block_template_interval.call([&](){
-      if(is_mining()) 
+      if (is_mining())
         request_block_template();
-      return true; // TODO remove this after fixing dispatcher in request_block_template()
+      return true;
     });
 
     m_update_merge_hr_interval.call([&](){
@@ -288,11 +294,11 @@ namespace CryptoNote
       m_wallet_host = config.walletHost;
     }
 
-    if (!config.walletPort > 0) {
+    if (config.walletPort != 0) {
       m_wallet_port = config.walletPort;
     }
 
-    if (!config.stakeMixin > 0) {
+    if (config.stakeMixin != 0) {
       m_mixin = config.stakeMixin;
     }
 
@@ -340,6 +346,7 @@ namespace CryptoNote
 
     if (!m_template_no) {
       if (!request_block_template()) { //lets update block template
+        logger(ERROR) << "Unable to start miner because block template request was unsuccessful";
         return false;
       }
     }
