@@ -13,7 +13,7 @@ uint64_t u8tou64(uint8_t const* u8){
   return u64;
 }
 
-void balloon_blake(const unsigned char* input, char* output, int length, const unsigned char* salt, int salt_length)
+void balloon_blake(const unsigned char* input, char* output, size_t length, const unsigned char* salt, size_t salt_length)
 {
   state ctx;
   uint8_t blocks[S_COST][64];

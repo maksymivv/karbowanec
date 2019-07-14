@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-void balloon_blake(const unsigned char* input, char* output, int length, const unsigned char* salt, int salt_length);
+void balloon_blake(const unsigned char* input, char* output, size_t length, const unsigned char* salt, size_t salt_length);
 
 #ifdef __cplusplus
 }
