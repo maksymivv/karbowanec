@@ -344,12 +344,13 @@ namespace CryptoNote
     m_wallet_port = wallet_port;
 	  m_mixin = mixin;
 
-    if (!m_template_no) {
+    // always request template on start
+    //if (!m_template_no) {
       if (!request_block_template()) { //lets update block template
         logger(ERROR) << "Unable to start miner because block template request was unsuccessful";
         return false;
       }
-    }
+    //}
 
     m_stop = false;
 
