@@ -88,6 +88,22 @@ RpcServer::HandlerFunction jsonMethod(bool (RpcServer::*handler)(typename Comman
   };
 }
 
+  uint64_t get_block_reward(const Block& blk) {
+    uint64_t reward = 0;
+    for (const TransactionOutput& out : blk.baseTransaction.outputs) {
+      reward += out.amount;
+    }
+
+    if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      uint64_t stake;
+      if (!get_inputs_money_amount(blk.baseTransaction, stake)) {
+        return reward;
+      }
+      reward -= stake;
+    }
+    return reward;
+  }
+
 }
 
 std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction>> RpcServer::s_handlers = {
@@ -205,7 +221,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "check_reserve_proof", { makeMemberMethod(&RpcServer::k_on_check_reserve_proof), false } },
       { "validateaddress", { makeMemberMethod(&RpcServer::on_validate_address), false } },
       { "verifymessage", { makeMemberMethod(&RpcServer::on_verify_message), false } },
-      { "get_avg_stats_by_heights", { makeMemberMethod(&RpcServer::onGetAvgDiffByHeights), false } }
+      { "get_avg_stats_by_heights", { makeMemberMethod(&RpcServer::onGetAvgStatsByHeights), false } }
 
     };
 
@@ -476,13 +492,14 @@ bool RpcServer::onGetBlocksDetailsByHeights(const COMMAND_RPC_GET_BLOCKS_DETAILS
   return true;
 }
 
-bool RpcServer::onGetAvgDiffByHeights(const COMMAND_RPC_GET_AVG_DIFF_BY_HEIGHTS::request& req, COMMAND_RPC_GET_AVG_DIFF_BY_HEIGHTS::response& rsp) {
+bool RpcServer::onGetAvgStatsByHeights(const COMMAND_RPC_GET_AVG_STAT_BY_HEIGHTS::request& req, COMMAND_RPC_GET_AVG_STAT_BY_HEIGHTS::response& rsp) {
   if (m_restricted_rpc) {
     rsp.status = "Failed, restricted handle";
     return false;
   }
 	try {
 		std::vector<uint64_t> avgDiffs;
+		std::vector<uint64_t> rewards;
 		std::vector<uint64_t> diffs;
 		std::vector<uint64_t> fees;
 		for (const uint32_t& height : req.heights) {
@@ -490,6 +507,13 @@ bool RpcServer::onGetAvgDiffByHeights(const COMMAND_RPC_GET_AVG_DIFF_BY_HEIGHTS:
 				throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
 				  std::string("To big height: ") + std::to_string(height) + ", current blockchain height = " + std::to_string(m_core.get_current_blockchain_height() - 1) };
 			}
+      Hash h = m_core.getBlockIdByHeight(height);
+      Block b;
+      if (!m_core.getBlockByHash(h, b)) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,  std::string("Couldn't get block by height ") + std::to_string(height) };
+      }
+      uint64_t reward = get_block_reward(b);
+      rewards.push_back(reward);
 			uint64_t avgDiff = m_core.getAvgCumulativeDifficulty(height);
 			avgDiffs.push_back(avgDiff);
 			uint64_t diff;
@@ -500,6 +524,7 @@ bool RpcServer::onGetAvgDiffByHeights(const COMMAND_RPC_GET_AVG_DIFF_BY_HEIGHTS:
 		}
 		rsp.avgDifficulties = std::move(avgDiffs);
 		rsp.difficulties = std::move(diffs);
+		rsp.rewards = std::move(rewards);
 		rsp.minFees = std::move(fees);
 	}
 	catch (std::system_error& e) {
@@ -1407,25 +1432,6 @@ bool RpcServer::on_submitblock(const COMMAND_RPC_SUBMITBLOCK::request& req, COMM
 
   res.status = CORE_RPC_STATUS_OK;
   return true;
-}
-
-
-namespace {
-  uint64_t get_block_reward(const Block& blk) {
-    uint64_t reward = 0;
-    for (const TransactionOutput& out : blk.baseTransaction.outputs) {
-      reward += out.amount;
-    }
-
-    if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      uint64_t stake;
-      if (!get_inputs_money_amount(blk.baseTransaction, stake)) {
-        return reward;
-      }
-      reward -= stake;
-    }
-    return reward;
-  }
 }
 
 void RpcServer::fill_block_header_response(const Block& blk, bool orphan_status, uint32_t height, const Hash& hash, block_header_response& responce) {
