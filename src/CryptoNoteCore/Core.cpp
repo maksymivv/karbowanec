@@ -641,7 +641,7 @@ void core::update_block_template_and_resume_mining() {
   } 
   else {
     logger(ERROR) << "updating block template failed, mining not resumed";
-    //m_miner->stop();
+    m_miner->send_stop_signal();
   }
 }
 

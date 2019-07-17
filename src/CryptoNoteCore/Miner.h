@@ -107,5 +107,6 @@ namespace CryptoNote {
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
+    uint64_t m_last_wallet_balance;
   };
 }
