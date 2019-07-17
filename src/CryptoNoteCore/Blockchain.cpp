@@ -1132,7 +1132,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   uint64_t minerReward = 0;
   uint64_t inputsAmount = 0;
   uint64_t outputsAmount = 0;
-  uint64_t stake = getDifficultyForNextBlock() * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO;
+  uint64_t stake = std::max<uint64_t>(std::min<uint64_t>(getDifficultyForNextBlock() * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
 
   for (auto& o : b.baseTransaction.outputs) {
     outputsAmount += o.amount;

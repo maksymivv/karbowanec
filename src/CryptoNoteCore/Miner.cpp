@@ -109,7 +109,7 @@ namespace CryptoNote
 
     req.address = m_currency.accountAddressAsString(m_mine_address);
     uint64_t diff = m_handler.getNextBlockDifficulty();
-    req.stake = diff * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO;
+    req.stake = std::max<uint64_t>(std::min<uint64_t>(diff * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
     req.mixin = m_mixin;
     req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     req.reward = reward;
