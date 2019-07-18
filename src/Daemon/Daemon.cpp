@@ -241,7 +241,7 @@ int main(int argc, char* argv[])
     }
     CryptoNote::Currency currency = currencyBuilder.currency();
     System::Dispatcher dispatcher;
-    CryptoNote::core ccore(currency, nullptr, logManager, &dispatcher, command_line::get_arg(vm, arg_enable_blockchain_indexes));
+    CryptoNote::core ccore(currency, nullptr, logManager, dispatcher, command_line::get_arg(vm, arg_enable_blockchain_indexes));
 
 	bool disable_checkpoints = command_line::get_arg(vm, arg_disable_checkpoints);
 	if (!disable_checkpoints) {
