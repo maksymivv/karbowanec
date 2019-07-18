@@ -1486,7 +1486,7 @@ bool RpcServer::on_get_block_header_by_hash(const COMMAND_RPC_GET_BLOCK_HEADER_B
       "Internal error: coinbase transaction in the block has the wrong type" };
   }
 
-  uint64_t tmp_height = blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? blk.blockIndex : boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
+  uint32_t tmp_height = blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? blk.blockIndex : boost::get<BaseInput>(blk.baseTransaction.inputs.front()).blockIndex;
   Crypto::Hash tmp_hash = m_core.getBlockIdByHeight(tmp_height);
   bool is_orphaned = block_hash != tmp_hash;
   uint32_t block_height;
