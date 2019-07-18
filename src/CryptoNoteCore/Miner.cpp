@@ -373,6 +373,7 @@ namespace CryptoNote
     //}
 
     m_stop = false;
+    m_pausers_count = 0; // in case mining wasn't resumed after pause
 
     for (uint32_t i = 0; i != threads_count; i++) {
       m_threads.push_back(std::thread(std::bind(&miner::worker_thread, this, i)));
