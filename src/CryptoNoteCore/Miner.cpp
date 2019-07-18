@@ -105,6 +105,8 @@ namespace CryptoNote
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, Transaction& transaction) {
+    logger(INFO) << "Requesting stake deposit transaction";
+
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
@@ -271,7 +273,7 @@ namespace CryptoNote
       if(m_do_print_hashrate) {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), static_cast<uint64_t>(0));
         float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size())/static_cast<float>(1000);
-        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << " kH/s" << ENDL;
+        logger(INFO) << "Hashrate: " << std::setprecision(4) << std::fixed << hr << " kH/s";
       }
     }
     
@@ -392,6 +394,7 @@ namespace CryptoNote
   //-----------------------------------------------------------------------------------------------------
   void miner::send_stop_signal() 
   {
+    m_last_wallet_balance = 0;
     m_stop = true;
   }
 
@@ -402,7 +405,7 @@ namespace CryptoNote
     std::lock_guard<std::mutex> lk(m_threads_lock);
 
     for (auto& th : m_threads) {
-      th.join();
+      th.detach();
     }
 
     m_threads.clear();
