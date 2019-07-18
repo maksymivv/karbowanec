@@ -46,8 +46,9 @@ using namespace Logging;
 namespace CryptoNote
 {
 
-  miner::miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log) :
+  miner::miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log, System::Dispatcher& dispatcher) :
     m_currency(currency),
+    m_dispatcher(dispatcher),
     logger(log, "miner"),
     m_stop(true),
     m_template(boost::value_initialized<Block>()),
@@ -118,13 +119,11 @@ namespace CryptoNote
     req.reward = reward;
     req.extra_nonce = Common::toHex(extra_nonce);
 
-    System::Dispatcher* dispatcher = new System::Dispatcher();
-
     int count = 0;
     while (count <= 10) {
       ++count;
       try {
-        HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
+        HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port);
         invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
         // wait till wallet refreshes
@@ -166,17 +165,14 @@ namespace CryptoNote
       }
       catch (const ConnectException& e) {
         logger(ERROR) << "Failed to connect to wallet: " << e.what();
-        delete dispatcher;
         return false;
       }
       catch (const std::runtime_error& e) {
         logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
-        delete dispatcher;
         return false;
       }
       catch (const std::exception& e) {
         logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
-        delete dispatcher;
         return false;
       }
       break;
@@ -186,8 +182,6 @@ namespace CryptoNote
       logger(ERROR) << "Wallet not refreshed.";
       return false;
     }
-
-    delete dispatcher;
 
     return true;
   }
