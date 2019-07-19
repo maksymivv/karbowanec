@@ -60,9 +60,9 @@ namespace CryptoNote {
 
   private:
     bool worker_thread(uint32_t th_local_index);
-    bool request_block_template();
+    bool request_block_template(bool wait_wallet_refresh);
     void merge_hr();
-    bool requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, Transaction& transaction);
+    bool requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, Transaction& transaction);
 
     struct miner_config
     {
@@ -107,6 +107,5 @@ namespace CryptoNote {
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
-    uint64_t m_last_wallet_balance;
   };
 }

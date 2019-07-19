@@ -36,6 +36,7 @@
 #include "Common/StringTools.h"
 #include "Serialization/SerializationTools.h"
 
+#include "CryptoNoteTools.h"
 #include "CryptoNoteFormatUtils.h"
 #include "TransactionExtra.h"
 
@@ -59,12 +60,11 @@ namespace CryptoNote
     m_starter_nonce(0),
     m_last_hr_merge_time(0),
     m_hashes(0),
-    m_do_print_hashrate(false),
+    m_do_print_hashrate(true),
     m_do_mining(false),
     m_current_hash_rate(0),
-    m_update_block_template_interval(5),
-    m_update_merge_hr_interval(2),
-    m_last_wallet_balance(0)
+    m_update_block_template_interval(15),
+    m_update_merge_hr_interval(2)
   {
   }
   //-----------------------------------------------------------------------------------------------------
@@ -101,10 +101,10 @@ namespace CryptoNote
       return true;
     }
 
-    return request_block_template();
+    return request_block_template(true);
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, Transaction& transaction) {
+  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, Transaction& transaction) {
     logger(INFO) << "Requesting stake deposit transaction";
 
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
@@ -118,80 +118,66 @@ namespace CryptoNote
     req.reward = reward;
     req.extra_nonce = Common::toHex(extra_nonce);
 
-    int count = 10;
-    while (count != 0) {
-      --count;
+    try {
+      System::Dispatcher dispatcher;
       try {
-        System::Dispatcher dispatcher;
-        try {
-          HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
-          invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+        HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
+        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
-          // wait till wallet refreshes
-          if (m_last_wallet_balance == res.balance) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-            continue;
-          }
+        // if wallet balance is insufficient stop miner
+        if (res.balance < req.stake) {
+          logger(ERROR) << "Insufficient wallet balance: "
+            << m_currency.formatAmount(res.balance)
+            << ", of required "
+            << m_currency.formatAmount(req.stake);
 
-          m_last_wallet_balance = res.balance;
-
-          // if wallet balance is insufficient stop miner
-          if (res.balance < req.stake) {
-            logger(ERROR) << "Insufficient wallet balance: "
-              << m_currency.formatAmount(res.balance)
-              << ", of required "
-              << m_currency.formatAmount(req.stake);
-
-            return false;
-          }
-
-          // convenience log balance and stake
-          logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
-          logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
-          m_do_print_hashrate = true;
-          merge_hr();
-
-          BinaryArray tx_blob;
-          if (!Common::fromHex(res.tx_as_hex, tx_blob))
-          {
-            logger(ERROR) << "Failed to parse tx from hexbuff";
-            return false;
-          }
-          Crypto::Hash tx_hash = NULL_HASH;
-          Crypto::Hash tx_prefixt_hash = NULL_HASH;
-          if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
-            logger(ERROR) << "Could not parse tx from blob";
-            return false;
-          }
-        }
-        catch (const ConnectException& e) {
-          logger(ERROR) << "Failed to connect to wallet: " << e.what();
           return false;
         }
-        catch (const std::runtime_error& e) {
-          logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
+
+        // convenience log balance and stake
+        logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
+        logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
+        //merge_hr();
+
+        BinaryArray tx_blob;
+        if (!Common::fromHex(res.tx_as_hex, tx_blob))
+        {
+          logger(ERROR) << "Failed to parse tx from hexbuff";
           return false;
         }
-        catch (const std::exception& e) {
-          logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
+        Crypto::Hash tx_hash = NULL_HASH;
+        Crypto::Hash tx_prefixt_hash = NULL_HASH;
+        if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
+          logger(ERROR) << "Could not parse tx from blob";
           return false;
         }
-        break;
       }
-      catch (...) {
-        // do nothing but silence Dispatcher errors on Windows
+      catch (const ConnectException& e) {
+        logger(ERROR) << "Failed to connect to wallet: " << e.what();
+        return false;
+      }
+      catch (const std::runtime_error& e) {
+        logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
+        return false;
+      }
+      catch (const std::exception& e) {
+        logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
+        return false;
       }
     }
-
-    if (count == 0) {
-      logger(ERROR) << "Wallet not refreshed.";
-      return false;
+    catch (...) {
+      // do nothing but silence Dispatcher errors on Windows
     }
 
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::request_block_template() {
+  bool miner::request_block_template(bool wait_wallet_refresh) {
+    if (wait_wallet_refresh) {
+      logger(INFO) << "Give wallet few seconds to refresh...";
+      std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    }
+
     Block bl = boost::value_initialized<Block>();
     difficulty_type di = 0;
     uint32_t height;
@@ -210,7 +196,8 @@ namespace CryptoNote
     // 2) Get stake tx from wallet RPC
     // for blocks prior v5 skip these steps
     if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      Transaction stake_tx = boost::value_initialized<Transaction>();
+      Transaction empty_tx = boost::value_initialized<Transaction>();
+      Transaction stake_tx = empty_tx;
 
       // get block reward from coinbase tx and pass it to wallet
       uint64_t blockReward = 0;
@@ -219,8 +206,14 @@ namespace CryptoNote
       }
 
       // request stake tx from wallet
-      if (!requestStakeTransaction(blockReward, height, extra_nonce, stake_tx)) {
+      if (!requestStakeTransaction(blockReward, height, extra_nonce, wait_wallet_refresh, stake_tx)) {
         logger(DEBUGGING) << "Failed to request stake transaction from wallet";
+        return false;
+      }
+
+      // check that we actually got stake tx
+      if (getObjectHash(stake_tx) == getObjectHash(empty_tx)) {
+        logger(ERROR) << "Failed to get stake transaction, it's empty";
         return false;
       }
 
@@ -237,7 +230,7 @@ namespace CryptoNote
   {
     m_update_block_template_interval.call([&](){
       if (is_mining())
-        request_block_template();
+        request_block_template(false);
       return true;
     });
 
@@ -272,7 +265,7 @@ namespace CryptoNote
       if(m_do_print_hashrate) {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), static_cast<uint64_t>(0));
         float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size())/static_cast<float>(1000);
-        logger(INFO) << "Hashrate: " << std::setprecision(4) << std::fixed << hr << " kH/s";
+        logger(INFO) << "Hashrate: " << std::setprecision(2) << std::fixed << hr << " kH/s";
       }
     }
     
@@ -365,7 +358,7 @@ namespace CryptoNote
 
     // always request template on start
     //if (!m_template_no) {
-      if (!request_block_template()) { //lets update block template
+      if (!request_block_template(false)) { //lets update block template
         logger(ERROR) << "Unable to start miner because block template request was unsuccessful";
         return false;
       }
@@ -394,7 +387,6 @@ namespace CryptoNote
   //-----------------------------------------------------------------------------------------------------
   void miner::send_stop_signal() 
   {
-    m_last_wallet_balance = 0;
     m_stop = true;
   }
 
