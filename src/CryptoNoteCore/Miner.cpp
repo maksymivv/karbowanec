@@ -49,6 +49,7 @@ namespace CryptoNote
 
   miner::miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log) :
     m_currency(currency),
+    dispatcher(nullptr),
     logger(log, "miner"),
     m_stop(true),
     m_template(boost::value_initialized<Block>()),
@@ -119,54 +120,48 @@ namespace CryptoNote
     req.extra_nonce = Common::toHex(extra_nonce);
 
     try {
-      System::Dispatcher dispatcher;
-      try {
-        HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
-        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
+      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
-        // if wallet balance is insufficient stop miner
-        if (res.balance < req.stake) {
-          logger(ERROR) << "Insufficient wallet balance: "
-            << m_currency.formatAmount(res.balance)
-            << ", of required "
-            << m_currency.formatAmount(req.stake);
+      // if wallet balance is insufficient stop miner
+      if (res.balance < req.stake) {
+        logger(ERROR) << "Insufficient wallet balance: "
+          << m_currency.formatAmount(res.balance)
+          << ", of required "
+          << m_currency.formatAmount(req.stake);
 
-          return false;
-        }
-
-        // convenience log balance and stake
-        logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
-        logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
-        //merge_hr();
-
-        BinaryArray tx_blob;
-        if (!Common::fromHex(res.tx_as_hex, tx_blob))
-        {
-          logger(ERROR) << "Failed to parse tx from hexbuff";
-          return false;
-        }
-        Crypto::Hash tx_hash = NULL_HASH;
-        Crypto::Hash tx_prefixt_hash = NULL_HASH;
-        if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
-          logger(ERROR) << "Could not parse tx from blob";
-          return false;
-        }
-      }
-      catch (const ConnectException& e) {
-        logger(ERROR) << "Failed to connect to wallet: " << e.what();
         return false;
       }
-      catch (const std::runtime_error& e) {
-        logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
+
+      // convenience log balance and stake
+      logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
+      logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
+      //merge_hr();
+
+      BinaryArray tx_blob;
+      if (!Common::fromHex(res.tx_as_hex, tx_blob))
+      {
+        logger(ERROR) << "Failed to parse tx from hexbuff";
         return false;
       }
-      catch (const std::exception& e) {
-        logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
+      Crypto::Hash tx_hash = NULL_HASH;
+      Crypto::Hash tx_prefixt_hash = NULL_HASH;
+      if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
+        logger(ERROR) << "Could not parse tx from blob";
         return false;
       }
     }
-    catch (...) {
-      // do nothing but silence Dispatcher errors on Windows
+    catch (const ConnectException& e) {
+      logger(ERROR) << "Failed to connect to wallet: " << e.what();
+      return false;
+    }
+    catch (const std::runtime_error& e) {
+      logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
+      return false;
+    }
+    catch (const std::exception& e) {
+      logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
+      return false;
     }
 
     return true;
@@ -341,6 +336,9 @@ namespace CryptoNote
       return false;
     }
 
+    System::Dispatcher localDispatcher;
+    this->dispatcher = &localDispatcher;
+
     std::lock_guard<std::mutex> lk(m_threads_lock);
 
     if(!m_threads.empty()) {
@@ -392,6 +390,9 @@ namespace CryptoNote
   bool miner::stop()
   {
     send_stop_signal();
+
+    this->dispatcher = nullptr;
+
     std::lock_guard<std::mutex> lk(m_threads_lock);
 
     for (auto& th : m_threads) {

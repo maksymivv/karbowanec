@@ -53,7 +53,7 @@ namespace CryptoNote {
     bool on_idle();
     void on_synchronized();
     //synchronous analog (for fast calls)
-	bool find_nonce_for_given_block(Crypto::cn_context &context, Block& bl, const difficulty_type& diffic);
+    bool find_nonce_for_given_block(Crypto::cn_context &context, Block& bl, const difficulty_type& diffic);
     void pause();
     void resume();
     void do_print_hashrate(bool do_hr);
@@ -74,6 +74,7 @@ namespace CryptoNote {
 
     const Currency& m_currency;
     Logging::LoggerRef logger;
+    System::Dispatcher* dispatcher;
 
     std::atomic<bool> m_stop;
     std::mutex m_template_lock;
