@@ -118,76 +118,75 @@ namespace CryptoNote
     req.reward = reward;
     req.extra_nonce = Common::toHex(extra_nonce);
 
-    System::Dispatcher* dispatcher = new System::Dispatcher();
-
-    int count = 0;
-    while (count <= 10) {
-      ++count;
+    int count = 10;
+    while (count != 0) {
+      --count;
       try {
-        HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
-        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+        System::Dispatcher dispatcher;
+        try {
+          HttpClient httpClient(dispatcher, m_wallet_host, m_wallet_port);
+          invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
 
-        // wait till wallet refreshes
-        if (m_last_wallet_balance == res.balance) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-          continue;
+          // wait till wallet refreshes
+          if (m_last_wallet_balance == res.balance) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            continue;
+          }
+
+          m_last_wallet_balance = res.balance;
+
+          // if wallet balance is insufficient stop miner
+          if (res.balance < req.stake) {
+            logger(ERROR) << "Insufficient wallet balance: "
+              << m_currency.formatAmount(res.balance)
+              << ", of required "
+              << m_currency.formatAmount(req.stake);
+
+            return false;
+          }
+
+          // convenience log balance and stake
+          logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
+          logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
+          m_do_print_hashrate = true;
+          merge_hr();
+
+          BinaryArray tx_blob;
+          if (!Common::fromHex(res.tx_as_hex, tx_blob))
+          {
+            logger(ERROR) << "Failed to parse tx from hexbuff";
+            return false;
+          }
+          Crypto::Hash tx_hash = NULL_HASH;
+          Crypto::Hash tx_prefixt_hash = NULL_HASH;
+          if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
+            logger(ERROR) << "Could not parse tx from blob";
+            return false;
+          }
         }
-
-        m_last_wallet_balance = res.balance;
-
-        // if wallet balance is insufficient stop miner
-        if (res.balance < req.stake) {
-          logger(ERROR) << "Insufficient wallet balance: "
-            << m_currency.formatAmount(res.balance)
-            << ", of required "
-            << m_currency.formatAmount(req.stake);
-
+        catch (const ConnectException& e) {
+          logger(ERROR) << "Failed to connect to wallet: " << e.what();
           return false;
         }
-
-        // convenience log balance and stake
-        logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
-        logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
-        m_do_print_hashrate = true;
-        merge_hr();
-
-        BinaryArray tx_blob;
-        if (!Common::fromHex(res.tx_as_hex, tx_blob))
-        {
-          logger(ERROR) << "Failed to parse tx from hexbuff";
+        catch (const std::runtime_error& e) {
+          logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
           return false;
         }
-        Crypto::Hash tx_hash = NULL_HASH;
-        Crypto::Hash tx_prefixt_hash = NULL_HASH;
-        if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
-          logger(ERROR) << "Could not parse tx from blob";
+        catch (const std::exception& e) {
+          logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
           return false;
         }
+        break;
       }
-      catch (const ConnectException& e) {
-        logger(ERROR) << "Failed to connect to wallet: " << e.what();
-        delete dispatcher;
-        return false;
+      catch (...) {
+        // do nothing but silence Dispatcher errors on Windows
       }
-      catch (const std::runtime_error& e) {
-        logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
-        delete dispatcher;
-        return false;
-      }
-      catch (const std::exception& e) {
-        logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
-        delete dispatcher;
-        return false;
-      }
-      break;
     }
 
-    if (count >= 10) {
+    if (count == 0) {
       logger(ERROR) << "Wallet not refreshed.";
       return false;
     }
-
-    delete dispatcher;
 
     return true;
   }
