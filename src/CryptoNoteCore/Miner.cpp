@@ -47,9 +47,9 @@ using namespace Logging;
 namespace CryptoNote
 {
 
-  miner::miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log) :
+  miner::miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log, System::Dispatcher& dispatcher) :
     m_currency(currency),
-    dispatcher(nullptr),
+    m_dispatcher(dispatcher),
     logger(log, "miner"),
     m_stop(true),
     m_template(boost::value_initialized<Block>()),
@@ -120,8 +120,15 @@ namespace CryptoNote
     req.extra_nonce = Common::toHex(extra_nonce);
 
     try {
-      HttpClient httpClient(*dispatcher, m_wallet_host, m_wallet_port);
-      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      if (wait_wallet_refresh) {
+        System::Dispatcher localDispatcher;
+        HttpClient httpClient(localDispatcher, m_wallet_host, m_wallet_port);
+        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      }
+      else {
+        HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port);
+        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      }
 
       // if wallet balance is insufficient stop miner
       if (res.balance < req.stake) {
@@ -336,9 +343,6 @@ namespace CryptoNote
       return false;
     }
 
-    System::Dispatcher localDispatcher;
-    this->dispatcher = &localDispatcher;
-
     std::lock_guard<std::mutex> lk(m_threads_lock);
 
     if(!m_threads.empty()) {
@@ -355,7 +359,7 @@ namespace CryptoNote
 	  m_mixin = mixin;
 
     // always request block template on start
-    if (!request_block_template(false)) {
+    if (!request_block_template(true)) {
       logger(ERROR) << "Unable to start miner because block template request was unsuccessful";
       return false;
     }
@@ -390,8 +394,6 @@ namespace CryptoNote
   bool miner::stop()
   {
     send_stop_signal();
-
-    this->dispatcher = nullptr;
 
     std::lock_guard<std::mutex> lk(m_threads_lock);
 
