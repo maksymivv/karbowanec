@@ -102,10 +102,10 @@ namespace CryptoNote
       return true;
     }
 
-    return request_block_template(true);
+    return request_block_template(true, true);
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, Transaction& transaction) {
+  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, bool local_dispatcher, Transaction& transaction) {
     logger(INFO) << "Requesting stake deposit transaction";
 
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
@@ -120,7 +120,7 @@ namespace CryptoNote
     req.extra_nonce = Common::toHex(extra_nonce);
 
     try {
-      if (wait_wallet_refresh) {
+      if (local_dispatcher) {
         System::Dispatcher localDispatcher;
         HttpClient httpClient(localDispatcher, m_wallet_host, m_wallet_port);
         invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
@@ -174,7 +174,7 @@ namespace CryptoNote
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::request_block_template(bool wait_wallet_refresh) {
+  bool miner::request_block_template(bool wait_wallet_refresh, bool local_dispatcher) {
     if (wait_wallet_refresh) {
       logger(INFO) << "Give wallet few seconds to refresh...";
       std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -208,7 +208,7 @@ namespace CryptoNote
       }
 
       // request stake tx from wallet
-      if (!requestStakeTransaction(blockReward, height, extra_nonce, wait_wallet_refresh, stake_tx)) {
+      if (!requestStakeTransaction(blockReward, height, extra_nonce, wait_wallet_refresh, local_dispatcher, stake_tx)) {
         logger(DEBUGGING) << "Failed to request stake transaction from wallet";
         return false;
       }
@@ -232,7 +232,7 @@ namespace CryptoNote
   {
     m_update_block_template_interval.call([&](){
       if (is_mining())
-        request_block_template(false);
+        request_block_template(false, false);
       return true;
     });
 
@@ -359,7 +359,7 @@ namespace CryptoNote
 	  m_mixin = mixin;
 
     // always request block template on start
-    if (!request_block_template(true)) {
+    if (!request_block_template(false, true)) {
       logger(ERROR) << "Unable to start miner because block template request was unsuccessful";
       return false;
     }

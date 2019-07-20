@@ -60,9 +60,9 @@ namespace CryptoNote {
 
   private:
     bool worker_thread(uint32_t th_local_index);
-    bool request_block_template(bool wait_wallet_refresh);
+    bool request_block_template(bool wait_wallet_refresh, bool local_dispatcher);
     void merge_hr();
-    bool requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, Transaction& transaction);
+    bool requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, bool local_dispatcher, Transaction& transaction);
 
     struct miner_config
     {
