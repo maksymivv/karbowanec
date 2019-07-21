@@ -19,6 +19,7 @@
 
 #include <memory>
 
+#include <Common/Base64.h>
 #include <HTTP/HttpRequest.h>
 #include <HTTP/HttpResponse.h>
 #include <System/TcpConnection.h>
@@ -57,11 +58,14 @@ private:
 };
 
 template <typename Request, typename Response>
-void invokeJsonCommand(HttpClient& client, const std::string& url, const Request& req, Response& res) {
+void invokeJsonCommand(HttpClient& client, const std::string& url, const Request& req, Response& res, const std::string& user = "", const std::string& password = "") {
   HttpRequest hreq;
   HttpResponse hres;
 
   hreq.addHeader("Content-Type", "application/json");
+  if (!user.empty() || !password.empty()) {
+    hreq.addHeader("Authorization", "Basic " + Tools::Base64::encode(user + ":" + password));
+  }
   hreq.setUrl(url);
   hreq.setBody(storeToJson(req));
   client.request(hreq, hres);
@@ -76,7 +80,7 @@ void invokeJsonCommand(HttpClient& client, const std::string& url, const Request
 }
 
 template <typename Request, typename Response>
-void invokeJsonRpcCommand(HttpClient& client, const std::string& method, const Request& req, Response& res) {
+void invokeJsonRpcCommand(HttpClient& client, const std::string& method, const Request& req, Response& res, const std::string& user = "", const std::string& password = "") {
   try {
 
     JsonRpc::JsonRpcRequest jsReq;
@@ -88,6 +92,9 @@ void invokeJsonRpcCommand(HttpClient& client, const std::string& method, const R
     HttpResponse httpRes;
 
     httpReq.addHeader("Content-Type", "application/json");
+    if (!user.empty() || !password.empty()) {
+      httpReq.addHeader("Authorization", "Basic " + Tools::Base64::encode(user + ":" + password));
+    }
     httpReq.setUrl("/json_rpc");
     httpReq.setBody(jsReq.getBody());
 
@@ -110,10 +117,13 @@ void invokeJsonRpcCommand(HttpClient& client, const std::string& method, const R
 }
 
 template <typename Request, typename Response>
-void invokeBinaryCommand(HttpClient& client, const std::string& url, const Request& req, Response& res) {
+void invokeBinaryCommand(HttpClient& client, const std::string& url, const Request& req, Response& res, const std::string& user = "", const std::string& password = "") {
   HttpRequest hreq;
   HttpResponse hres;
 
+  if (!user.empty() || !password.empty()) {
+    hreq.addHeader("Authorization", "Basic " + Tools::Base64::encode(user + ":" + password));
+  }
   hreq.setUrl(url);
   hreq.setBody(storeToBinaryKeyValue(req));
   client.request(hreq, hres);
@@ -122,5 +132,5 @@ void invokeBinaryCommand(HttpClient& client, const std::string& url, const Reque
     throw std::runtime_error("Failed to parse binary response");
   }
 }
-
+  
 }
