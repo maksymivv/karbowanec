@@ -29,8 +29,12 @@
 #define TX_EXTRA_TAG_PUBKEY                 0x01
 #define TX_EXTRA_NONCE                      0x02
 #define TX_EXTRA_MERGE_MINING_TAG           0x03
+#define TX_EXTRA_TAG_TX_SECRET_KEY          0x75
+#define TX_EXTRA_TAG_ADDITIONAL_PUBKEYS     0x04
 
 #define TX_EXTRA_NONCE_PAYMENT_ID           0x00
+#define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID 0x01
+#define TX_EXTRA_UNIFORM_PAYMENT_ID         0x05
 
 namespace CryptoNote {
 
