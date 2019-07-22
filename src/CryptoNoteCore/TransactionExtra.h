@@ -35,6 +35,7 @@
 #define TX_EXTRA_NONCE_PAYMENT_ID           0x00
 #define TX_EXTRA_NONCE_ENCRYPTED_PAYMENT_ID 0x01
 #define TX_EXTRA_UNIFORM_PAYMENT_ID         0x05
+#define TX_EXTRA_MYSTERIOUS_MINERGATE_TAG   0xDE
 
 namespace CryptoNote {
 
