@@ -800,9 +800,9 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
 		std::function<void(WalletRequest::Callback, std::error_code)> cb;
 		INode::Callback icb = std::bind(cb, callback, std::placeholders::_1);
 
-		//m_node.getRandomOutsByAmounts(std::move(amounts), outsCount, std::ref(context->outs), std::bind(cb, callback, std::placeholders::_1));
 		auto f = std::async([this, amounts, outsCount, context, icb] {
-			return this->getRandomOuts(amounts, outsCount, std::ref(context->outs), icb);
+      auto amnts = amounts;
+			return m_node.getRandomOutsByAmounts(std::move(amnts), outsCount, std::ref(context->outs), icb);
 		});
 		f.get();
 
@@ -831,11 +831,6 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
   }
 
   return true;
-}
-
-void WalletLegacy::getRandomOuts(std::vector<uint64_t> amounts, uint64_t outsCount,
-  std::vector<CryptoNote::COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount>& result, const INode::Callback& callback) {
-  m_node.getRandomOutsByAmounts(std::move(amounts), outsCount, result, callback);
 }
 
 void WalletLegacy::sendTransactionCallback(WalletRequest::Callback callback, std::error_code ec) {
