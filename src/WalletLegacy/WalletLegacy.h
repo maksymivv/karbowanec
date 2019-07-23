@@ -122,9 +122,6 @@ public:
 
   virtual bool constructStakeTx(const std::string& address, const uint64_t& stake, const uint64_t& reward, const uint64_t& mixin, uint64_t unlockTimestamp, const std::string& extra, Transaction& stakeTransaction, Crypto::SecretKey& stakeKey) override;
 
-  void getRandomOuts(std::vector<uint64_t> amounts, uint64_t outsCount,
-    std::vector<CryptoNote::COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount>& result, const INode::Callback& callback);
-
 private:
 
   // IBlockchainSynchronizerObserver
