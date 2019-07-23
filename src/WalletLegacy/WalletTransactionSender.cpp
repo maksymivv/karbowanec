@@ -57,13 +57,13 @@ void createChangeDestinations(const AccountPublicAddress& address, uint64_t need
 }
 
 void constructTx(const AccountKeys keys, const std::vector<TransactionSourceEntry>& sources, const std::vector<TransactionDestinationEntry>& splittedDests,
-    const std::string& extra, uint64_t unlockTimestamp, uint64_t sizeLimit, Transaction& tx, Crypto::SecretKey& tx_key) {
+    const std::string& extra, uint64_t unlockTimestamp, uint64_t sizeLimit, const uint8_t& version, Transaction& tx, Crypto::SecretKey& tx_key) {
   std::vector<uint8_t> extraVec;
   extraVec.reserve(extra.size());
   std::for_each(extra.begin(), extra.end(), [&extraVec] (const char el) { extraVec.push_back(el);});
 
   Logging::LoggerGroup nullLog;
-  bool r = constructTransaction(keys, sources, splittedDests, extraVec, tx, unlockTimestamp, tx_key, nullLog);
+  bool r = constructTransaction(keys, sources, splittedDests, extraVec, tx, unlockTimestamp, tx_key, nullLog, version);
 
   throwIf(!r, error::INTERNAL_WALLET_ERROR);
   throwIf(getObjectBinarySize(tx) >= sizeLimit, error::TRANSACTION_SIZE_TOO_BIG);
@@ -221,7 +221,7 @@ bool WalletTransactionSender::makeStakeTransaction(std::shared_ptr<SendTransacti
 			splittedDests.push_back(TransactionDestinationEntry(dust, context->dustPolicy.addrForDust));
 		}
 
-		constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, stakeTx, context->tx_key);
+		constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, CryptoNote::STAKE_TRANSACTION_VERSION, stakeTx, context->tx_key);
 		getObjectHash(stakeTx, transaction.hash);
 		stakeTxKey = context->tx_key;
 
@@ -303,7 +303,7 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::doSendTransaction(std::s
     splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, splittedDests);
 
     Transaction tx;
-    constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, tx, context->tx_key);
+    constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, CryptoNote::CURRENT_TRANSACTION_VERSION, tx, context->tx_key);
 
     getObjectHash(tx, transaction.hash);
 

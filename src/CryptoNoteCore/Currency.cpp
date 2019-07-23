@@ -280,7 +280,7 @@ namespace CryptoNote {
 			return false;
 		}
 
-		tx.version = CURRENT_TRANSACTION_VERSION;
+		tx.version = blockMajorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? CryptoNote::TRANSACTION_VERSION_1 : CryptoNote::STAKE_TRANSACTION_VERSION;
 		//lock
 		tx.unlockTime = height + (blockMajorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_minedMoneyUnlockWindow : m_minedMoneyUnlockWindow_v1);
 		tx.inputs.push_back(in);

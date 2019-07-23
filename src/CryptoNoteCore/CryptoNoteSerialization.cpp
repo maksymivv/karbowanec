@@ -185,11 +185,6 @@ namespace CryptoNote {
 
 void serialize(TransactionPrefix& txP, ISerializer& serializer) {
   serializer(txP.version, "version");
-
-  if (CURRENT_TRANSACTION_VERSION < txP.version) {
-    throw std::runtime_error("Wrong transaction version");
-  }
-
   serializer(txP.unlockTime, "unlock_time");
   serializer(txP.inputs, "vin");
   serializer(txP.outputs, "vout");
@@ -199,13 +194,15 @@ void serialize(TransactionPrefix& txP, ISerializer& serializer) {
 void serialize(Transaction& tx, ISerializer& serializer) {
   serialize(static_cast<TransactionPrefix&>(tx), serializer);
 
+  if (TRANSACTION_VERSION_2 < tx.version) {
+    throw std::runtime_error("Wrong transaction version");
+  }
+
   size_t sigSize = tx.inputs.size();
   //TODO: make arrays without sizes
 //  serializer.beginArray(sigSize, "signatures");
   
-  //if (serializer.type() == ISerializer::INPUT) {
-  // ignore base transaction
-  if (serializer.type() == ISerializer::INPUT && !(sigSize == 1 && tx.inputs[0].type() == typeid(BaseInput))) {
+  if (serializer.type() == ISerializer::INPUT) {
     tx.signatures.resize(sigSize);
   }
 

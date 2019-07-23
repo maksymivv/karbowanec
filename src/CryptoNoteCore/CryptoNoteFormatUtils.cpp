@@ -32,8 +32,6 @@
 #include "CryptoNoteTools.h"
 #include "Currency.h"
 
-#include "CryptoNoteConfig.h"
-
 using namespace Logging;
 using namespace Crypto;
 using namespace Common;
@@ -47,7 +45,10 @@ bool parseAndValidateTransactionFromBinaryArray(const BinaryArray& tx_blob, Tran
 
   //TODO: validate tx
   cn_fast_hash(tx_blob.data(), tx_blob.size(), tx_hash);
-  return getObjectHash(*static_cast<TransactionPrefix*>(&tx), tx_prefix_hash);
+  if (!getObjectHash(*static_cast<TransactionPrefix*>(&tx), tx_prefix_hash)) {
+    return false;
+  }
+  return true;
 }
 
 bool generate_key_image_helper(const AccountKeys& ack, const PublicKey& tx_public_key, size_t real_output_index, KeyPair& in_ephemeral, KeyImage& ki) {
@@ -122,14 +123,16 @@ bool constructTransaction(
   Transaction& tx,
   uint64_t unlock_time,
   Crypto::SecretKey &tx_key,
-  Logging::ILogger& log) {
+  Logging::ILogger& log,
+  uint8_t version
+) {
   LoggerRef logger(log, "construct_tx");
 
   tx.inputs.clear();
   tx.outputs.clear();
   tx.signatures.clear();
 
-  tx.version = CURRENT_TRANSACTION_VERSION;
+  tx.version = version;
   tx.unlockTime = unlock_time;
 
   tx.extra = extra;
