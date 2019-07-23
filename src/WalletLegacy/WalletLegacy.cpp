@@ -798,11 +798,13 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
 
 		WalletRequest::Callback callback;
 		std::function<void(WalletRequest::Callback, std::error_code)> cb;
-		m_node.getRandomOutsByAmounts(std::move(amounts), outsCount, std::ref(context->outs), std::bind(cb, callback, std::placeholders::_1));
+		INode::Callback icb = std::bind(cb, callback, std::placeholders::_1);
 
-		// TODO make something better
-		// wait for random outs from node
-		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+		auto f = std::async([this, amounts, outsCount, context, icb] {
+			auto amnts = amounts;
+			return m_node.getRandomOutsByAmounts(std::move(amnts), outsCount, std::ref(context->outs), icb);
+		});
+		f.get();
 
 		auto scanty_it = std::find_if(context->outs.begin(), context->outs.end(),
 			[&](COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& out) {return out.outs.size() < mixin; });
