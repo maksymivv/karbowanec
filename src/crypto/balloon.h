@@ -3,6 +3,8 @@
 #ifndef BALLOON_H
 #define BALLOON_H
 
+#include <stddef.h>
+
 #define S_COST (uint64_t)56
 #define T_COST (uint64_t)8
 #define DELTA  (uint64_t)7
