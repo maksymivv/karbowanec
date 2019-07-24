@@ -804,6 +804,7 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
 			auto amnts = amounts;
 			return m_node.getRandomOutsByAmounts(std::move(amnts), outsCount, std::ref(context->outs), icb);
 		});
+		f.wait();
 		f.get();
 
 		auto scanty_it = std::find_if(context->outs.begin(), context->outs.end(),
