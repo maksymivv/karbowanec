@@ -796,24 +796,28 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
 			amounts.push_back(td.amount);
 		}
 
-		WalletRequest::Callback callback;
-		std::function<void(WalletRequest::Callback, std::error_code)> cb;
-		INode::Callback icb = std::bind(cb, callback, std::placeholders::_1);
+        auto queryAmountsCompleted = std::promise<std::error_code>();
+        auto queryAmountsWaitFuture = queryAmountsCompleted.get_future();
 
-		auto f = std::async([this, amounts, outsCount, context, icb] {
-			auto amnts = amounts;
-			return m_node.getRandomOutsByAmounts(std::move(amnts), outsCount, std::ref(context->outs), icb);
-		});
-		f.wait();
-		f.get();
+        m_node.getRandomOutsByAmounts(std::move(amounts),
+                                      outsCount, std::ref(context->outs),
+                                      [&queryAmountsCompleted](std::error_code ec) {
+                                        auto detachedPromise = std::move(queryAmountsCompleted);
+                                        detachedPromise.set_value(ec);
+                                      });
+
+        queryAmountsWaitFuture.get();
 
 		auto scanty_it = std::find_if(context->outs.begin(), context->outs.end(),
-			[&](COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& out) {return out.outs.size() < mixin; });
+			[&](COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& out) {
+              return out.outs.size() < mixin;
+        });
 
 		if (scanty_it != context->outs.end()) {
 			throw std::system_error(make_error_code(error::MIXIN_COUNT_TOO_BIG));
 			return false;
 		}
+
 	}
 
 	AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
