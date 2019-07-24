@@ -1075,26 +1075,24 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
 }
 
 bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) {
-
-  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.inputs.size() == 1)) {
-    logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction in the block has no inputs";
-    return false;
-  }
-
-  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.signatures.empty())) {
-    logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction in the block shouldn't have signatures";
-    return false;
-  }
-
-  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 && !(b.baseTransaction.inputs[0].type() == typeid(BaseInput))) {
-    logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction in the block has the wrong type";
-    return false;
-  }
-
   if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    if (!(b.baseTransaction.inputs.size() == 1)) {
+      logger(ERROR, BRIGHT_RED)
+        << "coinbase transaction in the block has no inputs";
+      return false;
+    }
+
+    if (!(b.baseTransaction.signatures.empty())) {
+      logger(ERROR, BRIGHT_RED)
+        << "coinbase transaction in the block shouldn't have signatures";
+      return false;
+    }
+
+    if (!(b.baseTransaction.inputs[0].type() == typeid(BaseInput))) {
+      logger(ERROR, BRIGHT_RED)
+        << "coinbase transaction in the block has the wrong type";
+      return false;
+    }
     if (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex != height) {
       logger(INFO, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
         boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex << ", expected: " << height;
@@ -1144,7 +1142,18 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
         inputsAmount += boost::get<KeyInput>(in).amount;
       }
     }
-    minerReward = outputsAmount - inputsAmount; // we assume that the difference between inputs and outputs (of stake) is miner reward
+    
+    if (inputsAmount == 0) {
+      logger(ERROR, BRIGHT_RED) << "Zero inputs amount in coibase stake transaction";
+      return false;
+    }
+    if (outputsAmount < inputsAmount) {
+      logger(ERROR, BRIGHT_RED) << "Sum of outputs " << m_currency.formatAmount(outputsAmount) <<
+        "is smaller than inputs " << m_currency.formatAmount(inputsAmount) << " in coibase stake transaction";
+      return false;
+    }
+
+    minerReward = outputsAmount - inputsAmount; // the difference between inputs and outputs (of stake) is miner reward
   }
   else {
     minerReward = outputsAmount;
