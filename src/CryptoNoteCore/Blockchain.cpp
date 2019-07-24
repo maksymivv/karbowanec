@@ -784,8 +784,19 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
 	uint64_t avgDifficultyCurrent = getAvgDifficulty(height, m_currency.averageDifficultyWindow());
 	
 	// historical reference moving average difficulty
-	uint64_t avgDifficultyHistorical = getAvgCumulativeDifficulty(height);
-
+  uint64_t avgDifficultyHistorical;
+  if (height < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    uint64_t avgDifficultyHistorical = getAvgCumulativeDifficulty(height);
+  }
+  else {
+    /*
+    * Calculate average historic difficulty for current, post-ASICs epoch,
+    * to eliminate their innfluence.
+    * For simplicity don't exclude transitional low difficulty blocks.
+    */
+    uint32_t epochDuration = height - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+    avgDifficultyHistorical = getAvgDifficulty(height, height - epochDuration);
+  }
 	/*
 	* Total reward with transaction fees is used as the level of usage metric
 	* to take into account transaction volume and cost of space in blockchain.
@@ -1127,10 +1138,40 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, size_t cumulativeBlockSize,
   uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange) {
 
+  /* 
+   * Calculate stake
+   */
+  std::vector<size_t> lastBlocksSizes;
+  get_last_n_blocks_sizes(lastBlocksSizes, m_currency.rewardBlocksWindow());
+  size_t blocksSizeMedian = Common::medianValue(lastBlocksSizes);
+  auto blockMajorVersion = getBlockMajorVersionForHeight(height);
+  if (!m_currency.getBlockReward(blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
+    logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
+    return false;
+  }
+
+  //uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from genesis
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  uint64_t firstReward = m_blocks.front().already_generated_coins;
+  uint64_t baseReward = reward - fee; // exclude fees
+
+  uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / firstReward * baseReward;
+
+  // For simplicity don't exclude transitional low difficulty blocks.
+  uint32_t epochDuration = height - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+  
+  // Calculate average historic difficulty for current, post-ASICs epoch
+  // to eliminate their innfluence.
+  uint64_t epochAvgDifficulty = getAvgDifficulty(height, height - epochDuration);
+
+  // calculate difficulty-adjusted stake
+  uint64_t adjustedStake = getDifficultyForNextBlock() * baseStake / epochAvgDifficulty;
+
+  uint64_t stake = std::max<uint64_t>(std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
+
   uint64_t minerReward = 0;
   uint64_t inputsAmount = 0;
   uint64_t outputsAmount = 0;
-  uint64_t stake = std::max<uint64_t>(std::min<uint64_t>(getDifficultyForNextBlock() * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
 
   for (auto& o : b.baseTransaction.outputs) {
     outputsAmount += o.amount;
@@ -1157,16 +1198,6 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   }
   else {
     minerReward = outputsAmount;
-  }
-
-  std::vector<size_t> lastBlocksSizes;
-  get_last_n_blocks_sizes(lastBlocksSizes, m_currency.rewardBlocksWindow());
-  size_t blocksSizeMedian = Common::medianValue(lastBlocksSizes);
-
-  auto blockMajorVersion = getBlockMajorVersionForHeight(height);
-  if (!m_currency.getBlockReward(blockMajorVersion, blocksSizeMedian, cumulativeBlockSize, alreadyGeneratedCoins, fee, reward, emissionChange)) {
-    logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
-    return false;
   }
 
   if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
@@ -2286,7 +2317,12 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   pushTransaction(block, minerTransactionHash, transactionIndex);
 
   size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
-  size_t cumulative_block_size = coinbase_blob_size;
+
+  size_t cumulative_block_size = 0;
+  // Starting from block v5 we don't count stake coinbase tx's size
+  if (block.bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5)
+    cumulative_block_size = coinbase_blob_size;
+  
   uint64_t fee_summary = 0;
   for (size_t i = 0; i < transactions.size(); ++i) {
     const Crypto::Hash& tx_id = blockData.transactionHashes[i];
@@ -2330,7 +2366,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   }
 
   block.height = static_cast<uint32_t>(m_blocks.size());
-  block.block_cumulative_size = cumulative_block_size;
+  block.block_cumulative_size = block.bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? cumulative_block_size : cumulative_block_size + coinbase_blob_size;
   block.cumulative_difficulty = currentDifficulty;
   block.already_generated_coins = already_generated_coins + emissionChange;
   if (m_blocks.size() > 0) {

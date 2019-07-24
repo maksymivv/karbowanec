@@ -34,6 +34,7 @@
 
 #include "crypto/crypto.h"
 #include "Common/CommandLine.h"
+#include "Common/Math.h"
 #include "Common/StringTools.h"
 #include "Serialization/SerializationTools.h"
 
@@ -106,15 +107,33 @@ namespace CryptoNote
     return request_block_template(true, true);
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::requestStakeTransaction(uint64_t& reward, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, bool local_dispatcher, Transaction& transaction) {
+  bool miner::requestStakeTransaction(uint64_t& reward, uint64_t& fee, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, bool local_dispatcher, Transaction& transaction) {
     logger(INFO) << "Requesting stake deposit transaction";
 
+    // Calculate stake
+    uint64_t alreadyGeneratedCoins = m_handler.getTotalGeneratedAmount();
+    uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from blockchain
+    uint64_t baseReward = reward - fee; // exclude fees
+    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / firstReward * baseReward;
+
+    // For simplicity don't exclude transitional low difficulty blocks.
+    uint32_t epochDuration = height - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+
+    // Calculate average historic difficulty for current, post-ASICs epoch
+    // to eliminate their innfluence.
+    uint64_t epochAvgDifficulty = m_handler.getAvgDifficulty(height, height - epochDuration);
+
+    // calculate difficulty-adjusted stake
+    uint64_t diff = m_handler.getNextBlockDifficulty();
+
+    uint64_t adjustedStake = diff * baseStake / epochAvgDifficulty;
+
+    // Having stake now request stake deposit transaction
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
     req.address = m_currency.accountAddressAsString(m_mine_address);
-    uint64_t diff = m_handler.getNextBlockDifficulty();
-    req.stake = std::max<uint64_t>(std::min<uint64_t>(diff * CryptoNote::parameters::STAKE_TO_DIFFICULTY_RATIO, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
+    req.stake = std::max<uint64_t>(std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
     req.mixin = m_mixin;
     req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     req.reward = reward;
@@ -191,7 +210,8 @@ namespace CryptoNote
     }
 
     // 1) First, create block template with coinbase tx
-    if (!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce)) {
+    uint64_t fee;
+    if (!m_handler.get_block_template(bl, fee, m_mine_address, di, height, extra_nonce)) {
       logger(ERROR) << "Failed to get_block_template(), stopping mining";
       return false;
     }
@@ -209,7 +229,7 @@ namespace CryptoNote
       }
 
       // request stake tx from wallet
-      if (!requestStakeTransaction(blockReward, height, extra_nonce, wait_wallet_refresh, local_dispatcher, stake_tx)) {
+      if (!requestStakeTransaction(blockReward, fee, height, extra_nonce, wait_wallet_refresh, local_dispatcher, stake_tx)) {
         logger(DEBUGGING) << "Failed to request stake transaction from wallet";
         return false;
       }
