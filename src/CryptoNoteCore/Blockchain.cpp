@@ -1166,7 +1166,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   // calculate difficulty-adjusted stake
   uint64_t adjustedStake = getDifficultyForNextBlock() * baseStake / epochAvgDifficulty;
 
-  uint64_t stake = std::max<uint64_t>(std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
+  uint64_t stake = std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
 
   uint64_t minerReward = 0;
   uint64_t inputsAmount = 0;

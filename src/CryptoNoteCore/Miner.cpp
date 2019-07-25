@@ -139,7 +139,7 @@ namespace CryptoNote
     Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
     req.address = m_currency.accountAddressAsString(m_mine_address);
-    req.stake = std::max<uint64_t>(std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT), CryptoNote::parameters::STAKE_MIN_LIMIT);
+    req.stake = std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
     req.mixin = m_mixin;
     req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     req.reward = reward;
