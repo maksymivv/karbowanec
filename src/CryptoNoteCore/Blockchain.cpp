@@ -715,15 +715,22 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
   std::vector<difficulty_type> cumulative_difficulties;
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(m_blocks.size()));
   size_t offset;
+
   offset = m_blocks.size() - std::min<size_t>(m_blocks.size(), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
 
   if (offset == 0) {
     ++offset;
   }
   for (; offset < m_blocks.size(); offset++) {
-    timestamps.push_back(m_blocks[offset].bl.timestamp);
-    cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
+    if (m_blocks.size() > CryptoNote::parameters::UPGRADE_HEIGHT_V5 && offset <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+      // skip to reset difficulty for post-ASICs epoch
+    }
+    else {
+      timestamps.push_back(m_blocks[offset].bl.timestamp);
+      cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
+    }
   }
+
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 
@@ -794,9 +801,14 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
     * to eliminate their innfluence.
     * For simplicity don't exclude transitional low difficulty blocks.
     */
-    uint32_t epochDuration = height - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-    avgDifficultyHistorical = getAvgDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, CryptoNote::parameters::UPGRADE_HEIGHT_V5) - getAvgDifficulty(height, height - epochDuration);
-    avgDifficultyHistorical = avgDifficultyHistorical == 0 ? getDifficultyForNextBlock() : avgDifficultyHistorical;
+    uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+    if (epochDuration == 0)
+        epochDuration = 1;
+    uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
+    uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
+    uint64_t avgDifficultyHistorical = (cumulDiffTotal - cumulDiffBeforeStake) / epochDuration;
+    if (avgDifficultyHistorical == 0)
+        avgDifficultyHistorical = getDifficultyForNextBlock();
   }
 	/*
 	* Total reward with transaction fees is used as the level of usage metric
@@ -1155,18 +1167,23 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   uint64_t firstReward = m_blocks.front().already_generated_coins;
   uint64_t baseReward = reward - fee; // exclude fees
 
-  uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4 / firstReward * baseReward;
+  uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 7 / firstReward * baseReward;
 
   // For simplicity don't exclude transitional low difficulty blocks.
-  uint32_t epochDuration = height - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-  
+  uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+  if (epochDuration == 0)
+      epochDuration = 1;
+
   // Calculate average historic difficulty for current, post-ASICs epoch
   // to eliminate their innfluence.
-  uint64_t epochAvgDifficulty = getAvgDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, CryptoNote::parameters::UPGRADE_HEIGHT_V5) - getAvgDifficulty(height, height - epochDuration);
-  epochAvgDifficulty = epochAvgDifficulty == 0 ? getDifficultyForNextBlock() : epochAvgDifficulty;
+  uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
+  uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
+  uint64_t epochAvgDifficulty = (cumulDiffTotal - cumulDiffBeforeStake) / epochDuration;
+  if (epochAvgDifficulty == 0)
+      epochAvgDifficulty = getDifficultyForNextBlock();
 
   // calculate difficulty-adjusted stake
-  uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) * static_cast<double>(getDifficultyForNextBlock()) / static_cast<double>(epochAvgDifficulty));
+  uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) * (pow(static_cast<double>(getDifficultyForNextBlock()), 2) / pow(static_cast<double>(epochAvgDifficulty), 2)));
 
   uint64_t stake = std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
 

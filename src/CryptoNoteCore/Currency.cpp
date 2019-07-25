@@ -731,19 +731,16 @@ namespace CryptoNote {
 		// See commented link below for required config file changes. Fix FTL and MTP.
 		// https://github.com/zawy12/difficulty-algorithms/issues/3
 
+    assert(timestamps.size() == cumulativeDifficulties.size());
+
+    // reset difficulty for pos-ASICs epoch
+    if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 3) {
+      return !isTestnet() ? 100000 : 10000;
+    }
+
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
-		uint64_t N = difficultyBlocksCount4();
+    uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), timestamps.size());
 		
-		// Hard code D if there are not at least N+1 BLOCKS after fork (or genesis)
-		// This helps a lot in preventing a very common problem in CN forks from conflicting difficulties.
-
-		uint64_t difficulty_guess = 100000;// !isTestnet() ? 1000000000 : 10000;
-
-		if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + N + 1) { return difficulty_guess; }
-
-		// Genesis should be the only time sizes are < N+1.
-		assert(timestamps.size() == cumulativeDifficulties.size() && timestamps.size() == N + 1);
-
 		uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
 
 		previous_timestamp = timestamps[0] - T;
@@ -756,6 +753,8 @@ namespace CryptoNote {
 		}
 		if (L < N * N * T / 20) { L = N * N * T / 20; }
 		avg_D = (cumulativeDifficulties[N] - cumulativeDifficulties[0]) / N;
+
+    std::cout << "avg_D: " << avg_D << " (" << cumulativeDifficulties[N] << " - " << cumulativeDifficulties[0] << ")/" << N << ENDL;
 
 		// Prevent round off error for small D and overflow for large D.
 		if (avg_D > 2000000 * N * N * T) {
