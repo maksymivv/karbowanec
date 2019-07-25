@@ -108,29 +108,30 @@ namespace CryptoNote
   }
   //-----------------------------------------------------------------------------------------------------
   bool miner::requestStakeTransaction(uint64_t& reward, uint64_t& fee, uint32_t& height, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, bool local_dispatcher, Transaction& transaction) {
-    logger(INFO) << "Requesting stake deposit transaction for height " << height;
+    uint64_t nextDifficulty = m_handler.getNextBlockDifficulty();
+
+    logger(INFO) << "Requesting stake deposit transaction for height " << height << " at difficulty " << nextDifficulty;
 
     // Calculate stake
     uint64_t alreadyGeneratedCoins = m_handler.getTotalGeneratedAmount();
     uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from blockchain
     uint64_t baseReward = reward - fee; // exclude fees
-    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / firstReward * baseReward;
+    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4 / firstReward * baseReward;
 
     logger(INFO) << "Base Stake: " << m_currency.formatAmount(baseStake);
-
-    uint64_t nextDifficulty = m_handler.getNextBlockDifficulty();
 
     // For simplicity don't exclude transitional low difficulty blocks.
     uint32_t epochDuration = height - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
 
     // Calculate average historic difficulty for current, post-ASICs epoch
     // to eliminate their innfluence.
-    uint64_t epochAvgDifficulty = epochDuration == 1 ? nextDifficulty : m_handler.getAvgDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, CryptoNote::parameters::UPGRADE_HEIGHT_V5) - m_handler.getAvgDifficulty(height, height - epochDuration);
+    uint64_t epochAvgDifficulty = m_handler.getAvgDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, CryptoNote::parameters::UPGRADE_HEIGHT_V5) - m_handler.getAvgDifficulty(height, height - epochDuration);
+    epochAvgDifficulty = epochAvgDifficulty == 0 ? nextDifficulty : epochAvgDifficulty;
 
     logger(INFO) << "Avg.  Diff: " << epochAvgDifficulty << " for window: " << epochDuration;
 
     // calculate difficulty-adjusted stake
-    uint64_t adjustedStake = nextDifficulty * baseStake / epochAvgDifficulty;
+    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) * static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty));
 
     logger(INFO) << "Adj. Stake: " << m_currency.formatAmount(adjustedStake);
 
