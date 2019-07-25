@@ -795,7 +795,7 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
     * For simplicity don't exclude transitional low difficulty blocks.
     */
     uint32_t epochDuration = height - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-    avgDifficultyHistorical = getAvgDifficulty(height, height - epochDuration);
+    avgDifficultyHistorical = epochDuration == 1 ? getDifficultyForNextBlock() : getAvgDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, CryptoNote::parameters::UPGRADE_HEIGHT_V5) - getAvgDifficulty(height, height - epochDuration);
   }
 	/*
 	* Total reward with transaction fees is used as the level of usage metric
@@ -1150,7 +1150,6 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     return false;
   }
 
-  //uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from genesis
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   uint64_t firstReward = m_blocks.front().already_generated_coins;
   uint64_t baseReward = reward - fee; // exclude fees
@@ -1162,7 +1161,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   
   // Calculate average historic difficulty for current, post-ASICs epoch
   // to eliminate their innfluence.
-  uint64_t epochAvgDifficulty = getAvgDifficulty(height, height - epochDuration);
+  uint64_t epochAvgDifficulty = epochDuration == 1 ? getDifficultyForNextBlock() : getAvgDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, CryptoNote::parameters::UPGRADE_HEIGHT_V5) - getAvgDifficulty(height, height - epochDuration);
 
   // calculate difficulty-adjusted stake
   uint64_t adjustedStake = getDifficultyForNextBlock() * baseStake / epochAvgDifficulty;
