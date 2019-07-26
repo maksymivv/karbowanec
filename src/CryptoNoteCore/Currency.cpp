@@ -482,23 +482,23 @@ namespace CryptoNote {
   uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
     uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from blockchain
     uint64_t baseReward = reward - fee; // exclude fees
-    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 10 / firstReward * baseReward; // TODO replace 10 by 4 in prod
+    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4;
+    uint64_t rewardStake = baseStake / firstReward * baseReward; // adjusted by reward (profitability)
     
-    // For simplicity don't exclude transitional low difficulty blocks.
+    // Calculate average historic difficulty for current, post-ASICs epoch
+    // to eliminate their innfluence.
     uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
     if (epochDuration == 0)
         epochDuration =  1;
-
-    // Calculate average historic difficulty for current, post-ASICs epoch
-    // to eliminate their innfluence.
     uint64_t epochAvgDifficulty = (cumulativeDifficulty - cumulativeDifficultyBeforeStake) / epochDuration;
     if (epochAvgDifficulty == 0)
         epochAvgDifficulty = nextDifficulty;
 
     // calculate difficulty-adjusted stake
-    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) * static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty));
+    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty));
 
     logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
+                 << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL
                  << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL
                  << "Avg.  Diff: "  << epochAvgDifficulty
                  << " for window: " << epochDuration
@@ -769,7 +769,7 @@ namespace CryptoNote {
 		}
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
-		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1);
+		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
 		uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
 
 		previous_timestamp = timestamps[0] - T;

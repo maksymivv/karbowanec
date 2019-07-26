@@ -151,7 +151,6 @@ namespace CryptoNote
       // convenience log balance and stake
       logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
       logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
-      //merge_hr();
 
       BinaryArray tx_blob;
       if (!Common::fromHex(res.tx_as_hex, tx_blob))
