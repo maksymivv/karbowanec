@@ -761,16 +761,15 @@ namespace CryptoNote {
 		// See commented link below for required config file changes. Fix FTL and MTP.
 		// https://github.com/zawy12/difficulty-algorithms/issues/3
 
-    assert(timestamps.size() == cumulativeDifficulties.size());
+		assert(timestamps.size() == cumulativeDifficulties.size());
 
-    // reset difficulty for pos-ASICs epoch
-    if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 4) {
-      return !isTestnet() ? 100000 : 10000;
-    }
+		// reset difficulty for pos-ASICs epoch
+		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 4) {
+			return !isTestnet() ? 100000 : 10000;
+		}
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
-    uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), timestamps.size());
-		
+		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1);
 		uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
 
 		previous_timestamp = timestamps[0] - T;
@@ -783,8 +782,6 @@ namespace CryptoNote {
 		}
 		if (L < N * N * T / 20) { L = N * N * T / 20; }
 		avg_D = (cumulativeDifficulties[N] - cumulativeDifficulties[0]) / N;
-
-    std::cout << "avg_D: " << avg_D << " (" << cumulativeDifficulties[N] << " - " << cumulativeDifficulties[0] << ")/" << N << ENDL;
 
 		// Prevent round off error for small D and overflow for large D.
 		if (avg_D > 2000000 * N * N * T) {

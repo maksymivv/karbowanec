@@ -717,12 +717,11 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
   size_t offset;
 
   offset = m_blocks.size() - std::min<size_t>(m_blocks.size(), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
-
   if (offset == 0) {
     ++offset;
   }
   for (; offset < m_blocks.size(); offset++) {
-    if (m_blocks.size() > CryptoNote::parameters::UPGRADE_HEIGHT_V5 && offset <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    if (m_blocks.size() > CryptoNote::parameters::UPGRADE_HEIGHT_V5 && offset < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
       // skip to reset difficulty for post-ASICs epoch
     }
     else {
