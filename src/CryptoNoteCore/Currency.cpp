@@ -764,7 +764,7 @@ namespace CryptoNote {
 		assert(timestamps.size() == cumulativeDifficulties.size());
 
 		// reset difficulty for pos-ASICs epoch
-		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 4) {
+		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
 			return !isTestnet() ? 100000 : 10000;
 		}
 
