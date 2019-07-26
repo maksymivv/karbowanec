@@ -302,21 +302,22 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t last_block_timestamp;
     uint64_t last_block_difficulty;
     uint64_t avg_historic_difficulty;
+    uint64_t cumulative_difficulty;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
       KV_MEMBER(version)
       KV_MEMBER(height)
-	  KV_MEMBER(top_block_hash)
+      KV_MEMBER(top_block_hash)
       KV_MEMBER(difficulty)
-	  KV_MEMBER(min_tx_fee)
+      KV_MEMBER(min_tx_fee)
       KV_MEMBER(readable_tx_fee)
       KV_MEMBER(tx_count)
       KV_MEMBER(tx_pool_size)
       KV_MEMBER(alt_blocks_count)
       KV_MEMBER(outgoing_connections_count)
       KV_MEMBER(incoming_connections_count)
-	  KV_MEMBER(rpc_connections_count)
+      KV_MEMBER(rpc_connections_count)
       KV_MEMBER(white_peerlist_size)
       KV_MEMBER(grey_peerlist_size)
       KV_MEMBER(last_known_block_index)
@@ -330,6 +331,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(last_block_timestamp)
       KV_MEMBER(last_block_difficulty)
       KV_MEMBER(avg_historic_difficulty)
+      KV_MEMBER(cumulative_difficulty)
     }
   };
 };

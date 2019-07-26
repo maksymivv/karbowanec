@@ -726,6 +726,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.start_time = (uint64_t)m_core.getStartTime();
   // that large uint64_t number is unsafe in JavaScript environment and therefore as a JSON value so we display it as a formatted string
   res.already_generated_coins = m_core.currency().formatAmount(m_core.getTotalGeneratedAmount());
+  m_core.getBlockCumulativeDifficulty(m_core.get_current_blockchain_height() - 1, res.cumulative_difficulty);
   
   Block blk;
   if (!m_core.getBlockByHash(last_block_hash, blk)) {
