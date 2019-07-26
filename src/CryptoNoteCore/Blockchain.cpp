@@ -1162,30 +1162,11 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
     return false;
   }
-
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  uint64_t firstReward = m_blocks.front().already_generated_coins;
-  uint64_t baseReward = reward - fee; // exclude fees
-
-  uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 7 / firstReward * baseReward;
-
-  // For simplicity don't exclude transitional low difficulty blocks.
-  uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-  if (epochDuration == 0)
-      epochDuration = 1;
-
-  // Calculate average historic difficulty for current, post-ASICs epoch
-  // to eliminate their innfluence.
   uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
   uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
-  uint64_t epochAvgDifficulty = (cumulDiffTotal - cumulDiffBeforeStake) / epochDuration;
-  if (epochAvgDifficulty == 0)
-      epochAvgDifficulty = getDifficultyForNextBlock();
+  uint64_t nextDifficulty = getDifficultyForNextBlock();
 
-  // calculate difficulty-adjusted stake
-  uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) * (pow(static_cast<double>(getDifficultyForNextBlock()), 2) / pow(static_cast<double>(epochAvgDifficulty), 2)));
-
-  uint64_t stake = std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
+  uint64_t stake = m_currency.nextStake(height, reward, fee, alreadyGeneratedCoins, cumulDiffTotal, cumulDiffBeforeStake, nextDifficulty);
 
   uint64_t minerReward = 0;
   uint64_t inputsAmount = 0;

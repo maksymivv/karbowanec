@@ -479,6 +479,36 @@ namespace CryptoNote {
 		return ret;
 	}
 
+  uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
+    uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from blockchain
+    uint64_t baseReward = reward - fee; // exclude fees
+    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 10 / firstReward * baseReward; // TODO replace 10 by 4 in prod
+    
+    // For simplicity don't exclude transitional low difficulty blocks.
+    uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+    if (epochDuration == 0)
+        epochDuration =  1;
+
+    // Calculate average historic difficulty for current, post-ASICs epoch
+    // to eliminate their innfluence.
+    uint64_t epochAvgDifficulty = (cumulativeDifficulty - cumulativeDifficultyBeforeStake) / epochDuration;
+    if (epochAvgDifficulty == 0)
+        epochAvgDifficulty = nextDifficulty;
+
+    // calculate difficulty-adjusted stake
+    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) * static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty));
+
+    logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
+                 << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL
+                 << "Avg.  Diff: "  << epochAvgDifficulty
+                 << " for window: " << epochDuration
+                 << "  ("  << cumulativeDifficulty
+                 << " - "  << cumulativeDifficultyBeforeStake
+                 << ") / " << epochDuration;
+
+    return std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
+  }
+
 	difficulty_type Currency::nextDifficulty(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps,
 		std::vector<difficulty_type> cumulativeDifficulties) const {
 		if (blockMajorVersion >= BLOCK_MAJOR_VERSION_5) {
@@ -734,7 +764,7 @@ namespace CryptoNote {
     assert(timestamps.size() == cumulativeDifficulties.size());
 
     // reset difficulty for pos-ASICs epoch
-    if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 3) {
+    if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 4) {
       return !isTestnet() ? 100000 : 10000;
     }
 
