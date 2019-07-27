@@ -39,6 +39,9 @@
 #include "TransactionExtra.h"
 #include "IBlock.h"
 #include "Serialization/SerializationTools.h"
+#include "Wallet/WalletRpcServerCommandsDefinitions.h"
+#include "Rpc/HttpClient.h"
+#include "Rpc/JsonRpc.h"
 
 #undef ERROR
 
@@ -154,6 +157,19 @@ std::time_t core::getStartTime() const {
   //-----------------------------------------------------------------------------------------------
 bool core::init(const CoreConfig& config, const MinerConfig& minerConfig, bool load_existing) {
   m_config_folder = config.configFolder;
+
+  if (!config.walletHost.empty()) {
+    m_wallet_host = config.walletHost;
+  }
+
+  if (config.walletPort != 0) {
+    m_wallet_port = config.walletPort;
+  }
+
+  if (config.stakeMixin != 0) {
+    m_mixin = config.stakeMixin;
+  }
+
   bool r = m_mempool.init(m_config_folder);
   if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to initialize memory pool"; return false; }
 
@@ -466,7 +482,94 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
   return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block);
 }
 
-bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce) {
+bool core::requestStakeTransaction(uint8_t blockMajorVersion,
+                                   uint64_t& fee,
+                                   uint32_t& height,
+                                   difficulty_type& next_diff,
+                                   size_t medianSize,
+                                   uint64_t alreadyGeneratedCoins, 
+                                   size_t currentBlockSize,
+                                   const AccountPublicAddress& minerAddress,
+                                   const CryptoNote::BinaryArray& extra_nonce,
+                                   bool local_dispatcher,
+                                   Transaction& transaction) {
+  logger(INFO) << "[core] Requesting stake deposit transaction at height " << height << " and difficulty " << next_diff;
+
+  Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
+  Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
+
+  // Calculate stake
+  uint64_t emission = getTotalGeneratedAmount();
+  uint64_t blockReward;
+  int64_t emissionChange;
+  if (!getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
+    logger(INFO) << "Block is too big";
+    return false;
+  }
+  uint64_t cumulDiffTotal = m_blockchain.blockCumulativeDifficulty(height - 1);
+  uint64_t cumulDiffBeforeStake = m_blockchain.blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
+  req.stake = m_currency.nextStake(height, blockReward, fee, emission, cumulDiffTotal, cumulDiffBeforeStake, next_diff);
+
+  req.address = m_currency.accountAddressAsString(minerAddress);
+  req.mixin = m_mixin;
+  req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
+  req.reward = blockReward;
+  req.extra_nonce = Common::toHex(extra_nonce);
+
+  try {
+    if (local_dispatcher) {
+      System::Dispatcher localDispatcher;
+      HttpClient httpClient(localDispatcher, m_wallet_host, m_wallet_port);
+      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+    }
+    else {
+      HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port);
+      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+    }
+
+    // if wallet balance is insufficient return false
+    if (res.balance < req.stake) {
+      logger(ERROR) << "Insufficient wallet balance: "
+                    << m_currency.formatAmount(res.balance)
+                    << ", of required "
+                    << m_currency.formatAmount(req.stake);
+      return false;
+    }
+
+    // convenience log balance and stake
+    logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
+    logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
+
+    BinaryArray tx_blob;
+    if (!Common::fromHex(res.tx_as_hex, tx_blob))
+    {
+      logger(ERROR) << "Failed to parse tx from hexbuff";
+      return false;
+    }
+    Crypto::Hash tx_hash = CryptoNote::NULL_HASH;
+    Crypto::Hash tx_prefixt_hash = CryptoNote::NULL_HASH;
+    if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
+      logger(ERROR) << "Could not parse tx from blob";
+      return false;
+    }
+  }
+  catch (const ConnectException& e) {
+    logger(ERROR) << "Failed to connect to wallet: " << e.what();
+    return false;
+  }
+  catch (const std::runtime_error& e) {
+    logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
+    return false;
+  }
+  catch (const std::exception& e) {
+    logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
+    return false;
+  }
+
+  return true;
+}
+
+bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher) {
   size_t median_size;
   uint64_t already_generated_coins;
 
@@ -539,9 +642,10 @@ bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddres
 
   // After block v 5 don't penalize reward and simplify miner tx generation
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, ex_nonce, 14);
+    //bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, ex_nonce, 14);
+    bool r = requestStakeTransaction(b.majorVersion, fee, height, diffic, median_size, already_generated_coins, txs_size, adr, ex_nonce, local_dispatcher, b.baseTransaction);
     if (!r) {
-      logger(ERROR, BRIGHT_RED) << "Failed to construct miner tx, first chance";
+      logger(ERROR, BRIGHT_RED) << "Failed to construct miner's stake deposit tx";
       return false;
     }
 

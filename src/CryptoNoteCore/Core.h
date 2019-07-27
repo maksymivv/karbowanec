@@ -56,8 +56,9 @@ namespace CryptoNote {
 
      //-------------------- IMinerHandler -----------------------
      virtual bool handle_block_found(Block& b) override;
-     virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce) override;
+     virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher) override;
      virtual bool getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res) override;
+     virtual bool requestStakeTransaction(uint8_t blockMajorVersion, uint64_t& fee, uint32_t& height, difficulty_type& next_diff, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize, const AccountPublicAddress& minerAddress, const CryptoNote::BinaryArray& extra_nonce, bool local_dispatcher, Transaction& transaction) override;
 
      bool addObserver(ICoreObserver* observer) override;
      bool removeObserver(ICoreObserver* observer) override;
@@ -216,5 +217,9 @@ namespace CryptoNote {
      std::atomic<bool> m_starter_message_showed;
      Tools::ObserverManager<ICoreObserver> m_observerManager;
      time_t start_time;
+
+     std::string m_wallet_host;
+     uint16_t m_wallet_port;
+     size_t m_mixin = 0;
    };
 }

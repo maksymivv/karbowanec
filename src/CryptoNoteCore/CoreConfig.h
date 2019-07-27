@@ -31,6 +31,9 @@ public:
   void init(const boost::program_options::variables_map& options);
 
   std::string configFolder;
+  std::string walletHost;
+  uint16_t walletPort = 0;
+  size_t stakeMixin = 0;
   bool configFolderDefaulted = true;
 };
 

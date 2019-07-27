@@ -484,15 +484,15 @@ namespace CryptoNote {
     uint64_t baseReward = reward - fee; // exclude fees
     uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4; // ~25% coins in circulation involved in POWS
     uint64_t rewardStake = baseStake / firstReward * baseReward; // adjusted by reward (profitability)
-    
+
     // Calculate average historic difficulty for current, post-ASICs epoch
     // to eliminate their innfluence.
     uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-    if (epochDuration == 0)
-        epochDuration =  1;
+         if (epochDuration == 0)
+             epochDuration = 1;
     uint64_t epochAvgDifficulty = (cumulativeDifficulty - cumulativeDifficultyBeforeStake) / epochDuration;
-    if (epochAvgDifficulty == 0)
-        epochAvgDifficulty = nextDifficulty;
+         if (epochAvgDifficulty == 0)
+             epochAvgDifficulty = nextDifficulty;
 
     // calculate difficulty-adjusted stake
     uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)));

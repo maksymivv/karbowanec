@@ -401,8 +401,8 @@ bool DaemonCommandsHandler::print_pool_count(const std::vector<std::string>& arg
 }
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::start_mining(const std::vector<std::string> &args) {
-  if (args.size() != 4) {
-    std::cout << "usage: start_mining <addr> <threads[=1]> <wallet_host:port> <mixin>" << std::endl;
+  if (args.size() != 2) {
+    std::cout << "usage: start_mining <addr> <threads[=1]>" << std::endl;
     return true;
   }
 
@@ -416,20 +416,7 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string> &args) {
   bool t_ok = Common::fromString(args[1], threads_count);
   threads_count = (t_ok && 0 < threads_count) ? threads_count : 1;
 
-  std::string walletHost;
-  uint16_t walletPort;
-
-  if (!parseUrlAddress(args[2], walletHost, walletPort))
-  {
-    std::cout << "failed to parse wallet address" << std::endl;
-    return false;
-  }
-
-  size_t mixin_count = 0;
-  bool m_ok = Common::fromString(args[3], mixin_count);
-  mixin_count = (m_ok && mixin_count > 1) ? mixin_count : 0;
-
-  m_core.get_miner().start(adr, threads_count, walletHost, walletPort, mixin_count);
+  m_core.get_miner().start(adr, threads_count);
   return true;
 }
 

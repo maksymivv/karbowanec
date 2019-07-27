@@ -857,7 +857,7 @@ bool RpcServer::on_start_mining(const COMMAND_RPC_START_MINING::request& req, CO
     return true;
   }
 
-  if (!m_core.get_miner().start(adr, static_cast<size_t>(req.threads_count), req.wallet_host, req.wallet_port, req.mixin)) {
+  if (!m_core.get_miner().start(adr, static_cast<size_t>(req.threads_count))) {
     res.status = "Failed, mining not started";
     return true;
   }
@@ -1368,7 +1368,7 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
   uint64_t fee;
-  if (!m_core.get_block_template(b, fee, acc, res.difficulty, res.height, blob_reserve)) {
+  if (!m_core.get_block_template(b, fee, acc, res.difficulty, res.height, blob_reserve, true)) {
     logger(ERROR) << "Failed to create block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to create block template" };
   }

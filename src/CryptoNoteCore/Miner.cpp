@@ -106,81 +106,7 @@ namespace CryptoNote
 
     return request_block_template(true, true);
   }
-  //-----------------------------------------------------------------------------------------------------
-  bool miner::requestStakeTransaction(uint64_t& reward, uint64_t& fee, uint32_t& height, difficulty_type& next_diff, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, bool local_dispatcher, Transaction& transaction) {
-    logger(INFO) << "Requesting stake deposit transaction for height " << height << " at difficulty " << next_diff;
-
-    Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
-    Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
-
-    // Calculate stake
-    uint64_t emission = m_handler.getTotalGeneratedAmount();
-    uint64_t cumulDiffTotal;
-    m_handler.getBlockCumulativeDifficulty(height - 1, cumulDiffTotal);
-    uint64_t cumulDiffBeforeStake;
-    m_handler.getBlockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, cumulDiffBeforeStake);
-    req.stake = m_currency.nextStake(height, reward, fee, emission, cumulDiffTotal, cumulDiffBeforeStake, next_diff);
-
-    req.address = m_currency.accountAddressAsString(m_mine_address);
-    req.mixin = m_mixin;
-    req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
-    req.reward = reward;
-    req.extra_nonce = Common::toHex(extra_nonce);
-
-    try {
-      if (local_dispatcher) {
-        System::Dispatcher localDispatcher;
-        HttpClient httpClient(localDispatcher, m_wallet_host, m_wallet_port);
-        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
-      }
-      else {
-        HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port);
-        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
-      }
-
-      // if wallet balance is insufficient stop miner
-      if (res.balance < req.stake) {
-        logger(ERROR) << "Insufficient wallet balance: "
-          << m_currency.formatAmount(res.balance)
-          << ", of required "
-          << m_currency.formatAmount(req.stake);
-
-        return false;
-      }
-
-      // convenience log balance and stake
-      logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
-      logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
-
-      BinaryArray tx_blob;
-      if (!Common::fromHex(res.tx_as_hex, tx_blob))
-      {
-        logger(ERROR) << "Failed to parse tx from hexbuff";
-        return false;
-      }
-      Crypto::Hash tx_hash = NULL_HASH;
-      Crypto::Hash tx_prefixt_hash = NULL_HASH;
-      if (!parseAndValidateTransactionFromBinaryArray(tx_blob, transaction, tx_hash, tx_prefixt_hash)) {
-        logger(ERROR) << "Could not parse tx from blob";
-        return false;
-      }
-    }
-    catch (const ConnectException& e) {
-      logger(ERROR) << "Failed to connect to wallet: " << e.what();
-      return false;
-    }
-    catch (const std::runtime_error& e) {
-      logger(ERROR) << "Runtime error in requestStakeTransaction(): " << e.what();
-      return false;
-    }
-    catch (const std::exception& e) {
-      logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
-      return false;
-    }
-
-    return true;
-  }
-  //-----------------------------------------------------------------------------------------------------
+   //-----------------------------------------------------------------------------------------------------
   bool miner::request_block_template(bool wait_wallet_refresh, bool local_dispatcher) {
     if (wait_wallet_refresh) {
       logger(INFO) << "Give wallet few seconds to refresh...";
@@ -196,42 +122,12 @@ namespace CryptoNote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    // 1) First, create block template with coinbase tx
     uint64_t fee;
-    if (!m_handler.get_block_template(bl, fee, m_mine_address, di, height, extra_nonce)) {
+    if (!m_handler.get_block_template(bl, fee, m_mine_address, di, height, extra_nonce, local_dispatcher)) {
       logger(ERROR) << "Failed to get_block_template(), stopping mining";
       return false;
     }
 
-    // 2) Get stake tx from wallet RPC
-    // for blocks prior v5 skip these steps
-    if (bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      Transaction empty_tx = boost::value_initialized<Transaction>();
-      Transaction stake_tx = empty_tx;
-
-      // get block reward from coinbase tx and pass it to wallet
-      uint64_t blockReward = 0;
-      for (const auto& o : bl.baseTransaction.outputs) {
-        blockReward += o.amount;
-      }
-
-      // request stake tx from wallet
-      if (!requestStakeTransaction(blockReward, fee, height, di, extra_nonce, wait_wallet_refresh, local_dispatcher, stake_tx)) {
-        logger(DEBUGGING) << "Failed to request stake transaction from wallet";
-        return false;
-      }
-
-      // check that we actually got stake tx
-      if (getObjectHash(stake_tx) == getObjectHash(empty_tx)) {
-        logger(ERROR) << "Failed to get stake transaction, it's empty";
-        return false;
-      }
-
-      // 3) Replace coibase tx with stake tx in block template
-      bl.baseTransaction = stake_tx;
-    }
-
-    // 4) Set block template
     set_block_template(bl, di);
     return true;
   }
@@ -312,18 +208,6 @@ namespace CryptoNote
       logger(INFO) << "Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index;
     }
 
-    if (!config.walletHost.empty()) {
-      m_wallet_host = config.walletHost;
-    }
-
-    if (config.walletPort != 0) {
-      m_wallet_port = config.walletPort;
-    }
-
-    if (config.stakeMixin != 0) {
-      m_mixin = config.stakeMixin;
-    }
-
     if(!config.startMining.empty()) {
       if (!m_currency.parseAccountAddressString(config.startMining, m_mine_address)) {
         logger(ERROR) << "Target account address " << config.startMining << " has wrong format, starting daemon canceled";
@@ -344,7 +228,7 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::start(const AccountPublicAddress& adr, size_t threads_count, std::string wallet_host, uint16_t wallet_port, size_t mixin)
+  bool miner::start(const AccountPublicAddress& adr, size_t threads_count)
   {   
     if (is_mining()) {
       logger(ERROR) << "Starting miner but it's already started";
@@ -361,10 +245,6 @@ namespace CryptoNote
     m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);
     m_starter_nonce = Crypto::rand<uint32_t>();
-
-    m_wallet_host = wallet_host;
-    m_wallet_port = wallet_port;
-	  m_mixin = mixin;
 
     // always request block template on start
     if (!request_block_template(false, true)) {
@@ -475,7 +355,7 @@ namespace CryptoNote
   void miner::on_synchronized()
   {
     if(m_do_mining) {
-      start(m_mine_address, m_threads_total, m_wallet_host, m_wallet_port, m_mixin);
+      start(m_mine_address, m_threads_total);
     }
   }
   //-----------------------------------------------------------------------------------------------------

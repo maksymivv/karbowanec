@@ -46,7 +46,7 @@ namespace CryptoNote {
     bool init(const MinerConfig& config);
     bool set_block_template(const Block& bl, const difficulty_type& diffic);
     bool on_block_chain_update();
-    bool start(const AccountPublicAddress& adr, size_t threads_count, std::string wallet_host, uint16_t wallet_port, size_t mixin);
+    bool start(const AccountPublicAddress& adr, size_t threads_count);
     uint64_t get_speed();
     void send_stop_signal();
     bool stop();
@@ -63,8 +63,7 @@ namespace CryptoNote {
     bool worker_thread(uint32_t th_local_index);
     bool request_block_template(bool wait_wallet_refresh, bool local_dispatcher);
     void merge_hr();
-    bool requestStakeTransaction(uint64_t& reward, uint64_t& fee, uint32_t& height, difficulty_type& next_diff, CryptoNote::BinaryArray& extra_nonce, bool wait_wallet_refresh, bool local_dispatcher, Transaction& transaction);
-
+   
     struct miner_config
     {
       uint64_t current_extra_message_index;
@@ -82,10 +81,6 @@ namespace CryptoNote {
     std::atomic<uint32_t> m_template_no;
     std::atomic<uint32_t> m_starter_nonce;
     difficulty_type m_diffic;
-
-    std::string m_wallet_host;
-    uint16_t m_wallet_port;
-    size_t m_mixin = 0;
 
     std::atomic<uint32_t> m_threads_total;
     std::atomic<int32_t> m_pausers_count;
