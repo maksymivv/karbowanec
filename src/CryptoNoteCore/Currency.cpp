@@ -482,7 +482,7 @@ namespace CryptoNote {
   uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
     uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from blockchain
     uint64_t baseReward = reward - fee; // exclude fees
-    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4;
+    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4; // ~25% coins in circulation involved in POWS
     uint64_t rewardStake = baseStake / firstReward * baseReward; // adjusted by reward (profitability)
     
     // Calculate average historic difficulty for current, post-ASICs epoch
@@ -495,7 +495,7 @@ namespace CryptoNote {
         epochAvgDifficulty = nextDifficulty;
 
     // calculate difficulty-adjusted stake
-    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty));
+    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)));
 
     logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
                  << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL
