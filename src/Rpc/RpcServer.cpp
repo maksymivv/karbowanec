@@ -1368,7 +1368,7 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
   uint64_t fee;
-  if (!m_core.get_block_template(b, fee, acc, res.difficulty, res.height, blob_reserve, true)) {
+  if (!m_core.get_block_template(b, fee, acc, res.difficulty, res.height, blob_reserve, false)) {
     logger(ERROR) << "Failed to create block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to create block template" };
   }
