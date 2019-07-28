@@ -480,12 +480,17 @@ namespace CryptoNote {
 	}
 
   uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
-    uint64_t firstReward = UINT64_C(38146972656250); // just use constant not to query it from blockchain
+    // ~25% of coins in circulation involved in POWS around the clock
+    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4;
+    // Reward at the start of POWS epoch
+    // just use constant not to query it from blockchain and round it up
+    uint64_t firstReward = UINT64_C(8000000000000);
     uint64_t baseReward = reward - fee; // exclude fees
-    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4; // ~25% coins in circulation involved in POWS
-    uint64_t rewardStake = baseStake / firstReward * baseReward; // adjusted by reward (profitability)
 
-    // Calculate average historic difficulty for current, post-ASICs epoch
+    // Calculate stake adjusted by the reward (profitability)
+    uint64_t rewardStake = baseStake / firstReward * baseReward;
+
+    // Calculate average historic difficulty for current, post-ASICs POWS epoch
     // to eliminate their innfluence.
     uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
          if (epochDuration == 0)
@@ -494,9 +499,11 @@ namespace CryptoNote {
          if (epochAvgDifficulty == 0)
              epochAvgDifficulty = nextDifficulty;
 
-    // calculate difficulty-adjusted stake
+    // Calculate difficulty-adjusted stake
     uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)));
 
+    // Output info for debugging and checkout
+    // TODO: change logging level in production
     logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
                  << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL
                  << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL
