@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Karbowanec developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -164,6 +165,14 @@ bool core::init(const CoreConfig& config, const MinerConfig& minerConfig, bool l
 
   if (config.walletPort != 0) {
     m_wallet_port = config.walletPort;
+  }
+
+  if (!config.walletRpcUser.empty()) {
+    m_wallet_rpc_user = config.walletRpcUser;
+  }
+
+  if (!config.walletRpcPassword.empty()) {
+    m_wallet_rpc_password = config.walletRpcPassword;
   }
 
   if (config.stakeMixin != 0) {
@@ -520,11 +529,21 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
     if (local_dispatcher) {
       System::Dispatcher localDispatcher;
       HttpClient httpClient(localDispatcher, m_wallet_host, m_wallet_port);
-      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      if (!m_wallet_rpc_user.empty() && !m_wallet_rpc_password.empty()) {
+        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res, m_wallet_rpc_user, m_wallet_rpc_password);
+      }
+      else {
+        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      }
     }
     else {
       HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port);
-      invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      if (!m_wallet_rpc_user.empty() && !m_wallet_rpc_password.empty()) {
+        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res, m_wallet_rpc_user, m_wallet_rpc_password);
+      }
+      else {
+        invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res);
+      }
     }
 
     // if wallet balance is insufficient return false

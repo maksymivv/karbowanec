@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -219,6 +220,8 @@ namespace CryptoNote {
      time_t start_time;
 
      std::string m_wallet_host;
+     std::string m_wallet_rpc_user;
+     std::string m_wallet_rpc_password;
      uint16_t m_wallet_port;
      size_t m_mixin = 0;
    };
