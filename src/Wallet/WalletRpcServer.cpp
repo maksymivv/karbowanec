@@ -19,11 +19,13 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <list>
+#include <iostream>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/utility/value_init.hpp>
 #include "WalletRpcServer.h"
 #include "crypto/hash.h"
 #include "Common/CommandLine.h"
+#include "Common/PasswordContainer.h"
 #include "Common/StringTools.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/CryptoNoteBasicImpl.h"
@@ -38,6 +40,10 @@
 
 #include "ITransfersContainer.h"
 
+namespace {
+  Tools::PasswordContainer pwd_container;
+}
+
 using namespace Logging;
 using namespace CryptoNote;
 
@@ -50,7 +56,7 @@ const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_bind_
 const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_user = 
 	{ "rpc-user"     , "Username to use with the RPC server. If empty, no server authorization will be done.", "" };
 const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_password = 
-	{ "rpc-password" , "Password to use with the RPC server. If empty, no server authorization will be done.", "" };
+	{ "rpc-password" , "Password to use with the RPC server.", "", true };
 
 void wallet_rpc_server::init_options(boost::program_options::options_description& desc)
 {
@@ -102,12 +108,26 @@ void wallet_rpc_server::send_stop_signal()
 
 bool wallet_rpc_server::handle_command_line(const boost::program_options::variables_map& vm)
 {
-	m_bind_ip	  = command_line::get_arg(vm, arg_rpc_bind_ip);
-	m_port		  = command_line::get_arg(vm, arg_rpc_bind_port);
-	m_rpcUser	  = command_line::get_arg(vm, arg_rpc_user);
-	m_rpcPassword = command_line::get_arg(vm, arg_rpc_password);
+  m_bind_ip  	      = command_line::get_arg(vm, arg_rpc_bind_ip);
+	m_port		        = command_line::get_arg(vm, arg_rpc_bind_port);
+
+  if (command_line::has_arg(vm, arg_rpc_user)) {
+    m_rpcUser       = command_line::get_arg(vm, arg_rpc_user);
+  }
+  if (command_line::has_arg(vm, arg_rpc_password)) {
+    m_rpcPassword   = command_line::get_arg(vm, arg_rpc_password);
+  }
+  if (command_line::has_arg(vm, arg_rpc_user) && !command_line::has_arg(vm, arg_rpc_password)) {
+    std::cout << "Wallet RPC password is not set." << std::endl;
+    if (pwd_container.read_password()) {
+      m_rpcPassword = pwd_container.password();
+      return true;
+    }
+  }
+
 	return true;
 }
+
 //------------------------------------------------------------------------------------------------------------------------------
 
 bool wallet_rpc_server::init(const boost::program_options::variables_map& vm)
@@ -119,6 +139,8 @@ bool wallet_rpc_server::init(const boost::program_options::variables_map& vm)
 	}
 	return true;
 }
+
+//------------------------------------------------------------------------------------------------------------------------------
 
 void wallet_rpc_server::processRequest(const CryptoNote::HttpRequest& request, CryptoNote::HttpResponse& response)
 {
