@@ -759,6 +759,30 @@ difficulty_type Blockchain::getAvgCumulativeDifficulty(uint32_t height) {
   return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty / std::min<difficulty_type>(height, m_blocks.size());
 }
 
+difficulty_type Blockchain::getMedianDifficulty(uint32_t height, size_t window) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
+
+  height = std::min<uint32_t>(height, m_blocks.size() - 1);
+  size_t offset;
+  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), window));
+  if (offset == 0) {
+    ++offset;
+  }
+  std::vector<difficulty_type> difficulties;
+
+  for (size_t i = offset; i != height; i++) {
+    difficulties.push_back(m_blocks[i].cumulative_difficulty - m_blocks[i - 1].cumulative_difficulty);
+  }
+
+  difficulty_type median = Common::medianValue(difficulties);
+
+  std::chrono::duration<double> duration = std::chrono::steady_clock::now() - timePoint;
+  logger(INFO, BRIGHT_WHITE) << "Calculation of median difficulty " << median << " took: " << duration.count();
+
+  return median;
+}
+
 uint64_t Blockchain::getBlockTimestamp(uint32_t height) {
   assert(height < m_blocks.size());
   return m_blocks[height].bl.timestamp;
