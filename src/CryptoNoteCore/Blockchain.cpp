@@ -1174,9 +1174,6 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, size_t cumulativeBlockSize,
   uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange) {
 
-  /* 
-   * Calculate stake
-   */
   std::vector<size_t> lastBlocksSizes;
   get_last_n_blocks_sizes(lastBlocksSizes, m_currency.rewardBlocksWindow());
   size_t blocksSizeMedian = Common::medianValue(lastBlocksSizes);
@@ -1185,11 +1182,6 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
     return false;
   }
-  uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-  uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
-  uint64_t nextDifficulty = getDifficultyForNextBlock();
-
-  uint64_t stake = m_currency.nextStake(height, reward, fee, alreadyGeneratedCoins, cumulDiffTotal, cumulDiffBeforeStake, nextDifficulty);
 
   uint64_t minerReward = 0;
   uint64_t inputsAmount = 0;
@@ -1199,7 +1191,10 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     outputsAmount += o.amount;
   }
 
-  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    minerReward = outputsAmount;
+  }
+  else {
     for (const auto& in : b.baseTransaction.inputs) {
       if (in.type() == typeid(KeyInput)) {
         inputsAmount += boost::get<KeyInput>(in).amount;
@@ -1217,12 +1212,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     }
 
     minerReward = outputsAmount - inputsAmount; // the difference between inputs and outputs (of stake) is miner reward
-  }
-  else {
-    minerReward = outputsAmount;
-  }
-
-  if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+  
     if (minerReward > reward) { // check if miner reward is not bigger than expected
       logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction spend too much money: " << m_currency.formatAmount(minerReward) <<
         ", block reward is " << m_currency.formatAmount(reward);
@@ -1233,6 +1223,13 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
         m_currency.formatAmount(minerReward) << ", block reward is " << m_currency.formatAmount(reward);
       return false;
     }
+
+    // calculate stake
+    uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
+    uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
+    uint64_t nextDifficulty = getDifficultyForNextBlock();
+
+    uint64_t stake = m_currency.nextStake(height, reward, fee, alreadyGeneratedCoins, cumulDiffTotal, cumulDiffBeforeStake, nextDifficulty);
 
     // check stake, we don't care what's actually stake and what's change as both will be locked
     if (inputsAmount < stake) {
