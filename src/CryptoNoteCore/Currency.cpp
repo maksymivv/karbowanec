@@ -24,6 +24,7 @@
 #include <boost/lexical_cast.hpp>
 #include "../Common/Base58.h"
 #include "../Common/int-util.h"
+#include "../Common/Math.h"
 #include "../Common/StringTools.h"
 #include "crypto/crypto.h"
 
@@ -484,36 +485,44 @@ namespace CryptoNote {
     uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / 4;
     // Reward at the start of POWS epoch
     // just use constant not to query it from blockchain and round it up
-    uint64_t firstReward = UINT64_C(8000000000000);
+    //uint64_t firstReward = UINT64_C(8000000000000);
+    uint64_t firstReward = UINT64_C(38146972656250); // for testing of median reward, epoch initial reward should be used in prod
     uint64_t baseReward = reward - fee; // exclude fees
 
+    // simplified median reward since it's gradually diminishing without outliers
+    // just use first and last reward
+    std::vector<uint64_t> rewards;
+    rewards.push_back(firstReward);
+    rewards.push_back(baseReward);
+    uint64_t medianReward = Common::medianValue(rewards);
+
     // Calculate stake adjusted by the reward (profitability)
-    uint64_t rewardStake = baseStake / firstReward * baseReward;
+    uint64_t rewardStake = baseStake / medianReward * baseReward;
 
     // Calculate average historic difficulty for current, post-ASICs POWS epoch
     // to eliminate their innfluence.
-  //  uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-  //       if (epochDuration == 0)
-  //           epochDuration = 1;
-  //  uint64_t epochAvgDifficulty = (cumulativeDifficulty - cumulativeDifficultyBeforeStake) / epochDuration;
-  //       if (epochAvgDifficulty == 0)
-  //           epochAvgDifficulty = nextDifficulty;
+    uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+         if (epochDuration == 0)
+             epochDuration = 1;
+    uint64_t epochAvgDifficulty = (cumulativeDifficulty - cumulativeDifficultyBeforeStake) / epochDuration;
+         if (epochAvgDifficulty == 0)
+             epochAvgDifficulty = nextDifficulty;
 
     // Calculate difficulty-adjusted stake
-  //  uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)));
+    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)));
 
     // Output info for debugging and checkout
     // TODO: change logging level in production
     logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
-                 << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL;
-  //               << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL
-  //               << "Avg.  Diff: "  << epochAvgDifficulty
-  //               << " for window: " << epochDuration
-  //               << "  ("  << cumulativeDifficulty
-  //               << " - "  << cumulativeDifficultyBeforeStake
-  //               << ") / " << epochDuration;
+                 << "Rew. Stake: "  << formatAmount(rewardStake) << ", Median Reward: " << formatAmount(medianReward) << ENDL
+                 << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL
+                 << "Avg.  Diff: "  << epochAvgDifficulty
+                 << " for window: " << epochDuration
+                 << "  ("  << cumulativeDifficulty
+                 << " - "  << cumulativeDifficultyBeforeStake
+                 << ") / " << epochDuration;
 
-    return std::min<uint64_t>(rewardStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
+    return std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
   }
 
 	difficulty_type Currency::nextDifficulty(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps,
