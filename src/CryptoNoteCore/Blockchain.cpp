@@ -829,7 +829,7 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
         epochDuration = 1;
     uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
     uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
-    uint64_t avgDifficultyHistorical = (cumulDiffTotal - cumulDiffBeforeStake) / epochDuration;
+    avgDifficultyHistorical = (cumulDiffTotal - cumulDiffBeforeStake) / epochDuration;
     if (avgDifficultyHistorical == 0)
         avgDifficultyHistorical = getDifficultyForNextBlock();
   }
