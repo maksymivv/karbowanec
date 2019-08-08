@@ -1296,8 +1296,8 @@ difficulty_type core::getAvgDifficulty(uint32_t height, size_t window) {
   return m_blockchain.getAvgDifficulty(height, window);
 }
 
-difficulty_type core::getAvgCumulativeDifficulty(uint32_t height) {
-  return m_blockchain.getAvgCumulativeDifficulty(height);
+difficulty_type core::getAvgDifficulty(uint32_t height) {
+  return m_blockchain.getAvgDifficulty(height);
 }
 
 uint64_t core::getMinimalFee() {
