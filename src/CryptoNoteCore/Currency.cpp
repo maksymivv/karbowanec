@@ -448,10 +448,11 @@ namespace CryptoNote {
 	// http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
 	// Moore's law application by Sergey Kozlov
 	uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const {
-    double minFee(0.0);
-    double baseFee = static_cast<double>(CryptoNote::parameters::MAXIMUM_FEE);
     uint64_t minimumFee(0);
+    double minFee(0.0);
     const double gauge = double(0.25);
+    const double baseFee = static_cast<double>(CryptoNote::parameters::MAXIMUM_FEE);
+
     if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
       const uint64_t blocksInTwoYears = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365 * 2;
       double dailyDifficultyMoore = static_cast<double>(avgCurrentDifficulty) / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
@@ -459,7 +460,7 @@ namespace CryptoNote {
         dailyDifficultyMoore * static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
     }
     else {
-      minFee = baseFee * static_cast<double>(avgHistoricDifficulty) / static_cast<double>(avgCurrentDifficulty);//* static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
+      minFee = baseFee * static_cast<double>(avgHistoricDifficulty) / static_cast<double>(avgCurrentDifficulty) * static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
     }
 
     // zero test 
