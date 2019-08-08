@@ -789,64 +789,68 @@ uint64_t Blockchain::getBlockTimestamp(uint32_t height) {
 }
 
 uint64_t Blockchain::getMinimalFee(uint32_t height) {
-	std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-	if (height == 0 || m_blocks.size() <= 1) {
-	    return 0;
-	}
-
-	if (height > static_cast<uint32_t>(m_blocks.size()) - 1) {
-		height = static_cast<uint32_t>(m_blocks.size()) - 1;
-	}
-	if (height < 3) {
-		height = 3;
-	}
-  uint32_t window = std::min(height, std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size()), static_cast<uint32_t>(m_currency.expectedNumberOfBlocksPerDay())));
-	if (window == 0) {
-		++window;
-	}
-	size_t offset = height - window;
-	if (offset == 0) {
-		++offset;
-	}
-
-	// calculate average difficulty for ~last month
-	uint64_t avgDifficultyCurrent = getAvgDifficulty(height, m_currency.averageDifficultyWindow());
-	
-	// historical reference moving average difficulty
-  uint64_t avgDifficultyHistorical;
-  if (height < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-    uint64_t avgDifficultyHistorical = getAvgCumulativeDifficulty(height);
+  if (height == 0 || m_blocks.size() <= 1) {
+    return 0;
   }
-  else {
-    /*
-    * Calculate average historic difficulty for current, post-ASICs epoch,
-    * to eliminate their innfluence.
-    * For simplicity don't exclude transitional low difficulty blocks.
-    */
-    uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+
+  if (height > static_cast<uint32_t>(m_blocks.size()) - 1) {
+    height = static_cast<uint32_t>(m_blocks.size()) - 1;
+  }
+  if (height < 3) {
+    height = 3;
+  }
+  uint32_t window = std::min(height, std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size()), static_cast<uint32_t>(m_currency.expectedNumberOfBlocksPerDay())));
+  if (window == 0) {
+    ++window;
+  }
+  size_t offset = height - window;
+  if (offset == 0) {
+    ++offset;
+  }
+
+  uint32_t epochDuration = 0;
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
     if (epochDuration == 0)
         epochDuration = 1;
-    uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-    uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
-    avgDifficultyHistorical = (cumulDiffTotal - cumulDiffBeforeStake) / epochDuration;
-    if (avgDifficultyHistorical == 0)
-        avgDifficultyHistorical = getDifficultyForNextBlock();
   }
-	/*
-	* Total reward with transaction fees is used as the level of usage metric
-	* to take into account transaction volume and cost of space in blockchain.
-	*/
 
-	// calculate average reward for ~last day
-	std::vector<uint64_t> rewards;
-	rewards.reserve(window);
-	for (; offset < height; offset++) {
-		rewards.push_back(get_outs_money_amount(m_blocks[offset].bl.baseTransaction));
-	}
-	uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
-	rewards.clear();
-	rewards.shrink_to_fit();
+  // calculate average difficulty for ~last month
+  uint64_t avgDifficultyCurrent = 0;
+  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    avgDifficultyCurrent = getAvgDifficulty(height, m_currency.averageDifficultyWindow());
+  }
+  else {
+    // At the beginning of the post-ASICs epoch exclude difficulties before it
+    avgDifficultyCurrent = getAvgDifficulty(height, std::min<uint32_t>(m_currency.averageDifficultyWindow(), epochDuration));
+  }
+
+  // historical reference moving average difficulty
+  uint64_t avgDifficultyHistorical = getAvgDifficulty(height);
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    // Calculate average historic difficulty for current, post-ASICs epoch,
+    // to eliminate their influence.
+    avgDifficultyHistorical = getAvgDifficulty(height, epochDuration);
+  }
+
+  // calculate average reward for ~last day
+  uint64_t avgRewardCurrent = 0;
+
+  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    std::vector<uint64_t> rewards;
+    rewards.reserve(window);
+    for (; offset < height; offset++) {
+      rewards.push_back(get_outs_money_amount(m_blocks[offset].bl.baseTransaction));
+    }
+    avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
+    rewards.clear();
+    rewards.shrink_to_fit();
+  }
+  else {
+    avgRewardCurrent = (m_blocks[height].already_generated_coins - m_blocks[offset].already_generated_coins) / window;
+  }
 
 	// historical reference moving average reward
 	uint64_t avgRewardHistorical = m_blocks[height].already_generated_coins / height;
