@@ -715,14 +715,13 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
   std::vector<difficulty_type> cumulative_difficulties;
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(m_blocks.size()));
   size_t offset;
-
   offset = m_blocks.size() - std::min<size_t>(m_blocks.size(), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
   if (offset == 0) {
     ++offset;
   }
   for (; offset < m_blocks.size(); offset++) {
     if (m_blocks.size() > CryptoNote::parameters::UPGRADE_HEIGHT_V5 && offset < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-      // skip to reset difficulty for post-ASICs epoch
+      // skip to reset difficulty for hardfork block 5
     }
     else {
       timestamps.push_back(m_blocks[offset].bl.timestamp);
@@ -814,7 +813,7 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
   if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
     epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
     if (epochDuration == 0)
-        epochDuration = 1;
+      epochDuration = 1;
   }
 
   // calculate average difficulty for ~last month
@@ -852,10 +851,10 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
     avgRewardCurrent = (m_blocks[height].already_generated_coins - m_blocks[offset].already_generated_coins) / window;
   }
 
-	// historical reference moving average reward
-	uint64_t avgRewardHistorical = m_blocks[height].already_generated_coins / height;
+  // historical reference moving average reward
+  uint64_t avgRewardHistorical = m_blocks[height].already_generated_coins / height;
 
-	return m_currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
+  return m_currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
 }
 
 uint64_t Blockchain::getCoinsInCirculation() {
@@ -1353,7 +1352,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
 
   size_t cumulativeSize;
   if (!getBlockCumulativeSize(b, cumulativeSize)) {
-    logger(INFO) << "Block with id: " << id << " has at least one unknown transaction. Cumulative size is calculated imprecisely";
+    logger(TRACE) << "Block with id: " << id << " has at least one unknown transaction. Cumulative size is calculated imprecisely";
   }
 
   if (!checkCumulativeBlockSize(id, cumulativeSize, block_height)) {
