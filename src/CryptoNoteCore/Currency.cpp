@@ -430,28 +430,38 @@ namespace CryptoNote {
 		return Common::fromString(strAmount, amount);
 	}
 
-	// Copyright (c) 2017-2018 Zawy 
-	// http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
-	// Moore's law application by Sergey Kozlov
-	uint64_t Currency::getMinimalFee(uint64_t dailyDifficulty, uint64_t reward, uint64_t avgHistoricalDifficulty, uint64_t medianHistoricalReward, uint32_t height) const {
-		const uint64_t blocksInTwoYears = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365 * 2;
-		const double gauge = double(0.25);
-		uint64_t minimumFee(0);
-		double dailyDifficultyMoore = static_cast<double>(dailyDifficulty) / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
-		double minFee = gauge * CryptoNote::parameters::COIN * static_cast<double>(avgHistoricalDifficulty) /
-			dailyDifficultyMoore * static_cast<double>(reward) / static_cast<double>(medianHistoricalReward);
-		if (minFee == 0 || !std::isfinite(minFee))
-			return CryptoNote::parameters::MAXIMUM_FEE; // zero test 
-		minimumFee = static_cast<uint64_t>(minFee);
+  // Copyright (c) 2017-2018 Zawy 
+  // http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
+  // Moore's law application by Sergey Kozlov
+  uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const {
+    double minFee(0.0);
+    double baseFee = static_cast<double>(CryptoNote::parameters::MAXIMUM_FEE);
+    uint64_t minimumFee(0);
+    const double gauge = double(0.25);
+    if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+      const uint64_t blocksInTwoYears = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365 * 2;
+      double dailyDifficultyMoore = static_cast<double>(avgCurrentDifficulty) / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
+      minFee = gauge * CryptoNote::parameters::COIN * static_cast<double>(avgHistoricDifficulty) /
+        dailyDifficultyMoore * static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
+    }
+    else {
+      minFee = baseFee * static_cast<double>(avgHistoricDifficulty) / static_cast<double>(avgCurrentDifficulty);//* static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
+    }
 
-		uint64_t i = 1000000000;
-		while (i > 1) {
-			if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
-			else { i /= 10; }
-		}
+    // zero test 
+    if (minFee == 0 || !std::isfinite(minFee))
+      return CryptoNote::parameters::MAXIMUM_FEE;
+    minimumFee = static_cast<uint64_t>(minFee);
 
-		return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
-	}
+    // Make all insignificant digits zero for easy reading
+    uint64_t i = 1000000000;
+    while (i > 1) {
+      if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
+      else { i /= 10; }
+    }
+
+    return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
+  }
 
 	uint64_t Currency::roundUpMinFee(uint64_t minimalFee, int digits) const {
 		uint64_t ret(0);
@@ -724,9 +734,9 @@ namespace CryptoNote {
 		// Hard code D if there are not at least N+1 BLOCKS after fork (or genesis)
 		// This helps a lot in preventing a very common problem in CN forks from conflicting difficulties.
 
-    uint64_t difficulty_guess = 10000;// !isTestnet() ? 1000000000 : 10000;
+    uint64_t difficulty_guess = !isTestnet() ? 100000 : 10000;
 
-    if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + N + 1) { return difficulty_guess; }
+    if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) { return difficulty_guess; }
 
     // Genesis should be the only time sizes are < N+1.
     assert(timestamps.size() == cumulativeDifficulties.size() && timestamps.size() == N + 1);
