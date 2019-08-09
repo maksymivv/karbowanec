@@ -867,6 +867,16 @@ uint64_t Blockchain::getCoinsInCirculation() {
   }
 }
 
+uint64_t Blockchain::getCoinsInCirculation(uint32_t height) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (m_blocks.empty()) {
+    return 0;
+  }
+  else {
+    return m_blocks[height].already_generated_coins;
+  }
+}
+
 uint8_t Blockchain::getBlockMajorVersionForHeight(uint32_t height) const {
   if (height > m_upgradeDetectorV5.upgradeHeight()) {
     return m_upgradeDetectorV5.targetVersion();
@@ -1232,8 +1242,9 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
     uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
     uint64_t nextDifficulty = getDifficultyForNextBlock();
+    uint64_t alreadyGeneratedCoinsBeforeStake = m_blocks[CryptoNote::parameters::UPGRADE_HEIGHT_V5].already_generated_coins;
 
-    uint64_t stake = m_currency.nextStake(height, reward, fee, alreadyGeneratedCoins, cumulDiffTotal, cumulDiffBeforeStake, nextDifficulty);
+    uint64_t stake = m_currency.nextStake(height, reward, fee, alreadyGeneratedCoins, alreadyGeneratedCoinsBeforeStake, cumulDiffTotal, cumulDiffBeforeStake, nextDifficulty);
 
     // check stake, we don't care what's actually stake and what's change as both will be locked
     if (inputsAmount < stake) {

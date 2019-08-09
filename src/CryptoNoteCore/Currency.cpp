@@ -491,7 +491,7 @@ namespace CryptoNote {
 		return ret;
 	}
 
-  uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
+  uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins,  uint64_t& alreadyGeneratedCoinsBeforeStake, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
     // ~25% of coins in circulation involved in POWS around the clock.
     
     // Tweak this value to get desired percent after stake is adjusted by the
@@ -499,7 +499,6 @@ namespace CryptoNote {
     const uint64_t emissionFraction = 4;
     uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / emissionFraction;
     uint64_t baseReward = reward - fee; // exclude fees
-    // uint64_t avgReward = alreadyGeneratedCoins / height;
 
     uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
          if (epochDuration == 0)
@@ -510,14 +509,13 @@ namespace CryptoNote {
     // changed either to use as reference the static reward at the beginning of
     // new Epoch or to use the average historic reward but adjust it to the epoch.
     // I.e. we have to adjust initially the percent of engaged coins P to satisfy 
-    // chosen interest after stake is modified by this parameter
-    // or calculate average reward only starting from the Epoch beginning.
-    const uint64_t emissionAtEpochStart = UINT64_C(7702249021457826719); /// TODO: change this to real epoch start, constant is used just not to query it, in production we have to query because we won't know exact value beforehead or be satisfied by approx. value
-    uint64_t epochAvgReward = (alreadyGeneratedCoins - emissionAtEpochStart) / epochDuration;
-    
+    // chosen interest after stake is modified by this parameter or calculate the
+    // average reward only starting from the Epoch beginning and this is what we do.
+    uint64_t epochAvgReward = (alreadyGeneratedCoins - alreadyGeneratedCoinsBeforeStake) / epochDuration;
+
     // Calculate reward/profitability-adjusted stake
     // using doubles and first divide then multiply to avoid overflow.
-    uint64_t rewardStake = static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(/*avgReward*/ epochAvgReward) * static_cast<double>(baseReward));
+    uint64_t rewardStake = static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(epochAvgReward) * static_cast<double>(baseReward));
 
     // Normally here should be used average historic difficulty for all period
     // but because of anti-ASIC hardfork calculation is changed as follows.

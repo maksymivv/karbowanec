@@ -517,7 +517,8 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
   }
   uint64_t cumulDiffTotal = m_blockchain.blockCumulativeDifficulty(height - 1);
   uint64_t cumulDiffBeforeStake = m_blockchain.blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-  req.stake = m_currency.nextStake(height, blockReward, fee, emission, cumulDiffTotal, cumulDiffBeforeStake, next_diff);
+  uint64_t emissionBeforeStake = m_blockchain.getCoinsInCirculation(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
+  req.stake = m_currency.nextStake(height, blockReward, fee, emission, emissionBeforeStake, cumulDiffTotal, cumulDiffBeforeStake, next_diff);
 
   req.address = m_currency.accountAddressAsString(minerAddress);
   req.mixin = m_mixin;
