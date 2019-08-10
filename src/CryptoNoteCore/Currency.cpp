@@ -504,21 +504,19 @@ namespace CryptoNote {
          if (epochDuration == 0)
              epochDuration = 1;
 
-    // Normally the average reward should be used here for the entire history
-    // but because POWS hardfork is made at specific point, calculation must be
-    // changed either to use as reference the static reward at the beginning of
-    // new Epoch or to use the average historic reward but adjust it to the epoch.
-    // I.e. we have to adjust initially the percent of engaged coins P to satisfy 
-    // chosen interest after stake is modified by this parameter or calculate the
-    // average reward only starting from the Epoch beginning and this is what we do.
+    // Normally the average reward for the entire history should be used here
+    // but due to POWS hardfork is made at specific point we have to either
+    // initially adjust the percent of engaged coins P to satisfy chosen 
+    // interest after stake is modified by the average reward or calculate 
+    // the average reward only starting from the Epoch beginning.
     uint64_t epochAvgReward = (alreadyGeneratedCoins - alreadyGeneratedCoinsBeforeStake) / epochDuration;
 
     // Calculate reward/profitability-adjusted stake
     // using doubles and first divide then multiply to avoid overflow.
     uint64_t rewardStake = static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(epochAvgReward) * static_cast<double>(baseReward));
 
-    // Normally here should be used average historic difficulty for all period
-    // but because of anti-ASIC hardfork calculation is changed as follows.
+    // Normally here should be used average historic difficulty for the entire
+    // history but because of POWS hardfork calculation is changed.
     // Calculate average historic difficulty for new, post-ASICs POWS epoch
     // to eliminate their influence.
     uint64_t epochAvgDifficulty = (cumulativeDifficulty - cumulativeDifficultyBeforeStake) / epochDuration;
