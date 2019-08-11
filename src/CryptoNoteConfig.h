@@ -47,7 +47,7 @@ const uint64_t COIN                                          = UINT64_C(10000000
 const uint64_t TAIL_EMISSION_REWARD                          = UINT64_C(1000000000000);
 
 const uint64_t STAKE_MAX_LIMIT                               = UINT64_C(10000) * COIN;
-const uint64_t STAKE_EMISSION_FRACTION                       = 4;
+const uint64_t STAKE_EMISSION_FRACTION                       = 44;
 
 const size_t CRYPTONOTE_COIN_VERSION                         = 1;
 const unsigned EMISSION_SPEED_FACTOR                         = 18;

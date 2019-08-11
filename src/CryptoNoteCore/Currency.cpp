@@ -531,8 +531,9 @@ namespace CryptoNote {
     uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)));
 
     // Output info for debugging and checkout
-    logger(TRACE) << "Base Stake: "  << formatAmount(baseStake) << ENDL
-                  << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL
+    // TODO: change logging level in production
+    logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << " * Base R " << formatAmount(baseReward) << ", Avg. R " << formatAmount(epochAvgReward) << " = " << ENDL
+                  << "Rew. Stake: "  << formatAmount(rewardStake) << " * Next D " << nextDifficulty << " / Avg. D " << epochAvgDifficulty << " or " << (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)) << " = " << ENDL
                   << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL;
 
     // Make all insignificant digits zero for easy reading
@@ -833,9 +834,9 @@ namespace CryptoNote {
 		}
 
 		// minimum limit
-		if (!isTestnet() && next_D < 1000000) {
-			next_D = 1000000;
-		}
+		//if (!isTestnet() && next_D < 100000) {
+		//	next_D = 100000;
+		//}
 
 		return next_D;
 	}
