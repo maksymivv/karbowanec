@@ -567,7 +567,8 @@ struct f_block_short_response {
   uint64_t cumul_size;
   difficulty_type difficulty;
   uint64_t min_tx_fee;
-  uint64_t avg_historic_difficulty;
+  uint64_t actual_stake;
+  uint64_t minimal_stake;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(timestamp)
@@ -576,8 +577,9 @@ struct f_block_short_response {
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
     KV_MEMBER(difficulty)
-	KV_MEMBER(min_tx_fee)
-	KV_MEMBER(avg_historic_difficulty)
+    KV_MEMBER(min_tx_fee)
+    KV_MEMBER(actual_stake)
+    KV_MEMBER(minimal_stake)
   }
 };
 

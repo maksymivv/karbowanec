@@ -30,12 +30,8 @@
 #include "CryptoNoteCore/MinerConfig.h"
 #include "CryptoNoteCore/OnceInInterval.h"
 #include "Logging/LoggerRef.h"
-#include "Rpc/HttpClient.h"
-#include "Rpc/JsonRpc.h"
-#include "Serialization/ISerializer.h"
 #include <System/Dispatcher.h>
-#include "System/EventLock.h"
-#include <System/Ipv4Address.h>
+#include "Serialization/ISerializer.h"
 
 namespace CryptoNote {
   class miner {

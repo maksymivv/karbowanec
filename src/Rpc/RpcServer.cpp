@@ -736,7 +736,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   
   if (blk.baseTransaction.inputs.front().type() != typeid(BaseInput) && blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
     throw JsonRpc::JsonRpcError{
-    CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
       "Internal error: coinbase transaction in the block has the wrong type" };
   }
 
@@ -962,7 +962,53 @@ bool RpcServer::f_on_blocks_list_json(const F_COMMAND_RPC_GET_BLOCKS_LIST::reque
     block_short.tx_count = blk.transactionHashes.size() + 1;
     block_short.difficulty = blockDiff;
     block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
-    block_short.avg_historic_difficulty = m_core.getAvgDifficulty(i);
+    block_short.actual_stake = 0;
+    block_short.minimal_stake = 0;
+
+    if (blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      if (!get_inputs_money_amount(blk.baseTransaction, block_short.actual_stake))
+        return false;
+
+      uint64_t alreadyGeneratedCoins = 0;
+      if (!m_core.getAlreadyGeneratedCoins(block_hash, alreadyGeneratedCoins)) {
+        return false;
+      }
+      uint64_t prevBlockGeneratedCoins = 0;
+      if (req.height > 0) {
+        if (!m_core.getAlreadyGeneratedCoins(blk.previousBlockHash, prevBlockGeneratedCoins)) {
+          return false;
+        }
+      }
+
+      uint64_t blockReward = 0;
+      uint64_t actualReward = 0;
+      int64_t emissionChange = 0;
+      size_t blockGrantedFullRewardZone = CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
+      for (const TransactionOutput& out : blk.baseTransaction.outputs) {
+        actualReward += out.amount;
+      }
+      std::vector<size_t> blocksSizes;
+      if (!m_core.getBackwardBlocksSizes(req.height, blocksSizes, parameters::CRYPTONOTE_REWARD_BLOCKS_WINDOW)) {
+        return false;
+      }
+      uint64_t sizeMedian = Common::medianValue(blocksSizes);
+      if (!m_core.getBlockReward(blk.majorVersion, sizeMedian, block_short.cumul_size, prevBlockGeneratedCoins, 0, blockReward, emissionChange)) {
+        return false;
+      }
+
+      uint64_t blockFees = actualReward - blockReward - block_short.actual_stake;
+
+      uint64_t cumulDiffTotal;
+      m_core.getBlockCumulativeDifficulty(req.height, cumulDiffTotal);
+      uint64_t cumulDiffBeforeStake;
+      m_core.getBlockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, cumulDiffBeforeStake);
+       uint64_t emission;
+      m_core.getAlreadyGeneratedCoins(block_hash, emission);
+      uint64_t emissionBeforeStake;
+      m_core.getAlreadyGeneratedCoins(m_core.getBlockIdByHeight(CryptoNote::parameters::UPGRADE_HEIGHT_V5), emissionBeforeStake);
+
+      block_short.minimal_stake = m_core.currency().nextStake(req.height, blockReward, blockFees, emission, emissionBeforeStake, cumulDiffTotal, cumulDiffBeforeStake, blockDiff);
+    }
 
     res.blocks.push_back(block_short);
 

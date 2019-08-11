@@ -1,5 +1,4 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2019, The Tax developers
 // Copyright (c) 2019, Karbo developers
 //
 // This file is part of Karbo.

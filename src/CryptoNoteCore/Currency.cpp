@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2018  zawy12
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2019, Zawy
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -444,10 +444,10 @@ namespace CryptoNote {
 		return Common::fromString(strAmount, amount);
 	}
 
-	// Copyright (c) 2017-2018 Zawy 
-	// http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
-	// Moore's law application by Sergey Kozlov
-	uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const {
+  // Copyright (c) 2017-2018 Zawy 
+  // http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
+  // Moore's law application by Sergey Kozlov
+  uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const {
     uint64_t minimumFee(0);
     double minFee(0.0);
     const double gauge = double(0.25);
@@ -466,30 +466,31 @@ namespace CryptoNote {
     // zero test 
     if (minFee == 0 || !std::isfinite(minFee))
       return CryptoNote::parameters::MAXIMUM_FEE;
+
     minimumFee = static_cast<uint64_t>(minFee);
 
-		// Make all insignificant digits zero for easy reading
-		uint64_t i = 1000000000;
-		while (i > 1) {
-			if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
-			else { i /= 10; }
-		}
+    // Make all insignificant digits zero for easy reading
+    uint64_t i = 1000000000;
+    while (i > 1) {
+      if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
+      else { i /= 10; }
+    }
 
-		return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
-	}
+    return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
+  }
 
-	uint64_t Currency::roundUpMinFee(uint64_t minimalFee, int digits) const {
-		uint64_t ret(0);
-		std::string minFeeString = formatAmount(minimalFee);
-		double minFee = boost::lexical_cast<double>(minFeeString);
-		double scale = pow(10., floor(log10(fabs(minFee))) + (1 - digits));
-		double roundedFee = ceil(minFee / scale) * scale;
-		std::stringstream ss;
-		ss << std::fixed << std::setprecision(12) << roundedFee;
-		std::string roundedFeeString = ss.str();
-		parseAmount(roundedFeeString, ret);
-		return ret;
-	}
+  uint64_t Currency::roundUpMinFee(uint64_t minimalFee, int digits) const {
+    uint64_t ret(0);
+    std::string minFeeString = formatAmount(minimalFee);
+    double minFee = boost::lexical_cast<double>(minFeeString);
+    double scale = pow(10., floor(log10(fabs(minFee))) + (1 - digits));
+    double roundedFee = ceil(minFee / scale) * scale;
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(12) << roundedFee;
+    std::string roundedFeeString = ss.str();
+    parseAmount(roundedFeeString, ret);
+    return ret;
+  }
 
   uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins,  uint64_t& alreadyGeneratedCoinsBeforeStake, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
     // ~25% of coins in circulation involved in POWS around the clock.
@@ -655,7 +656,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && nextDiffZ < 100000) {
-		//	nextDiffZ = 100000;
+			nextDiffZ = 100000;
 		}
 
 		return nextDiffZ;
@@ -718,7 +719,7 @@ namespace CryptoNote {
 		
 		// minimum limit
 		if (!isTestnet() && next_difficulty < 100000) {
-		//	next_difficulty = 100000;
+			next_difficulty = 100000;
 		}
 
 		return next_difficulty;
@@ -781,7 +782,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && next_D < 100000) {
-		//	next_D = 100000;
+			next_D = 100000;
 		}
 
 		return next_D;
@@ -831,9 +832,9 @@ namespace CryptoNote {
 		}
 
 		// minimum limit
-		//if (!isTestnet() && next_D < 1000000) {
-		//	next_D = 1000000;
-		//}
+		if (!isTestnet() && next_D < 1000000) {
+			next_D = 1000000;
+		}
 
 		return next_D;
 	}

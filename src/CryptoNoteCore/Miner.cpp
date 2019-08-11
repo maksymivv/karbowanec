@@ -109,7 +109,7 @@ namespace CryptoNote
    //-----------------------------------------------------------------------------------------------------
   bool miner::request_block_template(bool wait_wallet_refresh, bool local_dispatcher) {
     if (wait_wallet_refresh) {
-      logger(INFO) << "Give wallet few seconds to refresh...";
+      logger(INFO) << "Give wallet some time to refresh...";
       std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     }
 
