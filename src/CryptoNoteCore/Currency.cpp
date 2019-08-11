@@ -180,6 +180,7 @@ namespace CryptoNote {
 			return false;
 		}
 
+    //TODO: consider penalizing and proper stake calculation everywhere
 		if (blockMajorVersion == CryptoNote::BLOCK_MAJOR_VERSION_5) {
 			emissionChange = baseReward - fee;
 			reward = baseReward + fee;
@@ -532,7 +533,7 @@ namespace CryptoNote {
 
     // Output info for debugging and checkout
     // TODO: change logging level in production
-    logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << " * Base R " << formatAmount(baseReward) << ", Avg. R " << formatAmount(epochAvgReward) << " = " << ENDL
+    logger(TRACE) << "Base Stake: "  << formatAmount(baseStake) << " / Avg. R " << formatAmount(epochAvgReward) << " * Base R " << formatAmount(baseReward) << " = " << ENDL
                   << "Rew. Stake: "  << formatAmount(rewardStake) << " * Next D " << nextDifficulty << " / Avg. D " << epochAvgDifficulty << " or " << (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)) << " = " << ENDL
                   << "Adj. Stake: "  << formatAmount(adjustedStake) << " for height " << height << ENDL;
 
