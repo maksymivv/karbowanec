@@ -530,9 +530,9 @@ namespace CryptoNote {
 
     // Output info for debugging and checkout
     // TODO: change logging level in production
-    logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
-                 << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL
-                 << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL;
+    logger(TRACE) << "Base Stake: "  << formatAmount(baseStake) << ENDL
+                  << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL
+                  << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL;
 
     // Make all insignificant digits zero for easy reading
     uint64_t i = 1000000000;

@@ -965,7 +965,7 @@ bool RpcServer::f_on_blocks_list_json(const F_COMMAND_RPC_GET_BLOCKS_LIST::reque
     block_short.actual_stake = 0;
     block_short.minimal_stake = 0;
 
-    if (blk.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
       if (!get_inputs_money_amount(blk.baseTransaction, block_short.actual_stake))
         return false;
 
