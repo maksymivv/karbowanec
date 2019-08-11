@@ -534,7 +534,7 @@ namespace CryptoNote {
     // TODO: change logging level in production
     logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << " * Base R " << formatAmount(baseReward) << ", Avg. R " << formatAmount(epochAvgReward) << " = " << ENDL
                   << "Rew. Stake: "  << formatAmount(rewardStake) << " * Next D " << nextDifficulty << " / Avg. D " << epochAvgDifficulty << " or " << (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)) << " = " << ENDL
-                  << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL;
+                  << "Adj. Stake: "  << formatAmount(adjustedStake) << " for height " << height << ENDL;
 
     // Make all insignificant digits zero for easy reading
     uint64_t i = 1000000000;
