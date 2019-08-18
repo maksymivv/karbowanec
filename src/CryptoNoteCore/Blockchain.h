@@ -99,6 +99,8 @@ namespace CryptoNote {
     Crypto::Hash getTailId();
     Crypto::Hash getTailId(uint32_t& height);
     difficulty_type getDifficultyForNextBlock();
+    difficulty_type getAvgCumulativeDifficulty(uint32_t height);
+    difficulty_type getAvgDifficulty(uint32_t height, size_t window);
     uint64_t getBlockTimestamp(uint32_t height);
     uint64_t getMinimalFee(uint32_t height);
     uint64_t getCoinsInCirculation();
@@ -132,7 +134,6 @@ namespace CryptoNote {
     bool getTransactionIdsByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes);
     bool isBlockInMainChain(const Crypto::Hash& blockId);
     bool isInCheckpointZone(const uint32_t height);
-    uint64_t getAvgDifficultyForHeight(uint32_t height, uint32_t window);
 
     template<class visitor_t> bool scanOutputKeysForIndexes(const KeyInput& tx_in_to_key, visitor_t& vis, uint32_t* pmax_related_block_height = NULL);
 
@@ -222,8 +223,8 @@ namespace CryptoNote {
     bool checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIndex);
     bool checkIfSpent(const Crypto::KeyImage& keyImage);
 
-    //bool checkIfSpentMultisignature(uint64_t amount, uint32_t globalIndex) const override;
-    //bool checkIfSpentMultisignature(uint64_t amount, uint32_t globalIndex, uint32_t blockIndex) const override;
+    bool checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork);
+    bool getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res);
 
   private:
 
@@ -350,7 +351,7 @@ namespace CryptoNote {
     bool check_block_timestamp_main(const Block& b);
     bool check_block_timestamp(std::vector<uint64_t> timestamps, const Block& b);
     uint64_t get_adjusted_time();
-	bool complete_timestamps_vector(uint8_t blockMajorVersion, uint64_t start_height, std::vector<uint64_t>& timestamps);
+    bool complete_timestamps_vector(uint8_t blockMajorVersion, uint64_t start_height, std::vector<uint64_t>& timestamps);
     bool checkBlockVersion(const Block& b, const Crypto::Hash& blockHash);
     bool checkParentBlockSize(const Block& b, const Crypto::Hash& blockHash);
     bool checkCumulativeBlockSize(const Crypto::Hash& blockId, size_t cumulativeBlockSize, uint64_t height);
