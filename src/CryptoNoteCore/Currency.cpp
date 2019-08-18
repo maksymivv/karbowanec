@@ -728,19 +728,15 @@ namespace CryptoNote {
 		// See commented link below for required config file changes. Fix FTL and MTP.
 		// https://github.com/zawy12/difficulty-algorithms/issues/3
 
+		assert(timestamps.size() == cumulativeDifficulties.size());
+
+		// reset difficulty for new epoch
+		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
+			return !isTestnet() ? 100000 : 10000;
+		}
+
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
-		uint64_t N = difficultyBlocksCount4();
-		
-		// Hard code D if there are not at least N+1 BLOCKS after fork (or genesis)
-		// This helps a lot in preventing a very common problem in CN forks from conflicting difficulties.
-
-    uint64_t difficulty_guess = !isTestnet() ? 100000 : 10000;
-
-    if (height >= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) { return difficulty_guess; }
-
-    // Genesis should be the only time sizes are < N+1.
-    assert(timestamps.size() == cumulativeDifficulties.size() && timestamps.size() == N + 1);
-
+		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
 		uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
 
 		previous_timestamp = timestamps[0] - T;
@@ -768,8 +764,8 @@ namespace CryptoNote {
 		}
 
 		// minimum limit
-		//if (!isTestnet() && next_D < 1000000) {
-		//	next_D = 1000000;
+		//if (!isTestnet() && next_D < 100000) {
+		//	next_D = 100000;
 		//}
 
 		return next_D;
