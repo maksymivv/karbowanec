@@ -223,9 +223,6 @@ namespace CryptoNote {
     bool checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIndex);
     bool checkIfSpent(const Crypto::KeyImage& keyImage);
 
-    bool checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork);
-    bool getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res);
-
   private:
 
     struct MultisignatureOutputUsage {
