@@ -732,7 +732,9 @@ namespace CryptoNote {
 
 		// reset difficulty for new epoch
 		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-			return !isTestnet() ? 100000 : 10000;
+			return !isTestnet() ? 10000 : 10000;
+      //uint64_t lastD = cumulativeDifficulties.back() - cumulativeDifficulties[cumulativeDifficulties.size() - 1];
+      //return lastD / 128;
 		}
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
