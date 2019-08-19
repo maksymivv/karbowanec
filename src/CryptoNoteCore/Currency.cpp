@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016-2018  zawy12
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -787,20 +787,23 @@ namespace CryptoNote {
     }
   }
 
-	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
+  difficulty_type Currency::difficultyConsequence(const int& currBlockAlgo, const int& prevBlockAlgo, difficulty_type difficulty) {
+    return difficulty * prevBlockAlgo != currBlockAlgo ? 1 : 2;
+  }
+
+	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const int& prevBlockAlgo, const Block& block, difficulty_type currentDiffic,
 		Crypto::Hash& proofOfWork) const {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
 		}
 
     int algo = getAlgo(block);
-    int prevBlockAlgo = 1;// getAlgo(prev_block);
 
 		if (!get_block_longhash(context, algo, block, proofOfWork)) {
 			return false;
 		}
 
-		return check_hash(proofOfWork, currentDiffic * getAlgoWorkFactor(algo) * prevBlockAlgo != algo ? 1 : 2);
+		return check_hash(proofOfWork, difficultyConsequence(algo, prevBlockAlgo, currentDiffic) * getAlgoWorkFactor(algo));
 	}
 
 	bool Currency::checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
@@ -844,12 +847,12 @@ namespace CryptoNote {
 		return true;
 	}
 
-	bool Currency::checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
+	bool Currency::checkProofOfWork(Crypto::cn_context& context, const Block& block, const int& prevBlockAlgo, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
 		switch (block.majorVersion) {
 		case BLOCK_MAJOR_VERSION_1:
 		case BLOCK_MAJOR_VERSION_4:
 		case BLOCK_MAJOR_VERSION_5:
-			return checkProofOfWorkV1(context, block, currentDiffic, proofOfWork);
+			return checkProofOfWorkV1(context, prevBlockAlgo, block, currentDiffic, proofOfWork);
 
 		case BLOCK_MAJOR_VERSION_2:
 		case BLOCK_MAJOR_VERSION_3:

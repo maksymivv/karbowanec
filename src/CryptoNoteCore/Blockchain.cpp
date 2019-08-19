@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Monero developers
 // Copyright (c) 2018, Ryo Currency Project
-// Copyright (c) 2016-2018, The Karbo developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -1232,7 +1232,7 @@ uint64_t Blockchain::getCurrentCumulativeBlocksizeLimit() {
 
 bool Blockchain::checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) {
   if (block.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    return m_currency.checkProofOfWork(context, block, currentDiffic, proofOfWork);
+    return m_currency.checkProofOfWork(context, block, 0, currentDiffic, proofOfWork);
   }
 
   if (!getBlockLongHash(context, block, proofOfWork)) {
@@ -1248,7 +1248,7 @@ bool Blockchain::checkProofOfWork(Crypto::cn_context& context, const Block& bloc
 
 bool Blockchain::getBlockLongHash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res) {
   if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    return get_block_longhash(context, b, res);
+    return get_block_longhash(context, 0, b, res);
   }
 
   BinaryArray bd;
@@ -1441,7 +1441,15 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     if (!(current_diff)) { logger(ERROR, BRIGHT_RED) << "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!"; return false; }
     Crypto::Hash proof_of_work = NULL_HASH;
-    if (!m_currency.checkProofOfWork(m_cn_context, bei.bl, current_diff, proof_of_work)) {
+    Block prevBlk;
+    if (!getBlockByHash(bei.bl.previousBlockHash, prevBlk)) {
+      logger(INFO, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << bei.bl.previousBlockHash
+        << " for alternative chain";
+      bvc.m_verification_failed = true;
+      return false;
+    }
+    if (!m_currency.checkProofOfWork(m_cn_context, bei.bl, getAlgo(prevBlk), current_diff, proof_of_work)) {
       logger(INFO, BRIGHT_RED) <<
         "Block with id: " << id
         << ENDL << " for alternative chain, has not enough proof of work: " << proof_of_work
@@ -2247,7 +2255,14 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
       return false;
     }
   } else {
-    if (!m_currency.checkProofOfWork(m_cn_context, blockData, currentDifficulty, proof_of_work)) {
+    Block prevBlk;
+    if (!getBlockByHash(blockData.previousBlockHash, prevBlk)) {
+      logger(INFO, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << blockData.previousBlockHash;
+      bvc.m_verification_failed = true;
+      return false;
+    }
+    if (!m_currency.checkProofOfWork(m_cn_context, blockData, getAlgo(prevBlk), currentDifficulty, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
         "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
       bvc.m_verification_failed = true;

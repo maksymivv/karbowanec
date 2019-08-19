@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -24,6 +25,23 @@ KeyPair generateKeyPair() {
   KeyPair k;
   Crypto::generate_keys(k.publicKey, k.secretKey);
   return k;
+}
+
+int getAlgo(const Block& b) {
+  switch (b.algorithm) 
+  {
+  case CURRENCY_BLOCK_POW_TYPE_CN:
+    return ALGO_CN;
+  case CURRENCY_BLOCK_POW_TYPE_CN_GPU:
+    return ALGO_CN_GPU;
+  //case CURRENCY_BLOCK_POW_TYPE_ARGON2:
+  //  return ALGO_ARGON2;
+  case CURRENCY_BLOCK_POW_TYPE_BLIMP:
+    return ALGO_BLIMP;
+  //case CURRENCY_BLOCK_POW_TYPE_RANDOMX:
+  //  return ALGO_RANDOMX;
+  }
+  return ALGO_UNKNOWN;
 }
 
 }
