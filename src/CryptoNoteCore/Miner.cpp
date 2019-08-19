@@ -59,7 +59,8 @@ namespace CryptoNote
     m_do_mining(false),
     m_current_hash_rate(0),
     m_update_block_template_interval(5),
-    m_update_merge_hr_interval(2)
+    m_update_merge_hr_interval(2),
+    m_algo(0)
   {
   }
   //-----------------------------------------------------------------------------------------------------
@@ -109,7 +110,7 @@ namespace CryptoNote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    if(!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce)) {
+    if(!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce, m_algo)) {
       logger(ERROR) << "Failed to get_block_template(), stopping mining";
       return false;
     }
@@ -166,6 +167,23 @@ namespace CryptoNote
   }
 
   bool miner::init(const MinerConfig& config) {
+    if (!config.algo.empty()) {
+      if (config.algo == "cryptonight") {
+        m_algo = 0;
+      }
+      else if (config.algo == "blimp") {
+        m_algo = 3;
+      }
+      else if (config.algo == "cn-gpu") {
+        m_algo = 1;
+      }
+      else if (config.algo == "randomx") {
+        m_algo = 4;
+      }
+      else {
+        m_algo = 0;
+      }
+    }
     if (!config.extraMessages.empty()) {
       std::string buff;
       if (!Common::loadFileToString(config.extraMessages, buff)) {
@@ -296,7 +314,7 @@ namespace CryptoNote
           for (uint32_t nonce = startNonce + i; !found; nonce += nthreads) {
             lb.nonce = nonce;
 
-            if (!get_block_longhash(localctx, lb, h)) {
+            if (!get_block_longhash(localctx, m_algo, lb, h)) {
               return;
             }
 
@@ -321,7 +339,7 @@ namespace CryptoNote
     } else {
       for (; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++) {
         Crypto::Hash h;
-        if (!get_block_longhash(context, bl, h)) {
+        if (!get_block_longhash(context, m_algo, bl, h)) {
           return false;
         }
 
@@ -398,7 +416,7 @@ namespace CryptoNote
 
       b.nonce = nonce;
       Crypto::Hash h;
-      if (!m_stop && !get_block_longhash(context, b, h)) {
+      if (!m_stop && !get_block_longhash(context, m_algo, b, h)) {
         logger(ERROR) << "Failed to get block long hash";
         m_stop = true;
       }

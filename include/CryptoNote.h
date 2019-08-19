@@ -85,8 +85,10 @@ enum {
   ALGO_CN = 0,
   ALGO_CN_GPU = 1,
   //ALGO_ARGON2 = 2,
+
   ALGO_BLIMP = 3,
   //ALGO_RANDOMX = 4,
+
   NUM_ALGOS_IMPL
 };
 
