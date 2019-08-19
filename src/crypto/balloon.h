@@ -3,8 +3,8 @@
 #ifndef BALLOON_H
 #define BALLOON_H
 
-#define S_COST (uint64_t)56
-#define T_COST (uint64_t)8
+#define S_COST (uint64_t)64
+#define T_COST (uint64_t)16
 #define DELTA  (uint64_t)7
 
 #ifdef __cplusplus
