@@ -86,7 +86,11 @@ namespace CryptoNote
       }
     }
 
-    m_diffic = di;
+    CryptoNote::Block prevBlock;
+    m_handler.getBlockByHash(m_template.previousBlockHash, prevBlock);
+    int prevAlgo = getAlgo(prevBlock);
+
+    m_diffic = m_currency.difficultyConsequence(m_algo, prevAlgo, di) * m_currency.getAlgoWorkFactor(m_algo);
     ++m_template_no;
     m_starter_nonce = Crypto::rand<uint32_t>();
     return true;
@@ -181,7 +185,9 @@ namespace CryptoNote
         m_algo = 4;
       }
       else {
-        m_algo = 0;
+        logger(ERROR) << "Wrong algo " << config.algo << " in config, starting daemon canceled." <<
+          ENDL << "Possible algos: cryptonight, cn-gpu, blimp";
+        return false;
       }
     }
     if (!config.extraMessages.empty()) {
@@ -292,64 +298,6 @@ namespace CryptoNote
     m_threads.clear();
     logger(INFO) << "Mining has been stopped, " << m_threads.size() << " finished" ;
     return true;
-  }
-  //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(Crypto::cn_context &context, Block& bl, const difficulty_type& diffic) {
-
-    unsigned nthreads = std::thread::hardware_concurrency();
-
-    if (nthreads > 0 && diffic > 5) {
-      std::vector<std::future<void>> threads(nthreads);
-      std::atomic<uint32_t> foundNonce;
-      std::atomic<bool> found(false);
-      uint32_t startNonce = Crypto::rand<uint32_t>();
-
-      for (unsigned i = 0; i < nthreads; ++i) {
-        threads[i] = std::async(std::launch::async, [&, i]() {
-          Crypto::cn_context localctx;
-          Crypto::Hash h;
-
-          Block lb(bl); // copy to local block
-
-          for (uint32_t nonce = startNonce + i; !found; nonce += nthreads) {
-            lb.nonce = nonce;
-
-            if (!get_block_longhash(localctx, m_algo, lb, h)) {
-              return;
-            }
-
-            if (check_hash(h, diffic)) {
-              foundNonce = nonce;
-              found = true;
-              return;
-            }
-          }
-        });
-      }
-
-      for (auto& t : threads) {
-        t.wait();
-      }
-
-      if (found) {
-        bl.nonce = foundNonce.load();
-      }
-
-      return found;
-    } else {
-      for (; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++) {
-        Crypto::Hash h;
-        if (!get_block_longhash(context, m_algo, bl, h)) {
-          return false;
-        }
-
-        if (check_hash(h, diffic)) {
-          return true;
-        }
-      }
-    }
-
-    return false;
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::on_synchronized()
