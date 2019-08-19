@@ -562,6 +562,7 @@ struct f_block_short_response {
   difficulty_type difficulty;
   uint64_t min_tx_fee;
   uint64_t avg_historic_difficulty;
+  int algo;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(timestamp)
@@ -570,8 +571,9 @@ struct f_block_short_response {
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
     KV_MEMBER(difficulty)
-	KV_MEMBER(min_tx_fee)
-	KV_MEMBER(avg_historic_difficulty)
+    KV_MEMBER(min_tx_fee)
+    KV_MEMBER(avg_historic_difficulty)
+    KV_MEMBER(algo)
   }
 };
 
@@ -597,6 +599,7 @@ struct f_block_details_response {
   uint64_t baseReward;
   double penalty;
   uint64_t totalFeeAmount;
+  int algo;
   std::vector<f_transaction_short_response> transactions;
 
   void serialize(ISerializer &s) {
@@ -621,6 +624,7 @@ struct f_block_details_response {
     KV_MEMBER(baseReward)
     KV_MEMBER(penalty)
     KV_MEMBER(totalFeeAmount)
+    KV_MEMBER(algo)
     KV_MEMBER(transactions)
   }
 };

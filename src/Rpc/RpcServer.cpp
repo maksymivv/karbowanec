@@ -936,6 +936,7 @@ bool RpcServer::f_on_blocks_list_json(const F_COMMAND_RPC_GET_BLOCKS_LIST::reque
     block_short.difficulty = blockDiff;
     block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
     block_short.avg_historic_difficulty = m_core.getAvgDifficulty(i);
+    block_short.algo = getAlgo(blk);
 
     res.blocks.push_back(block_short);
 
@@ -1048,6 +1049,7 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
     }
     res.block.penalty = static_cast<double>(maxReward - currentReward) / static_cast<double>(maxReward);
   }
+  res.block.algo = getAlgo(blk);
 
   // Base transaction adding
   f_transaction_short_response transaction_short;
