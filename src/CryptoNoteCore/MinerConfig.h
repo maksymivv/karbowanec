@@ -34,6 +34,7 @@ public:
   std::string extraMessages;
   std::string startMining;
   uint32_t miningThreads;
+  int algo;
 };
 
 } //namespace CryptoNote

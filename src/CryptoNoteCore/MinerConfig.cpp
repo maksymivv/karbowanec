@@ -25,6 +25,7 @@ namespace {
 const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
 const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
 const command_line::arg_descriptor<uint32_t>    arg_mining_threads =  {"mining-threads", "Specify mining threads count", 0, true};
+const command_line::arg_descriptor<uint32_t>    arg_mining_threads =  {"mining-algo", "Specify mining algo", 0, true};
 }
 
 MinerConfig::MinerConfig() {

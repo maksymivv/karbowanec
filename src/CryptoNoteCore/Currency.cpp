@@ -787,8 +787,8 @@ namespace CryptoNote {
     }
   }
 
-  difficulty_type Currency::difficultyConsequence(const int& currBlockAlgo, const int& prevBlockAlgo, difficulty_type difficulty) {
-    return difficulty * prevBlockAlgo != currBlockAlgo ? 1 : 2;
+  difficulty_type Currency::difficultyConsequence(const int& currBlockAlgo, const int& prevBlockAlgo, difficulty_type difficulty) const {
+    return difficulty * (prevBlockAlgo != currBlockAlgo ? 1 : 2);
   }
 
 	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const int& prevBlockAlgo, const Block& block, difficulty_type currentDiffic,
@@ -812,7 +812,9 @@ namespace CryptoNote {
 			return false;
 		}
 
-		if (!get_block_longhash(context, 0, block, proofOfWork)) {
+    int powAlgo = 0;
+
+		if (!get_block_longhash(context, powAlgo, block, proofOfWork)) {
 			return false;
 		}
 
