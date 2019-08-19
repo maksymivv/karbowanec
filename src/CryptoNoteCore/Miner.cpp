@@ -90,7 +90,7 @@ namespace CryptoNote
     m_handler.getBlockByHash(m_template.previousBlockHash, prevBlock);
     int prevAlgo = getAlgo(prevBlock);
 
-    m_diffic = m_currency.difficultyConsequence(m_algo, prevAlgo, di) * m_currency.getAlgoWorkFactor(m_algo);
+    m_diffic = m_currency.difficultyConsequence(m_algo, prevAlgo, di * m_currency.getAlgoWorkFactor(m_algo));
     ++m_template_no;
     m_starter_nonce = Crypto::rand<uint32_t>();
     return true;

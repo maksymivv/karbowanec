@@ -801,7 +801,7 @@ namespace CryptoNote {
 			return false;
 		}
 
-		return check_hash(proofOfWork, difficultyConsequence(algo, prevBlockAlgo, currentDiffic) * getAlgoWorkFactor(algo));
+		return check_hash(proofOfWork, difficultyConsequence(algo, prevBlockAlgo, currentDiffic * getAlgoWorkFactor(algo)));
 	}
 
 	bool Currency::checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
