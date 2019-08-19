@@ -771,17 +771,36 @@ namespace CryptoNote {
 		return next_D;
 	}
 
+  int Currency::getAlgoWorkFactor(int algo) const {
+    switch (algo)
+    {
+    case ALGO_CN:
+      //return 1000000;
+      return 1;
+    case ALGO_CN_GPU:
+      return 3;
+    case ALGO_BLIMP:
+      //return 1;
+      return 2;
+    default:
+      return 1;
+    }
+  }
+
 	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
 		Crypto::Hash& proofOfWork) const {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
 		}
 
-		if (!get_block_longhash(context, block, proofOfWork)) {
+    int algo = getAlgo(block);
+    int prevBlockAlgo = 1;// getAlgo(prev_block);
+
+		if (!get_block_longhash(context, algo, block, proofOfWork)) {
 			return false;
 		}
 
-		return check_hash(proofOfWork, currentDiffic);
+		return check_hash(proofOfWork, currentDiffic * getAlgoWorkFactor(algo) * prevBlockAlgo != algo ? 1 : 2);
 	}
 
 	bool Currency::checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
@@ -790,7 +809,7 @@ namespace CryptoNote {
 			return false;
 		}
 
-		if (!get_block_longhash(context, block, proofOfWork)) {
+		if (!get_block_longhash(context, 0, block, proofOfWork)) {
 			return false;
 		}
 

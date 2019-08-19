@@ -396,6 +396,9 @@ void serializeBlockHeader(BlockHeader& header, ISerializer& serializer) {
   else {
     throw std::runtime_error("Wrong major version");
   }
+  if (header.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    serializer(header.algorithm, "algorithm");
+  }
 }
 
 void serialize(BlockHeader& header, ISerializer& serializer) {

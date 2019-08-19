@@ -80,12 +80,29 @@ struct ParentBlock {
   std::vector<Crypto::Hash> blockchainBranch;
 };
 
+enum {
+  ALGO_UNKNOWN = -1,
+  ALGO_CN = 0,
+  ALGO_CN_GPU = 1,
+  //ALGO_ARGON2 = 2,
+  ALGO_BLIMP = 3,
+  //ALGO_RANDOMX = 4,
+  NUM_ALGOS_IMPL
+};
+
+#define CURRENCY_BLOCK_POW_TYPE_CN       0x00
+#define CURRENCY_BLOCK_POW_TYPE_CN_GPU   0x01
+#define CURRENCY_BLOCK_POW_TYPE_ARGON2   0x02
+#define CURRENCY_BLOCK_POW_TYPE_BLIMP    0x03
+#define CURRENCY_BLOCK_POW_TYPE_RANDOMX  0x04
+
 struct BlockHeader {
   uint8_t majorVersion;
   uint8_t minorVersion;
   uint32_t nonce;
   uint64_t timestamp;
   Crypto::Hash previousBlockHash;
+  uint8_t algorithm;
 };
 
 struct Block : public BlockHeader {

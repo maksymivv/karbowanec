@@ -515,7 +515,7 @@ bool get_aux_block_header_hash(const Block& b, Hash& res) {
   return getObjectHash(blob, res);
 }
 
-bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
+bool get_block_longhash(cn_context &context, int& algo, const Block& b, Hash& res) {
   BinaryArray bd;
   if (b.majorVersion == BLOCK_MAJOR_VERSION_1 || b.majorVersion >= BLOCK_MAJOR_VERSION_4) {
     if (!get_block_hashing_blob(b, bd)) {
@@ -530,9 +530,23 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   }
 
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    Crypto::Hash hash_1;
-    cn_fast_hash(bd.data(), bd.size(), hash_1);
-    Crypto::blimp_hash(bd.data(), res, bd.size(), hash_1.data, sizeof(hash_1));
+    if (algo == 0) {
+      cn_slow_hash(context, bd.data(), bd.size(), res);
+    }
+    else if (algo == 1) {
+      // CN-GPU goes here
+    }
+    else if (algo == 2) {
+      // Argon2 goes here
+    }
+    else if (algo == 3) {
+      Crypto::Hash hash_1;
+      cn_fast_hash(bd.data(), bd.size(), hash_1);
+      Crypto::blimp_hash(bd.data(), res, bd.size(), hash_1.data, sizeof(hash_1));
+    }
+    else if (algo == 2) {
+      // Randomx goes here
+    }
   }
   else {
     cn_slow_hash(context, bd.data(), bd.size(), res);
