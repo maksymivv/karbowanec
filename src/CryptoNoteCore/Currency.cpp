@@ -787,23 +787,20 @@ namespace CryptoNote {
     }
   }
 
-  difficulty_type Currency::difficultyConsequence(const int& currBlockAlgo, const int& prevBlockAlgo, difficulty_type difficulty) const {
-    return difficulty * (prevBlockAlgo != currBlockAlgo ? 1 : 2);
+  int Currency::getConsequenceFactor(const int& currBlockAlgo, const int& prevBlockAlgo) const {
+    return prevBlockAlgo != currBlockAlgo ? 1 : 2;
   }
 
-	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const int& prevBlockAlgo, const Block& block, difficulty_type currentDiffic,
-		Crypto::Hash& proofOfWork) const {
+	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const int& prevBlockAlgo, const Block& block,
+    difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
 		}
-
     int algo = getAlgo(block);
-
 		if (!get_block_longhash(context, algo, block, proofOfWork)) {
 			return false;
 		}
-
-		return check_hash(proofOfWork, difficultyConsequence(algo, prevBlockAlgo, currentDiffic * getAlgoWorkFactor(algo)));
+		return check_hash(proofOfWork, currentDiffic * getConsequenceFactor(algo, prevBlockAlgo) * getAlgoWorkFactor(algo));
 	}
 
 	bool Currency::checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
@@ -813,7 +810,6 @@ namespace CryptoNote {
 		}
 
     int powAlgo = 0;
-
 		if (!get_block_longhash(context, powAlgo, block, proofOfWork)) {
 			return false;
 		}
