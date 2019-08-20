@@ -34,12 +34,12 @@ int getAlgo(const Block& b) {
     return ALGO_CN;
   case CURRENCY_BLOCK_POW_TYPE_CN_GPU:
     return ALGO_CN_GPU;
-  //case CURRENCY_BLOCK_POW_TYPE_ARGON2:
-  //  return ALGO_ARGON2;
+  case CURRENCY_BLOCK_POW_TYPE_ARGON2:
+    return ALGO_ARGON2;
   case CURRENCY_BLOCK_POW_TYPE_BLIMP:
     return ALGO_BLIMP;
-  //case CURRENCY_BLOCK_POW_TYPE_RANDOMX:
-  //  return ALGO_RANDOMX;
+  case CURRENCY_BLOCK_POW_TYPE_RANDOMX:
+    return ALGO_RANDOMX;
   }
   return ALGO_UNKNOWN;
 }

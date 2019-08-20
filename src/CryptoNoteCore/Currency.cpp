@@ -777,11 +777,13 @@ namespace CryptoNote {
     switch (algo)
     {
     case ALGO_CN:
-      return 1; //return 128;
+      return 256;
     case ALGO_CN_GPU:
       return 3;
     case ALGO_BLIMP:
-      return 2; //return 1;
+      return 1;
+    case ALGO_RANDOMX:
+      return 2;
     default:
       return 1;
     }
