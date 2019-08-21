@@ -41,7 +41,8 @@ int getAlgo(const Block& b) {
   case CURRENCY_BLOCK_POW_TYPE_RANDOMX:
     return ALGO_RANDOMX;
   }
-  return ALGO_UNKNOWN;
+  //return ALGO_UNKNOWN;
+  return ALGO_CN;
 }
 
 }
