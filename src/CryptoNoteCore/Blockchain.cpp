@@ -2217,8 +2217,6 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
       ++algoSequence;
     }
 
-    logger(INFO, BRIGHT_WHITE) << "Same algo sequence: " << algoSequence;
-
     if (!m_currency.checkProofOfWork(m_cn_context, blockData, algoSequence, currentDifficulty, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
         "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
