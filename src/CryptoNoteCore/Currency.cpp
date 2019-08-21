@@ -789,11 +789,7 @@ namespace CryptoNote {
     }
   }
 
-  int Currency::getConsequenceFactor(const int& currBlockAlgo, const int& prevBlockAlgo) const {
-    return prevBlockAlgo != currBlockAlgo ? 1 : 2;
-  }
-
-	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const int& prevBlockAlgo, const Block& block,
+	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const int& sameAlgoSequence, const Block& block,
     difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
@@ -802,7 +798,15 @@ namespace CryptoNote {
 		if (!get_block_longhash(context, algo, block, proofOfWork)) {
 			return false;
 		}
-		return check_hash(proofOfWork, currentDiffic * getConsequenceFactor(algo, prevBlockAlgo) * getAlgoWorkFactor(algo));
+
+    difficulty_type adjDiff = currentDiffic;
+
+    // geometric progression of a difficulty for same algo block sequence
+    for (int i = 0; i < sameAlgoSequence; i++) {
+      adjDiff *= 2;
+    }
+
+		return check_hash(proofOfWork, adjDiff * getAlgoWorkFactor(algo));
 	}
 
 	bool Currency::checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
@@ -847,12 +851,12 @@ namespace CryptoNote {
 		return true;
 	}
 
-	bool Currency::checkProofOfWork(Crypto::cn_context& context, const Block& block, const int& prevBlockAlgo, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
+	bool Currency::checkProofOfWork(Crypto::cn_context& context, const Block& block, const int& sameAlgoSequence, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
 		switch (block.majorVersion) {
 		case BLOCK_MAJOR_VERSION_1:
 		case BLOCK_MAJOR_VERSION_4:
 		case BLOCK_MAJOR_VERSION_5:
-			return checkProofOfWorkV1(context, prevBlockAlgo, block, currentDiffic, proofOfWork);
+			return checkProofOfWorkV1(context, sameAlgoSequence, block, currentDiffic, proofOfWork);
 
 		case BLOCK_MAJOR_VERSION_2:
 		case BLOCK_MAJOR_VERSION_3:

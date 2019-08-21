@@ -86,11 +86,34 @@ namespace CryptoNote
       }
     }
 
-    CryptoNote::Block prevBlock;
-    m_handler.getBlockByHash(m_template.previousBlockHash, prevBlock);
-    int prevAlgo = getAlgo(prevBlock);
+    CryptoNote::Block prevBlk;
+    Crypto::Hash prevHash = m_template.previousBlockHash;
+    if (!m_handler.getBlockByHash(prevHash, prevBlk)) {
+      logger(INFO, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+      return false;
+    }
+    int currAlgo = getAlgo(m_template);
+    int algoSequence = 0;
+    bool same = false;
+    while (same) {
+      Crypto::Hash prevHash = prevBlk.previousBlockHash;
+      if (!m_handler.getBlockByHash(prevHash, prevBlk)) {
+        logger(INFO, BRIGHT_RED) <<
+          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+        return false;
+      }
+      int iAlgo = getAlgo(prevBlk);
+      same = iAlgo == currAlgo;
+      ++algoSequence;
+    }
+    difficulty_type adjDiff = di;
+    // geometric progression of a difficulty for same algo block sequence
+    for (int i = 0; i < algoSequence; i++) {
+      adjDiff *= 2;
+    }
 
-    m_diffic = di * m_currency.getConsequenceFactor(m_algo, prevAlgo) * m_currency.getAlgoWorkFactor(m_algo);
+    m_diffic = adjDiff * m_currency.getAlgoWorkFactor(m_algo);
     ++m_template_no;
     m_starter_nonce = Crypto::rand<uint32_t>();
     return true;
