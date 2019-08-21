@@ -94,8 +94,9 @@ namespace CryptoNote
       return false;
     }
     int currAlgo = getAlgo(m_template);
-    int algoSequence = 0;
-    bool same = false;
+    int prevAlgo = getAlgo(prevBlk);
+    bool same = prevAlgo == currAlgo;
+    int algoSequence = same ? 1 : 0;
     while (same) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!m_handler.getBlockByHash(prevHash, prevBlk)) {
@@ -108,7 +109,6 @@ namespace CryptoNote
       ++algoSequence;
     }
     difficulty_type adjDiff = di;
-    // geometric progression of a difficulty for same algo block sequence
     for (int i = 0; i < algoSequence; i++) {
       adjDiff *= 2;
     }

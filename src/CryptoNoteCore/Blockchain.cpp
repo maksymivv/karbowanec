@@ -1371,9 +1371,11 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
       bvc.m_verification_failed = true;
       return false;
     }
+
     int currAlgo = getAlgo(bei.bl);
-    int algoSequence = 0;
-    bool same = false;
+    int prevAlgo = getAlgo(prevBlk);
+    bool same = prevAlgo == currAlgo;
+    int algoSequence = same ? 1 : 0;
     while (same) {
       if (!getBlockByHash(prevBlk.previousBlockHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
@@ -1385,8 +1387,6 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
       same = iAlgo == currAlgo;
       ++algoSequence;
     }
-
-
 
     if (!m_currency.checkProofOfWork(m_cn_context, bei.bl, algoSequence, current_diff, proof_of_work)) {
       logger(INFO, BRIGHT_RED) <<
@@ -2202,8 +2202,9 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
       return false;
     }
     int currAlgo = getAlgo(blockData);
-    int algoSequence = 0;
-    bool same = false;
+    int prevAlgo = getAlgo(prevBlk);
+    bool same = prevAlgo == currAlgo;
+    int algoSequence = same ? 1 : 0;
     while (same) {
       if (!getBlockByHash(prevBlk.previousBlockHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
@@ -2215,6 +2216,8 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
       same = iAlgo == currAlgo;
       ++algoSequence;
     }
+
+    logger(INFO, BRIGHT_WHITE) << "Same algo sequence: " << algoSequence;
 
     if (!m_currency.checkProofOfWork(m_cn_context, blockData, algoSequence, currentDifficulty, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
