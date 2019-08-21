@@ -113,7 +113,7 @@ namespace CryptoNote
       adjDiff *= 2;
     }
 
-    m_diffic = adjDiff * m_currency.getAlgoWorkFactor(m_algo);
+    m_diffic = adjDiff * m_currency.getAlgoWorkFactor(currAlgo);
     ++m_template_no;
     m_starter_nonce = Crypto::rand<uint32_t>();
     return true;
