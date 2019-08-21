@@ -96,7 +96,7 @@ namespace CryptoNote
     int currAlgo = getAlgo(m_template);
     int prevAlgo = getAlgo(prevBlk);
     bool same = prevAlgo == currAlgo;
-    int algoSequence = same ? 1 : 0;
+    int algoSequence = 0;
     while (same) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!m_handler.getBlockByHash(prevHash, prevBlk)) {
@@ -104,9 +104,12 @@ namespace CryptoNote
           "Couldn't find previous block with id: " << Common::podToHex(prevHash);
         return false;
       }
-      int iAlgo = getAlgo(prevBlk);
-      same = iAlgo == currAlgo;
+      int prevAlgo = getAlgo(prevBlk);
+      same = prevAlgo == currAlgo;
       ++algoSequence;
+
+      if (algoSequence == 100)
+        break;
     }
     difficulty_type adjDiff = di;
     for (int i = 0; i < algoSequence; i++) {

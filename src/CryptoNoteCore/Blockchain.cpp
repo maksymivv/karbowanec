@@ -1375,17 +1375,21 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     int currAlgo = getAlgo(bei.bl);
     int prevAlgo = getAlgo(prevBlk);
     bool same = prevAlgo == currAlgo;
-    int algoSequence = same ? 1 : 0;
+    int algoSequence = 0;
     while (same) {
-      if (!getBlockByHash(prevBlk.previousBlockHash, prevBlk)) {
+      Crypto::Hash prevHash = prevBlk.previousBlockHash;
+      if (!getBlockByHash(prevHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
-          "Couldn't find previous block with id: " << prevBlk.previousBlockHash;
+          "Couldn't find previous block with id: " << prevHash;
         bvc.m_verification_failed = true;
         return false;
       }
       int iAlgo = getAlgo(prevBlk);
       same = iAlgo == currAlgo;
       ++algoSequence;
+
+      if (algoSequence == 100)
+        break;
     }
 
     if (!m_currency.checkProofOfWork(m_cn_context, bei.bl, algoSequence, current_diff, proof_of_work)) {
@@ -2204,17 +2208,21 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     int currAlgo = getAlgo(blockData);
     int prevAlgo = getAlgo(prevBlk);
     bool same = prevAlgo == currAlgo;
-    int algoSequence = same ? 1 : 0;
+    int algoSequence = 0;
     while (same) {
-      if (!getBlockByHash(prevBlk.previousBlockHash, prevBlk)) {
+      Crypto::Hash prevHash = prevBlk.previousBlockHash;
+      if (!getBlockByHash(prevHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
-          "Couldn't find previous block with id: " << prevBlk.previousBlockHash;
+          "Couldn't find previous block with id: " << prevHash;
         bvc.m_verification_failed = true;
         return false;
       }
       int iAlgo = getAlgo(prevBlk);
       same = iAlgo == currAlgo;
       ++algoSequence;
+
+      if (algoSequence == 100)
+        break;
     }
 
     if (!m_currency.checkProofOfWork(m_cn_context, blockData, algoSequence, currentDifficulty, proof_of_work)) {
