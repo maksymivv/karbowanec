@@ -1,5 +1,9 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+<<<<<<< HEAD
 // Copyright (c) 2018, Karbo developers
+=======
+// Copyright (c) 2018, The Karbo developers
+>>>>>>> origin/pow_2
 //
 // This file is part of Karbo.
 //
@@ -515,7 +519,7 @@ bool get_aux_block_header_hash(const Block& b, Hash& res) {
   return getObjectHash(blob, res);
 }
 
-bool get_block_longhash(cn_context &context, int& algo, const Block& b, Hash& res) {
+bool get_block_longhash(cn_pow_hash_v2 &ctx, int& algo, const Block& b, Hash& res) {
   BinaryArray bd;
   if (b.majorVersion == BLOCK_MAJOR_VERSION_1 || b.majorVersion >= BLOCK_MAJOR_VERSION_4) {
     if (!get_block_hashing_blob(b, bd)) {
@@ -531,10 +535,12 @@ bool get_block_longhash(cn_context &context, int& algo, const Block& b, Hash& re
 
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
     if (algo == ALGO_CN) {
-      cn_slow_hash(context, bd.data(), bd.size(), res);
+      cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+      ctx_v1.hash(bd.data(), bd.size(), res.data);
     }
     else if (algo == ALGO_CN_GPU) {
       // CN-GPU goes here
+      ctx.hash(bd.data(), bd.size(), res.data); // CN_HEAVY
     }
     else if (algo == ALGO_ARGON2) {
       // Argon2 goes here
@@ -549,7 +555,8 @@ bool get_block_longhash(cn_context &context, int& algo, const Block& b, Hash& re
     }
   }
   else {
-    cn_slow_hash(context, bd.data(), bd.size(), res);
+    cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+    ctx_v1.hash(bd.data(), bd.size(), res.data);
   }
 
   return true;

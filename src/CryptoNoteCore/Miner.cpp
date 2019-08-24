@@ -362,7 +362,7 @@ namespace CryptoNote
     uint32_t nonce = m_starter_nonce + th_local_index;
     difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
-    Crypto::cn_context context;
+    cn_pow_hash_v2 hash_ctx;
     Block b;
 
     while(!m_stop)
@@ -392,7 +392,7 @@ namespace CryptoNote
 
       b.nonce = nonce;
       Crypto::Hash h;
-      if (!m_stop && !get_block_longhash(context, m_algo, b, h)) {
+      if (!m_stop && !get_block_longhash(hash_ctx, m_algo, b, h)) {
         logger(ERROR) << "Failed to get block long hash";
         m_stop = true;
       }
