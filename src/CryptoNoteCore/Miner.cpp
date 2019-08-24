@@ -97,7 +97,7 @@ namespace CryptoNote
     int currAlgo = getAlgo(m_template);
     int prevAlgo = getAlgo(prevBlk);
     bool same = prevAlgo == currAlgo;
-    int algoSequence = 0;
+    int algoSequence = same ? 1 : 0;
     while (same) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!m_handler.getBlockByHash(prevHash, prevBlk)) {
