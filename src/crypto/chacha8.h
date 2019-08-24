@@ -54,10 +54,6 @@ namespace Crypto {
   inline void generate_chacha8_key(std::string password, chacha8_key& key) {
 	  return generate_chacha8_key(password.data(), password.size(), key);
   }
-
-  inline void generate_chacha8_key(Crypto::cn_context &context, const std::string& password, chacha8_key& key) {
-	  return generate_chacha8_key(password.data(), password.size(), key);
-  }
 }
 
 #endif

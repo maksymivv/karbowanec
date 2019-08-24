@@ -1,9 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-<<<<<<< HEAD
-// Copyright (c) 2018, Karbo developers
-=======
-// Copyright (c) 2018, The Karbo developers
->>>>>>> origin/pow_2
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //

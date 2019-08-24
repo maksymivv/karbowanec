@@ -45,31 +45,6 @@ namespace Crypto {
     return h;
   }
 
-  class cn_context {
-  public:
-
-    cn_context();
-    ~cn_context();
-#if !defined(_MSC_VER) || _MSC_VER >= 1800
-    cn_context(const cn_context &) = delete;
-    void operator=(const cn_context &) = delete;
-#endif
-
-  private:
-
-    void *data;
-    friend inline void cn_slow_hash(cn_context &, const void *, size_t, Hash &);
-  };
-
-  inline void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
-  }
-
-  void(*const extra_hashes[4])(const void *, size_t, char *) =
-  {
-    hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
-  };
-
   inline void blimp_hash(const unsigned char* input, Hash &output, int length, const unsigned char* salt, int salt_length) {
     balloon_blake(input, reinterpret_cast<char *>(&output), length, salt, salt_length);
   }
