@@ -530,21 +530,21 @@ bool get_block_longhash(cn_context &context, int& algo, const Block& b, Hash& re
   }
 
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    if (algo == 0) {
+    if (algo == ALGO_CN) {
       cn_slow_hash(context, bd.data(), bd.size(), res);
     }
-    else if (algo == 1) {
+    else if (algo == ALGO_CN_GPU) {
       // CN-GPU goes here
     }
-    else if (algo == 2) {
+    else if (algo == ALGO_ARGON2) {
       // Argon2 goes here
     }
-    else if (algo == 3) {
+    else if (algo == ALGO_BLIMP) {
       Crypto::Hash hash_1;
       cn_fast_hash(bd.data(), bd.size(), hash_1);
       Crypto::blimp_hash(bd.data(), res, bd.size(), hash_1.data, sizeof(hash_1));
     }
-    else if (algo == 2) {
+    else if (algo == ALGO_RANDOMX) {
       // Randomx goes here
     }
   }

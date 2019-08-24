@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -199,16 +200,16 @@ namespace CryptoNote
   bool miner::init(const MinerConfig& config) {
     if (!config.algo.empty()) {
       if (config.algo == "cryptonight") {
-        m_algo = 0;
+        m_algo = ALGO_CN;
       }
       else if (config.algo == "blimp") {
-        m_algo = 3;
+        m_algo = ALGO_BLIMP;
       }
       else if (config.algo == "cn-gpu") {
-        m_algo = 1;
+        m_algo = ALGO_CN_GPU;
       }
       else if (config.algo == "randomx") {
-        m_algo = 4;
+        m_algo = ALGO_RANDOMX;
       }
       else {
         logger(ERROR) << "Wrong algo " << config.algo << " in config, starting daemon canceled." <<
