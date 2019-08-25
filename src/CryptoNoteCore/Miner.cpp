@@ -29,7 +29,9 @@
 #include <boost/limits.hpp>
 #include <boost/utility/value_init.hpp>
 
+#include "crypto/cn_slow_hash.hpp"
 #include "crypto/crypto.h"
+#include "crypto/random.h"
 #include "Common/CommandLine.h"
 #include "Common/StringTools.h"
 #include "Serialization/SerializationTools.h"
@@ -87,7 +89,7 @@ namespace CryptoNote
 
     m_diffic = di;
     ++m_template_no;
-    m_starter_nonce = Crypto::rand<uint32_t>();
+    m_starter_nonce = Random::randomValue<uint32_t>();
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -230,7 +232,7 @@ namespace CryptoNote
 
     m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);
-    m_starter_nonce = Crypto::rand<uint32_t>();
+    m_starter_nonce = Random::randomValue<uint32_t>();
 
     if (!m_template_no) {
       request_block_template(); //lets update block template
