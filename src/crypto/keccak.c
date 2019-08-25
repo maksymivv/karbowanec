@@ -22,7 +22,7 @@ const uint64_t keccakf_rndc[24] = {
 
 void keccakf(uint64_t st[25])
 {
-    for (size_t round = 0; round < 24; round++)
+    for (size_t round = 0; round < 24; round++) {
 		uint64_t t0, t1, bc0, bc1, bc2, bc3, bc4;
         // Theta
         bc0 = st[0] ^ st[5] ^ st[10] ^ st[15] ^ st[20];

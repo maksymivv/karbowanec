@@ -28,7 +28,7 @@ KeyPair generateKeyPair() {
 }
 
 int getAlgo(const Block& b) {
-  switch (b.algorithm) 
+  switch (b.algorithm)
   {
   case CURRENCY_BLOCK_POW_TYPE_CN:
     return ALGO_CN;

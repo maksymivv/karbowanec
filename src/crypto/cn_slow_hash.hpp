@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Ryo Currency Project
 // Copyright (c) 2017, SUMOKOIN
 //
 // All rights reserved.
