@@ -531,14 +531,17 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, int& algo, const Block& b, Hash& re
 
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
     if (algo == ALGO_CN) {
+      // Cryptonight
       cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
       ctx_v1.hash(bd.data(), bd.size(), res.data);
     }
     else if (algo == ALGO_CN_GPU) {
-      // CN-GPU goes here
-      ctx.hash(bd.data(), bd.size(), res.data); // CN_HEAVY
+      // Cryptonight-GPU
+      cn_pow_hash_v3 ctx_v3 = cn_pow_hash_v3::make_borrowed_v3(ctx);
+      ctx_v3.hash(bd.data(), bd.size(), res.data);
     }
     else if (algo == ALGO_CN_HEAVY) {
+      // Cryptonight-Heavy
       ctx.hash(bd.data(), bd.size(), res.data);
     }
     else if (algo == ALGO_RANDOMX) {
