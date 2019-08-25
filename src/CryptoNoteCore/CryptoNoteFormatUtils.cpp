@@ -538,13 +538,8 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, int& algo, const Block& b, Hash& re
       // CN-GPU goes here
       ctx.hash(bd.data(), bd.size(), res.data); // CN_HEAVY
     }
-    else if (algo == ALGO_ARGON2) {
-      // Argon2 goes here
-    }
-    else if (algo == ALGO_BLIMP) {
-      Crypto::Hash hash_1;
-      cn_fast_hash(bd.data(), bd.size(), hash_1);
-      Crypto::blimp_hash(bd.data(), res, bd.size(), hash_1.data, sizeof(hash_1));
+    else if (algo == ALGO_CN_HEAVY) {
+      ctx.hash(bd.data(), bd.size(), res.data);
     }
     else if (algo == ALGO_RANDOMX) {
       // Randomx goes here

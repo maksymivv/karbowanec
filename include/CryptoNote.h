@@ -82,20 +82,18 @@ struct ParentBlock {
 };
 
 enum {
-  ALGO_UNKNOWN = -1,
-  ALGO_CN      =  0,
-  ALGO_CN_GPU  =  1,
-  ALGO_ARGON2  =  2,
-  ALGO_BLIMP   =  3,
-  ALGO_RANDOMX =  4,
+  ALGO_UNKNOWN  = -1,
+  ALGO_CN       =  0,
+  ALGO_CN_GPU   =  1,
+  ALGO_CN_HEAVY =  2,
+  ALGO_RANDOMX  =  3,
   NUM_ALGOS_IMPL
 };
 
 #define CURRENCY_BLOCK_POW_TYPE_CN       0x00
 #define CURRENCY_BLOCK_POW_TYPE_CN_GPU   0x01
-#define CURRENCY_BLOCK_POW_TYPE_ARGON2   0x02
-#define CURRENCY_BLOCK_POW_TYPE_BLIMP    0x03
-#define CURRENCY_BLOCK_POW_TYPE_RANDOMX  0x04
+#define CURRENCY_BLOCK_POW_TYPE_CN_HEAVY 0x02
+#define CURRENCY_BLOCK_POW_TYPE_RANDOMX  0x03
 
 struct BlockHeader {
   uint8_t majorVersion;

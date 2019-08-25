@@ -202,8 +202,8 @@ namespace CryptoNote
       if (config.algo == "cryptonight") {
         m_algo = ALGO_CN;
       }
-      else if (config.algo == "blimp") {
-        m_algo = ALGO_BLIMP;
+      else if (config.algo == "cn-heavy") {
+        m_algo = ALGO_CN_HEAVY;
       }
       else if (config.algo == "cn-gpu") {
         m_algo = ALGO_CN_GPU;
