@@ -21,7 +21,9 @@
 #include <ios>
 #include <string>
 
+#include "crypto/cn_slow_hash.hpp"
 #include "crypto/hash.h"
+#include "crypto/aux_hash.h"
 #include "../Io.h"
 
 using namespace std;
@@ -47,7 +49,7 @@ extern "C" typedef void hash_f(const void *, size_t, char *);
 struct hash_func {
   const string name;
   hash_f &f;
-} hashes[] = { { "fast", Crypto::cn_fast_hash },{ "tree", hash_tree } };
+} hashes[] = {{"fast", cn_fast_hash}, {"pow-original", cn_pow_hash_original}, {"tree", hash_tree}, /*{"extra-blake", hash_extra_blake}, {"extra-groestl", hash_extra_groestl}, {"extra-jh", hash_extra_jh}, {"extra-skein", hash_extra_skein},*/ {"pow-heavy", cn_pow_hash_heavy}};
 
 int main(int argc, char *argv[]) {
   hash_f *f;
