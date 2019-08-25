@@ -25,6 +25,7 @@
 
 #include "Serialization/BinaryOutputStreamSerializer.h"
 #include "Serialization/BinaryInputStreamSerializer.h"
+#include "crypto/cn_slow_hash.hpp"
 
 #include "CryptoNoteConfig.h"
 

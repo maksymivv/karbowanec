@@ -32,6 +32,7 @@
 
 #include "../CryptoNoteConfig.h"
 
+#include "crypto/cn_slow_hash.hpp"
 #include "crypto/crypto.h"
 #include "crypto/random.h"
 #include "Common/CommandLine.h"
