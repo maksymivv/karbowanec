@@ -370,7 +370,7 @@ void cn_slow_hash<MEMORY,ITER,POWVER>::hardware_hash(const void* in, size_t len,
 
 	implode_scratchpad_hard();
 
-	keccakf(spad.as_uqword(), 24);
+	keccakf(spad.as_uqword());
 
 	switch(spad.as_byte(0) & 3)
 	{
