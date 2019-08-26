@@ -779,7 +779,7 @@ namespace CryptoNote {
     case ALGO_CN:
       return 1; //256;
     case ALGO_CN_GPU:
-      return 3;
+      return 1;
     case ALGO_CN_HEAVY:
       return 2;
     case ALGO_RANDOMX:
