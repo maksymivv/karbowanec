@@ -779,7 +779,7 @@ namespace CryptoNote {
     case ALGO_CN:
       return 1; //256;
     case ALGO_CN_GPU:
-      return 1;
+      return 1; // 3;
     case ALGO_CN_HEAVY:
       return 2;
     case ALGO_RANDOMX:
@@ -789,24 +789,35 @@ namespace CryptoNote {
     }
   }
 
-	bool Currency::checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const int& sameAlgoSequence, const Block& block,
-    difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
+  // consecutive blocks consequences
+  // geometric progression
+  difficulty_type Currency::consecutiveDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& algos) const {
+    difficulty_type adjDiff = currentDiffic;
+    for (int i = 0; i < algos.size(); i++) {
+      if (algos[i] == currAlgo) {
+        adjDiff *= 2;
+      }
+      else {
+        if (i != 0) // not so fast
+          break;
+      }
+    }
+    adjDiff = std::max<uint64_t>(adjDiff, currentDiffic);
+
+    return adjDiff * getAlgoWorkFactor(currAlgo);
+  }
+
+	bool Currency::checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
+    const std::vector<int>& algos, Crypto::Hash& proofOfWork) const {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
 		}
-    int algo = getAlgo(block);
-		if (!get_block_longhash(hash_ctx, algo, block, proofOfWork)) {
+    int currAlgo = getAlgo(block);
+		if (!get_block_longhash(hash_ctx, currAlgo, block, proofOfWork)) {
 			return false;
 		}
 
-    difficulty_type adjDiff = currentDiffic;
-
-    // geometric progression of a difficulty for same algo block sequence
-    for (int i = 0; i < sameAlgoSequence; i++) {
-      adjDiff *= 2;
-    }
-
-		return check_hash(proofOfWork, adjDiff * getAlgoWorkFactor(algo));
+		return check_hash(proofOfWork, consecutiveDifficulty(currentDiffic, currAlgo, algos));
 	}
 
 	bool Currency::checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
@@ -852,12 +863,12 @@ namespace CryptoNote {
 		return true;
 	}
 
-	bool Currency::checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, const int& sameAlgoSequence, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
+	bool Currency::checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const {
 		switch (block.majorVersion) {
 		case BLOCK_MAJOR_VERSION_1:
 		case BLOCK_MAJOR_VERSION_4:
 		case BLOCK_MAJOR_VERSION_5:
-			return checkProofOfWorkV1(hash_ctx, sameAlgoSequence, block, currentDiffic, proofOfWork);
+			return checkProofOfWorkV1(hash_ctx, block, currentDiffic, algos, proofOfWork);
 
 		case BLOCK_MAJOR_VERSION_2:
 		case BLOCK_MAJOR_VERSION_3:

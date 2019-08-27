@@ -174,9 +174,11 @@ public:
   difficulty_type nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   int getAlgoWorkFactor(int algo) const;
 
-  bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const int& sameAlgoSequence, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
+  difficulty_type consecutiveDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& algos) const;
+
+  bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const;
   bool checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
-  bool checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, const int& sameAlgoSequence, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const;
 
   size_t getApproximateMaximumInputCount(size_t transactionSize, size_t outputCount, size_t mixinCount) const;
 

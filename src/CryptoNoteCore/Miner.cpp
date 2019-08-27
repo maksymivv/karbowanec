@@ -89,6 +89,7 @@ namespace CryptoNote
       }
     }
 
+    std::vector<int> algos;
     CryptoNote::Block prevBlk;
     Crypto::Hash prevHash = m_template.previousBlockHash;
     if (!m_handler.getBlockByHash(prevHash, prevBlk)) {
@@ -96,30 +97,22 @@ namespace CryptoNote
         "Couldn't find previous block with id: " << Common::podToHex(prevHash);
       return false;
     }
-    int currAlgo = getAlgo(m_template);
-    int prevAlgo = getAlgo(prevBlk);
-    bool same = prevAlgo == currAlgo;
-    int algoSequence = same ? 1 : 0;
-    while (same) {
+    int prevBlkAlgo = getAlgo(prevBlk);
+    algos.push_back(prevBlkAlgo);
+    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!m_handler.getBlockByHash(prevHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
           "Couldn't find previous block with id: " << Common::podToHex(prevHash);
         return false;
       }
-      int prevAlgo = getAlgo(prevBlk);
-      same = prevAlgo == currAlgo;
-      ++algoSequence;
-
-      if (algoSequence == 100)
-        break;
+      int algo = getAlgo(prevBlk);
+      algos.push_back(algo);
     }
-    difficulty_type adjDiff = di;
-    for (int i = 0; i < algoSequence; i++) {
-      adjDiff *= 2;
-    }
+    int currAlgo = getAlgo(m_template);   
 
-    m_diffic = adjDiff * m_currency.getAlgoWorkFactor(currAlgo);
+    // consecutive blocks consequences
+    m_diffic = m_currency.consecutiveDifficulty(di, currAlgo, algos);
     ++m_template_no;
     m_starter_nonce = Random::randomValue<uint32_t>();
     return true;

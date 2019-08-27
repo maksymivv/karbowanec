@@ -1367,27 +1367,22 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
       return false;
     }
 
-    int currAlgo = getAlgo(bei.bl);
-    int prevAlgo = getAlgo(prevBlk);
-    bool same = prevAlgo == currAlgo;
-    int algoSequence = same ? 1 : 0;
-    while (same) {
+    std::vector<int> algos;
+    int prevBlkAlgo = getAlgo(prevBlk);
+    algos.push_back(prevBlkAlgo);
+    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!getBlockByHash(prevHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
-          "Couldn't find previous block with id: " << prevHash;
+          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
         bvc.m_verification_failed = true;
         return false;
       }
-      int iAlgo = getAlgo(prevBlk);
-      same = iAlgo == currAlgo;
-      ++algoSequence;
-
-      if (algoSequence == 100)
-        break;
+      int algo = getAlgo(prevBlk);
+      algos.push_back(algo);
     }
 
-    if (!m_currency.checkProofOfWork(m_pow_ctx, bei.bl, algoSequence, current_diff, proof_of_work)) {
+    if (!m_currency.checkProofOfWork(m_pow_ctx, bei.bl, current_diff, algos, proof_of_work)) {
       logger(INFO, BRIGHT_RED) <<
         "Block with id: " << id
         << ENDL << " for alternative chain, has not enough proof of work: " << proof_of_work
@@ -2194,33 +2189,30 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     }
   } else {
     Block prevBlk;
-    if (!getBlockByHash(blockData.previousBlockHash, prevBlk)) {
+    Crypto::Hash prevHash = blockData.previousBlockHash;
+    if (!getBlockByHash(prevHash, prevBlk)) {
       logger(INFO, BRIGHT_RED) <<
-        "Couldn't find previous block with id: " << blockData.previousBlockHash;
+        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
       bvc.m_verification_failed = true;
       return false;
     }
-    int currAlgo = getAlgo(blockData);
-    int prevAlgo = getAlgo(prevBlk);
-    bool same = prevAlgo == currAlgo;
-    int algoSequence = same ? 1 : 0;
-    while (same) {
+
+    std::vector<int> algos;
+    int prevBlkAlgo = getAlgo(prevBlk);
+    algos.push_back(prevBlkAlgo);
+    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!getBlockByHash(prevHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
-          "Couldn't find previous block with id: " << prevHash;
+          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
         bvc.m_verification_failed = true;
         return false;
       }
-      int iAlgo = getAlgo(prevBlk);
-      same = iAlgo == currAlgo;
-      ++algoSequence;
-
-      if (algoSequence == 100)
-        break;
+      int algo = getAlgo(prevBlk);
+      algos.push_back(algo);
     }
 
-    if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, algoSequence, currentDifficulty, proof_of_work)) {
+    if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, currentDifficulty, algos, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
         "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
       bvc.m_verification_failed = true;
