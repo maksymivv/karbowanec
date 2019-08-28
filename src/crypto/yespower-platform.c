@@ -18,8 +18,8 @@
  * SUCH DAMAGE.
  */
 
-#include <yespower.h>
-#include <errno.h>
+#include "yespower.h"
+#include <errno.h> /* for ENOMEM */
 
 #ifdef __unix__
 #include <sys/mman.h>
