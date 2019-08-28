@@ -540,10 +540,10 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, int& algo, const Block& b, Hash& re
       cn_pow_hash_v3 ctx_v3 = cn_pow_hash_v3::make_borrowed_v3(ctx);
       ctx_v3.hash(bd.data(), bd.size(), res.data);
     }
-    else if (algo == ALGO_CN_HEAVY) {
+    //else if (algo == ALGO_CN_HEAVY) {
       // Cryptonight-Heavy
-      ctx.hash(bd.data(), bd.size(), res.data);
-    }
+    //  ctx.hash(bd.data(), bd.size(), res.data);
+    //}
     else if (algo == ALGO_YESPOWER) {
       // CPU algo yespower
       yespower_hash((const char*)bd.data(), bd.size(), res.data);

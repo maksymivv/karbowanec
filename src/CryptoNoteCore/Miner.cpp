@@ -197,9 +197,9 @@ namespace CryptoNote
       if (config.algo == "cryptonight") {
         m_algo = ALGO_CN;
       }
-      else if (config.algo == "cn-heavy") {
-        m_algo = ALGO_CN_HEAVY;
-      }
+      //else if (config.algo == "cn-heavy") {
+      //  m_algo = ALGO_CN_HEAVY;
+      //}
       else if (config.algo == "cn-gpu") {
         m_algo = ALGO_CN_GPU;
       }
@@ -208,7 +208,7 @@ namespace CryptoNote
       }
       else {
         logger(ERROR) << "Wrong algo " << config.algo << " in config, starting daemon canceled." <<
-          ENDL << "Possible algos: cryptonight, cn-gpu, blimp";
+          ENDL << "Possible algos: cryptonight, cn-gpu, yespower";
         return false;
       }
     }

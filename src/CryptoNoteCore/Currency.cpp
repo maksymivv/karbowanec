@@ -780,8 +780,8 @@ namespace CryptoNote {
       return 1; //256;
     case ALGO_CN_GPU:
       return 1; // 3;
-    case ALGO_CN_HEAVY:
-      return 1;
+    //case ALGO_CN_HEAVY:
+    //  return 2;
     case ALGO_YESPOWER:
       return 1;
     default:
