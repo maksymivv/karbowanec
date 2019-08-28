@@ -26,13 +26,17 @@
 
 namespace Crypto {
 
-  extern "C" {
+extern "C" {
 #include "hash-ops.h"
-  }
+#include <yespower.h>
+#include <sysendian.h>
 
-  /*
-    Cryptonight hash functions
-  */
+  static const yespower_params_t ypp_v1 = { YESPOWER_1_0, 4096, 32, NULL, 0 };
+
+  inline int yespower_hash(const char *input, size_t length, char *output) {
+    return yespower_tls(reinterpret_cast<uint8_t *>(&input), length, &ypp_v1, (yespower_binary_t *)output);
+  }
+}
 
   inline void cn_fast_hash(const void *data, size_t length, Hash &hash) {
     cn_fast_hash(data, length, reinterpret_cast<char *>(&hash));

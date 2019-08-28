@@ -36,8 +36,8 @@ int getAlgo(const Block& b) {
     return ALGO_CN_GPU;
   case CURRENCY_BLOCK_POW_TYPE_CN_HEAVY:
     return ALGO_CN_HEAVY;
-  case CURRENCY_BLOCK_POW_TYPE_RANDOMX:
-    return ALGO_RANDOMX;
+  case CURRENCY_BLOCK_POW_TYPE_YESPOWER:
+    return ALGO_YESPOWER;
   }
   //return ALGO_UNKNOWN;
   return ALGO_CN;

@@ -86,14 +86,14 @@ enum {
   ALGO_CN       =  0,
   ALGO_CN_GPU   =  1,
   ALGO_CN_HEAVY =  2,
-  ALGO_RANDOMX  =  3,
+  ALGO_YESPOWER =  3,
   NUM_ALGOS_IMPL
 };
 
 #define CURRENCY_BLOCK_POW_TYPE_CN       0x00
 #define CURRENCY_BLOCK_POW_TYPE_CN_GPU   0x01
 #define CURRENCY_BLOCK_POW_TYPE_CN_HEAVY 0x02
-#define CURRENCY_BLOCK_POW_TYPE_RANDOMX  0x03
+#define CURRENCY_BLOCK_POW_TYPE_YESPOWER 0x03
 
 struct BlockHeader {
   uint8_t majorVersion;

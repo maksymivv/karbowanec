@@ -133,15 +133,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
   set(OPENBSD TRUE)
 endif()
 
-# TODO: check bsdi, NetBSD, to see if they need the same FreeBSD changes
-#
-# elseif(CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
-#   set(NETBSD TRUE)
-# elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
-#   set(BSDI TRUE)
-
-#include_directories(include src contrib/epee/include external "${CMAKE_BINARY_DIR}/version")
-
 if(APPLE OR FREEBSD)
   include_directories(SYSTEM /usr/include/malloc)
   if(POLICY CMP0042)

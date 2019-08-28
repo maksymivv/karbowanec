@@ -782,7 +782,7 @@ namespace CryptoNote {
       return 1; // 3;
     case ALGO_CN_HEAVY:
       return 2;
-    case ALGO_RANDOMX:
+    case ALGO_YESPOWER:
       return 2;
     default:
       return 1;

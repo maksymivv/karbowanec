@@ -10,8 +10,9 @@ endif()
 
 add_subdirectory(miniupnpc)
 add_subdirectory(gtest)
+add_subdirectory(yespower)
 
-set_property(TARGET upnpc-static gtest gtest_main PROPERTY FOLDER "external")
+set_property(TARGET upnpc-static yespower gtest gtest_main PROPERTY FOLDER "external")
 
 if(MSVC)
   if (STATIC)
