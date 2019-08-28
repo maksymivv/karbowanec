@@ -813,6 +813,9 @@ namespace CryptoNote {
 			return false;
 		}
     int currAlgo = getAlgo(block);
+    if (currAlgo == ALGO_UNKNOWN) {
+      logger(ERROR) << "Unknown algo tag: " << Common::podToHex(block.algorithm);
+    }
 		if (!get_block_longhash(hash_ctx, currAlgo, block, proofOfWork)) {
 			return false;
 		}

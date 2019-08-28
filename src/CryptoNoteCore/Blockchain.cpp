@@ -1272,6 +1272,11 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     return false;
   }
 
+  if (!checkPowAlgo(b, id)) {
+    bvc.m_verification_failed = true;
+    return false;
+  }
+
   if (!checkParentBlockSize(b, id)) {
     bvc.m_verification_failed = true;
     return false;
@@ -1991,6 +1996,16 @@ bool Blockchain::checkBlockVersion(const Block& b, const Crypto::Hash& blockHash
   return true;
 }
 
+bool Blockchain::checkPowAlgo(const Block& b, const Crypto::Hash& blockHash) {
+  if (b.majorVersion != BLOCK_MAJOR_VERSION_5 && getAlgo(b) == ALGO_UNKNOWN) {
+    logger(ERROR) << "Block " << blockHash << " has unknown algo tag: " 
+                  << Common::podToHex(b.algorithm);
+    return false;
+  }
+
+  return true;
+}
+
 bool Blockchain::checkParentBlockSize(const Block& b, const Crypto::Hash& blockHash) {
   if (b.majorVersion == BLOCK_MAJOR_VERSION_2 || b.majorVersion == BLOCK_MAJOR_VERSION_3) {
     auto serializer = makeParentBlockSerializer(b, false, false);
@@ -2136,6 +2151,11 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   }
 
   if (!checkBlockVersion(blockData, blockHash)) {
+    bvc.m_verification_failed = true;
+    return false;
+  }
+  
+  if (!checkPowAlgo(blockData, blockHash)) {
     bvc.m_verification_failed = true;
     return false;
   }

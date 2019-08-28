@@ -548,6 +548,9 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, int& algo, const Block& b, Hash& re
       // CPU algo yespower
       yespower_hash((const char*)bd.data(), bd.size(), res.data);
     }
+    else {
+      return false;
+    }
   }
   else {
     cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);

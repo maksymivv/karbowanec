@@ -81,7 +81,7 @@ struct ParentBlock {
   std::vector<Crypto::Hash> blockchainBranch;
 };
 
-enum {
+enum algo : int {
   ALGO_UNKNOWN  = -1,
   ALGO_CN       =  0,
   ALGO_CN_GPU   =  1,

@@ -39,8 +39,7 @@ int getAlgo(const Block& b) {
   case CURRENCY_BLOCK_POW_TYPE_YESPOWER:
     return ALGO_YESPOWER;
   }
-  //return ALGO_UNKNOWN;
-  return ALGO_CN;
+  return ALGO_UNKNOWN;
 }
 
 }
