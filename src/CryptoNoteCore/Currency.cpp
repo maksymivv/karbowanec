@@ -588,7 +588,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && nextDiffZ < 100000) {
-		//	nextDiffZ = 100000;
+			nextDiffZ = 100000;
 		}
 
 		return nextDiffZ;
@@ -651,7 +651,7 @@ namespace CryptoNote {
 		
 		// minimum limit
 		if (!isTestnet() && next_difficulty < 100000) {
-		//	next_difficulty = 100000;
+			next_difficulty = 100000;
 		}
 
 		return next_difficulty;
@@ -714,7 +714,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && next_D < 100000) {
-		//	next_D = 100000;
+			next_D = 100000;
 		}
 
 		return next_D;
@@ -723,19 +723,17 @@ namespace CryptoNote {
 	difficulty_type Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion,
 		std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulativeDifficulties) const {
 
-		// LWMA-1 difficulty algorithm 
+		// LWMA-1 difficulty algorithm (modified, for orig. see link below)
 		// Copyright (c) 2017-2018 Zawy, MIT License
 		// See commented link below for required config file changes. Fix FTL and MTP.
 		// https://github.com/zawy12/difficulty-algorithms/issues/3
 
-		assert(timestamps.size() == cumulativeDifficulties.size());
-
 		// reset difficulty for new epoch
-		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-			return !isTestnet() ? 10000 : 10000;
-      //uint64_t lastD = cumulativeDifficulties.back() - cumulativeDifficulties[cumulativeDifficulties.size() - 1];
-      //return lastD / 128;
+		if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
+			return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / 256;
 		}
+
+		assert(timestamps.size() == cumulativeDifficulties.size());
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
 		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
@@ -766,9 +764,9 @@ namespace CryptoNote {
 		}
 
 		// minimum limit
-		//if (!isTestnet() && next_D < 100000) {
-		//	next_D = 100000;
-		//}
+		if (!isTestnet() && next_D < 100000) {
+			next_D = 100000;
+		}
 
 		return next_D;
 	}
@@ -812,15 +810,24 @@ namespace CryptoNote {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
 		}
-    int currAlgo = getAlgo(block);
-    if (currAlgo == ALGO_UNKNOWN) {
-      logger(ERROR) << "Unknown algo tag: " << Common::podToHex(block.algorithm);
-    }
-		if (!get_block_longhash(hash_ctx, currAlgo, block, proofOfWork)) {
-			return false;
-		}
 
-		return check_hash(proofOfWork, consecutiveDifficulty(currentDiffic, currAlgo, algos));
+    if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      int currAlgo = getAlgo(block);
+      if (currAlgo == ALGO_UNKNOWN) {
+        logger(ERROR) << "Unknown algo tag: " << Common::podToHex(block.algorithm);
+      }
+      if (!get_block_longhash(hash_ctx, currAlgo, block, proofOfWork)) {
+        return false;
+      }
+
+      return check_hash(proofOfWork, consecutiveDifficulty(currentDiffic, currAlgo, algos));
+    }
+
+    if (!get_block_longhash(hash_ctx, 0, block, proofOfWork)) {
+      return false;
+    }
+
+    return check_hash(proofOfWork, currentDiffic);
 	}
 
 	bool Currency::checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,

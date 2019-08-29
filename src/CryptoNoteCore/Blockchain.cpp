@@ -752,6 +752,12 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
       cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
     }
   }
+
+  // push penultimate diff for hardfork block 5 reset
+  if (m_blocks.size() == CryptoNote::parameters::UPGRADE_HEIGHT_V5 + 1) {
+    cumulative_difficulties.push_back(m_blocks[CryptoNote::parameters::UPGRADE_HEIGHT_V5 - 1].cumulative_difficulty);
+  }
+
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 
