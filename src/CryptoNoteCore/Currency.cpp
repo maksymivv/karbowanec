@@ -775,13 +775,11 @@ namespace CryptoNote {
     switch (algo)
     {
     case ALGO_CN:
-      return 1; //256;
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
     case ALGO_CN_GPU:
-      return 1; // 3;
-    //case ALGO_CN_HEAVY:
-    //  return 2;
-    case ALGO_YESPOWER:
-      return 1;
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU;
+    case ALGO_CN_POWER:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER;
     default:
       return 1;
     }

@@ -81,6 +81,9 @@ const size_t   DIFFICULTY_LAG                                = 15;  // !!!
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
 const size_t   MULTI_DIFFICULTY_ADJUSTMENT_WINDOW            = 12;  // blocks
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN               = 256;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU           = 3;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER         = 1;
 
 const uint64_t AVERAGE_DIFFICULTY_WINDOW                     = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 7 * 4;
 

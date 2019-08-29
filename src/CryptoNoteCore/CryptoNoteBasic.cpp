@@ -34,10 +34,8 @@ int getAlgo(const Block& b) {
     return ALGO_CN;
   case CURRENCY_BLOCK_POW_TYPE_CN_GPU:
     return ALGO_CN_GPU;
-  case CURRENCY_BLOCK_POW_TYPE_CN_HEAVY:
-    return ALGO_CN_HEAVY;
-  case CURRENCY_BLOCK_POW_TYPE_YESPOWER:
-    return ALGO_YESPOWER;
+  case CURRENCY_BLOCK_POW_TYPE_CN_POWER:
+    return ALGO_CN_POWER;
   }
   return ALGO_UNKNOWN;
 }

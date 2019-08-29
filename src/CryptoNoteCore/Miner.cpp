@@ -205,12 +205,12 @@ namespace CryptoNote
       else if (config.algo == "cn-gpu") {
         m_algo = ALGO_CN_GPU;
       }
-      else if (config.algo == "yespower") {
-        m_algo = ALGO_YESPOWER;
+      else if (config.algo == "cn-power") {
+        m_algo = ALGO_CN_POWER;
       }
       else {
         logger(ERROR) << "Wrong algo " << config.algo << " in config, starting daemon canceled." <<
-          ENDL << "Possible algos: cryptonight, cn-gpu, yespower";
+          ENDL << "Possible algos: cryptonight, cn-gpu, cn-power";
         return false;
       }
     }
