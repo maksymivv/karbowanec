@@ -1997,7 +1997,7 @@ bool Blockchain::checkBlockVersion(const Block& b, const Crypto::Hash& blockHash
 }
 
 bool Blockchain::checkPowAlgo(const Block& b, const Crypto::Hash& blockHash) {
-  if (b.majorVersion != BLOCK_MAJOR_VERSION_5 && getAlgo(b) == ALGO_UNKNOWN) {
+  if (b.majorVersion >= BLOCK_MAJOR_VERSION_5 && getAlgo(b) == ALGO_UNKNOWN) {
     logger(ERROR) << "Block " << blockHash << " has unknown algo tag: " 
                   << Common::podToHex(b.algorithm);
     return false;
