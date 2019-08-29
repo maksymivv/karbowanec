@@ -99,5 +99,6 @@ namespace CryptoNote {
     bool m_do_print_hashrate;
     bool m_do_mining;
     int m_algo;
+    std::string m_algo_name;
   };
 }

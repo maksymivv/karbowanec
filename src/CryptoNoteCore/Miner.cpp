@@ -194,6 +194,8 @@ namespace CryptoNote
 
   bool miner::init(const MinerConfig& config) {
     if (!config.algo.empty()) {
+      m_algo_name = config.algo;
+
       if (config.algo == "cryptonight") {
         m_algo = ALGO_CN;
       }
@@ -289,7 +291,8 @@ namespace CryptoNote
     }
 
     logger(INFO) << "Mining has started with " << threads_count
-      << " threads and at difficulty " << m_diffic << ", good luck!";
+      << " threads at difficulty " << m_diffic << " using "
+      << m_algo_name << " algo, good luck!";
     return true;
   }
   
