@@ -730,7 +730,7 @@ namespace CryptoNote {
 
 		// reset difficulty for new epoch
 		if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-			return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / 256;
+			return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
 		}
 
 		assert(timestamps.size() == cumulativeDifficulties.size());
