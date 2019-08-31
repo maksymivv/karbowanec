@@ -788,7 +788,7 @@ namespace CryptoNote {
   // consecutive blocks consequences
   // geometric progression
   difficulty_type Currency::consecutiveDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& algos) const {
-    difficulty_type adjDiff = currentDiffic;
+    difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
     for (int i = 0; i < algos.size(); i++) {
       if (algos[i] == currAlgo) {
         adjDiff *= 2;
@@ -798,9 +798,8 @@ namespace CryptoNote {
           break;
       }
     }
-    adjDiff = std::max<uint64_t>(adjDiff, currentDiffic);
-
-    return adjDiff * getAlgoWorkFactor(currAlgo);
+   
+    return adjDiff;
   }
 
 	bool Currency::checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
