@@ -789,10 +789,10 @@ namespace CryptoNote {
     difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
     for (int i = 0; i < algos.size(); i++) {
       if (algos[i] == currAlgo) {
-        adjDiff *= 4;
+        adjDiff *= 2;
       }
       else {
-        adjDiff /= 2;
+        adjDiff /= sqrt(2);
       }
     }
     adjDiff = std::max<uint64_t>(adjDiff, currentDiffic);
