@@ -785,10 +785,10 @@ namespace CryptoNote {
     }
   }
 
-  difficulty_type Currency::consecutiveDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& algos) const {
+  difficulty_type Currency::algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& prevAlgos) const {
     difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
-    for (int i = 0; i < algos.size(); i++) {
-      if (algos[i] == currAlgo) {
+    for (int i = 0; i < prevAlgos.size(); i++) {
+      if (prevAlgos[i] == currAlgo) {
         adjDiff *= 2;
       }
       else {
@@ -815,7 +815,7 @@ namespace CryptoNote {
         return false;
       }
 
-      return check_hash(proofOfWork, consecutiveDifficulty(currentDiffic, currAlgo, algos));
+      return check_hash(proofOfWork, algoDifficulty(currentDiffic, currAlgo, algos));
     }
 
     if (!get_block_longhash(hash_ctx, 0, block, proofOfWork)) {

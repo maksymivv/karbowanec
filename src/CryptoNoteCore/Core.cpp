@@ -470,8 +470,8 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
   {
     LockedBlockchainStorage blockchainLock(m_blockchain);
     height = m_blockchain.getCurrentBlockchainHeight();
-    diffic = m_blockchain.getDifficultyForNextBlock();
-    if (!(diffic)) {
+    difficulty_type base_diffic = m_blockchain.getDifficultyForNextBlock();
+    if (!(base_diffic)) {
       logger(ERROR, BRIGHT_RED) << "difficulty overhead.";
       return false;
     }
@@ -506,6 +506,28 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
 
     b.previousBlockHash = get_tail_id();
     b.timestamp = time(NULL);
+
+    std::vector<int> prev_algos;
+    Block prevBlk;
+    Crypto::Hash prevHash = b.previousBlockHash;
+    if (!getBlockByHash(prevHash, prevBlk)) {
+      logger(INFO, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+      return false;
+    }
+    int prevBlkAlgo = getAlgo(prevBlk);
+    prev_algos.push_back(prevBlkAlgo);
+    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+      Crypto::Hash prevHash = prevBlk.previousBlockHash;
+      if (!getBlockByHash(prevHash, prevBlk)) {
+        logger(INFO, BRIGHT_RED) <<
+          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+        return false;
+      }
+      int algo = getAlgo(prevBlk);
+      prev_algos.push_back(algo);
+    }
+    diffic = m_currency.algoDifficulty(base_diffic, algo, prev_algos);
 
     // Don't generate a block template with invalid timestamp
     // Fix by Jagerman

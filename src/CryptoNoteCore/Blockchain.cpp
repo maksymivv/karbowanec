@@ -1378,9 +1378,9 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
       return false;
     }
 
-    std::vector<int> algos;
+    std::vector<int> prev_algos;
     int prevBlkAlgo = getAlgo(prevBlk);
-    algos.push_back(prevBlkAlgo);
+    prev_algos.push_back(prevBlkAlgo);
     for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!getBlockByHash(prevHash, prevBlk)) {
@@ -1390,10 +1390,10 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
         return false;
       }
       int algo = getAlgo(prevBlk);
-      algos.push_back(algo);
+      prev_algos.push_back(algo);
     }
 
-    if (!m_currency.checkProofOfWork(m_pow_ctx, bei.bl, current_diff, algos, proof_of_work)) {
+    if (!m_currency.checkProofOfWork(m_pow_ctx, bei.bl, current_diff, prev_algos, proof_of_work)) {
       logger(INFO, BRIGHT_RED) <<
         "Block with id: " << id
         << ENDL << " for alternative chain, has not enough proof of work: " << proof_of_work
