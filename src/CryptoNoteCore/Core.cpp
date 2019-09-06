@@ -511,7 +511,7 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     Block prevBlk;
     Crypto::Hash prevHash = b.previousBlockHash;
     if (!getBlockByHash(prevHash, prevBlk)) {
-      logger(INFO, BRIGHT_RED) <<
+      logger(ERROR, BRIGHT_RED) <<
         "Couldn't find previous block with id: " << Common::podToHex(prevHash);
       return false;
     }
@@ -520,7 +520,7 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!getBlockByHash(prevHash, prevBlk)) {
-        logger(INFO, BRIGHT_RED) <<
+        logger(ERROR, BRIGHT_RED) <<
           "Couldn't find previous block with id: " << Common::podToHex(prevHash);
         return false;
       }
@@ -1310,6 +1310,40 @@ bool core::getMixin(const Transaction& transaction, uint64_t& mixin) {
       mixin = currentMixin;
     }
   }
+  return true;
+}
+
+bool core::getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) {
+  std::vector<int> prev_algos;
+  Block b;
+  Crypto::Hash currHash = getBlockIdByHeight(height);
+  if (!getBlockByHash(currHash, b)) {
+    logger(ERROR, BRIGHT_RED) <<
+      "Couldn't find previous block with id: " << Common::podToHex(currHash);
+    return false;
+  }
+  Block prevBlk;
+  Crypto::Hash prevHash = b.previousBlockHash;
+  if (!getBlockByHash(prevHash, prevBlk)) {
+    logger(ERROR, BRIGHT_RED) <<
+      "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+    return false;
+  }
+  int prevBlkAlgo = getAlgo(prevBlk);
+  prev_algos.push_back(prevBlkAlgo);
+  for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+    Crypto::Hash prevHash = prevBlk.previousBlockHash;
+    if (!getBlockByHash(prevHash, prevBlk)) {
+      logger(ERROR, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+      return false;
+    }
+    int algo = getAlgo(prevBlk);
+    prev_algos.push_back(algo);
+  }
+  difficulty_type base_diffic = m_blockchain.blockDifficulty(height);
+  algoDifficulty = m_currency.algoDifficulty(base_diffic, algo, prev_algos);
+
   return true;
 }
 

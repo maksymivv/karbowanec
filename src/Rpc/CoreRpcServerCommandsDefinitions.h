@@ -528,7 +528,7 @@ struct f_transaction_details_response {
 };
 
 struct f_mempool_transaction_response {
-std::string hash;
+  std::string hash;
   uint64_t fee;
   uint64_t amount_out;
   uint64_t size;
@@ -553,6 +553,18 @@ std::string hash;
   }
 };
 
+struct algo_difficulties {
+  difficulty_type cryptonote;
+  difficulty_type cn_gpu;
+  difficulty_type cn_power;
+
+  void serialize(ISerializer &s) {
+    KV_MEMBER(cryptonote)
+    KV_MEMBER(cn_gpu)
+    KV_MEMBER(cn_power)
+  }
+};
+
 struct f_block_short_response {
   uint64_t timestamp;
   uint32_t height;
@@ -560,8 +572,8 @@ struct f_block_short_response {
   uint64_t tx_count;
   uint64_t cumul_size;
   difficulty_type difficulty;
+  algo_difficulties algoDifficulties;
   uint64_t min_tx_fee;
-  uint64_t avg_historic_difficulty;
   int algo;
 
   void serialize(ISerializer &s) {
@@ -571,8 +583,8 @@ struct f_block_short_response {
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
     KV_MEMBER(difficulty)
+    KV_MEMBER(algoDifficulties)
     KV_MEMBER(min_tx_fee)
-    KV_MEMBER(avg_historic_difficulty)
     KV_MEMBER(algo)
   }
 };
@@ -588,7 +600,6 @@ struct f_block_details_response {
   uint32_t depth;
   std::string hash;
   difficulty_type difficulty;
-  difficulty_type cumulativeDifficulty;
   uint64_t reward;
   uint64_t blockSize;
   size_t sizeMedian;
@@ -613,7 +624,6 @@ struct f_block_details_response {
     KV_MEMBER(depth)
     KV_MEMBER(hash)
     KV_MEMBER(difficulty)
-    KV_MEMBER(cumulativeDifficulty)
     KV_MEMBER(reward)
     KV_MEMBER(blockSize)
     KV_MEMBER(sizeMedian)

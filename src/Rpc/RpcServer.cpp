@@ -938,9 +938,20 @@ bool RpcServer::f_on_blocks_list_json(const F_COMMAND_RPC_GET_BLOCKS_LIST::reque
     block_short.tx_count = blk.transactionHashes.size() + 1;
     block_short.difficulty = blockDiff;
     block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
-    block_short.avg_historic_difficulty = m_core.getAvgDifficulty(i);
     block_short.algo = blk.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(blk) : -1;
-
+    if (blk.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      if (!m_core.getAlgoDifficulty(i, ALGO_CN, block_short.algoDifficulties.cryptonote) ||
+          !m_core.getAlgoDifficulty(i, ALGO_CN_GPU, block_short.algoDifficulties.cn_gpu) ||
+          !m_core.getAlgoDifficulty(i, ALGO_CN_POWER, block_short.algoDifficulties.cn_power)) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+          "Internal error: couldn't get algo difficulties for height " + std::to_string(i) + '.' };
+      }
+    }
+    else {
+      block_short.algoDifficulties.cryptonote = blockDiff;
+      block_short.algoDifficulties.cn_gpu = 0;
+      block_short.algoDifficulties.cn_power = 0;
+    }
     res.blocks.push_back(block_short);
 
     if (i == 0)
@@ -994,7 +1005,6 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
   res.block.depth = block_header.depth;
   res.block.orphan_status = block_header.orphan_status;
   m_core.getBlockDifficulty(res.block.height, res.block.difficulty);
-  m_core.getBlockCumulativeDifficulty(res.block.height, res.block.cumulativeDifficulty);
 
   res.block.reward = block_header.reward;
 
