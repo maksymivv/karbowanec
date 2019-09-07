@@ -1313,17 +1313,12 @@ bool core::getMixin(const Transaction& transaction, uint64_t& mixin) {
   return true;
 }
 
-bool core::getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) {
+bool core::getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
+  difficulty_type base_diffic = height < get_current_blockchain_height() ? 
+    m_blockchain.blockDifficulty(height) : getNextBlockDifficulty();
   std::vector<int> prev_algos;
-  Block b;
-  Crypto::Hash currHash = getBlockIdByHeight(height);
-  if (!getBlockByHash(currHash, b)) {
-    logger(ERROR, BRIGHT_RED) <<
-      "Couldn't find previous block with id: " << Common::podToHex(currHash);
-    return false;
-  }
   Block prevBlk;
-  Crypto::Hash prevHash = b.previousBlockHash;
+  Crypto::Hash prevHash = getBlockIdByHeight(height < get_current_blockchain_height() ? height : get_current_blockchain_height() - 1);
   if (!getBlockByHash(prevHash, prevBlk)) {
     logger(ERROR, BRIGHT_RED) <<
       "Couldn't find previous block with id: " << Common::podToHex(prevHash);
@@ -1341,7 +1336,7 @@ bool core::getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDif
     int algo = getAlgo(prevBlk);
     prev_algos.push_back(algo);
   }
-  difficulty_type base_diffic = m_blockchain.blockDifficulty(height);
+  
   algoDifficulty = m_currency.algoDifficulty(base_diffic, algo, prev_algos);
 
   return true;

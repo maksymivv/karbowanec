@@ -44,6 +44,19 @@ struct STATUS_STRUCT {
   }
 };
 
+
+struct algo_difficulties {
+  difficulty_type cryptonight;
+  difficulty_type cn_gpu;
+  difficulty_type cn_power;
+
+  void serialize(ISerializer &s) {
+    KV_MEMBER(cryptonight)
+    KV_MEMBER(cn_gpu)
+    KV_MEMBER(cn_power)
+  }
+};
+
 struct COMMAND_RPC_GET_HEIGHT {
   typedef EMPTY_STRUCT request;
 
@@ -296,6 +309,7 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t last_block_timestamp;
     uint64_t last_block_difficulty;
     uint64_t avg_historic_difficulty;
+    algo_difficulties multi_algo_difficulties;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
@@ -324,6 +338,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(last_block_timestamp)
       KV_MEMBER(last_block_difficulty)
       KV_MEMBER(avg_historic_difficulty)
+      KV_MEMBER(multi_algo_difficulties)
     }
   };
 };
@@ -550,18 +565,6 @@ struct f_mempool_transaction_response {
 	KV_MEMBER(max_used_block_id)
 	KV_MEMBER(last_failed_height)
 	KV_MEMBER(last_failed_id)
-  }
-};
-
-struct algo_difficulties {
-  difficulty_type cryptonote;
-  difficulty_type cn_gpu;
-  difficulty_type cn_power;
-
-  void serialize(ISerializer &s) {
-    KV_MEMBER(cryptonote)
-    KV_MEMBER(cn_gpu)
-    KV_MEMBER(cn_power)
   }
 };
 
