@@ -288,6 +288,7 @@ struct COMMAND_RPC_GET_INFO {
     uint32_t height;
     std::string top_block_hash;
     uint64_t difficulty;
+    uint64_t cumulative_difficulty;
     uint64_t min_tx_fee;
     std::string readable_tx_fee;
     uint64_t tx_count;
@@ -315,16 +316,17 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(status)
       KV_MEMBER(version)
       KV_MEMBER(height)
-	  KV_MEMBER(top_block_hash)
+      KV_MEMBER(top_block_hash)
       KV_MEMBER(difficulty)
-	  KV_MEMBER(min_tx_fee)
+      KV_MEMBER(cumulative_difficulty)
+      KV_MEMBER(min_tx_fee)
       KV_MEMBER(readable_tx_fee)
       KV_MEMBER(tx_count)
       KV_MEMBER(tx_pool_size)
       KV_MEMBER(alt_blocks_count)
       KV_MEMBER(outgoing_connections_count)
       KV_MEMBER(incoming_connections_count)
-	  KV_MEMBER(rpc_connections_count)
+      KV_MEMBER(rpc_connections_count)
       KV_MEMBER(white_peerlist_size)
       KV_MEMBER(grey_peerlist_size)
       KV_MEMBER(last_known_block_index)
@@ -575,7 +577,7 @@ struct f_block_short_response {
   uint64_t tx_count;
   uint64_t cumul_size;
   difficulty_type difficulty;
-  algo_difficulties algoDifficulties;
+  algo_difficulties algo_difficulties;
   uint64_t min_tx_fee;
   int algo;
 
@@ -586,7 +588,7 @@ struct f_block_short_response {
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
     KV_MEMBER(difficulty)
-    KV_MEMBER(algoDifficulties)
+    KV_MEMBER(algo_difficulties)
     KV_MEMBER(min_tx_fee)
     KV_MEMBER(algo)
   }
