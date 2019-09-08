@@ -725,19 +725,13 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   m_core.getBlockDifficulty(static_cast<uint32_t>(last_block_height), res.last_block_difficulty);
   res.avg_historic_difficulty = m_core.getAvgDifficulty(last_block_height);
 
-  if (blk.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    if (!m_core.getAlgoDifficulty(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
-        !m_core.getAlgoDifficulty(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu)  ||
-        !m_core.getAlgoDifficulty(res.height, ALGO_CN_POWER, res.multi_algo_difficulties.cn_power)) {
-      throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-        "Internal error: couldn't get algo difficulties" };
-    }
+  if (!m_core.getAlgoDifficulty(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
+      !m_core.getAlgoDifficulty(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu)  ||
+      !m_core.getAlgoDifficulty(res.height, ALGO_CN_POWER, res.multi_algo_difficulties.cn_power)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+      "Internal error: couldn't get algo difficulties" };
   }
-  else {
-    res.multi_algo_difficulties.cryptonight = res.difficulty;
-    res.multi_algo_difficulties.cn_gpu = 0;
-    res.multi_algo_difficulties.cn_power = 0;
-  }
+
   m_core.getBlockCumulativeDifficulty(last_block_height, res.cumulative_difficulty);
 
   res.status = CORE_RPC_STATUS_OK;
