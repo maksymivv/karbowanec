@@ -151,6 +151,7 @@ struct BlockDetails {
   uint32_t depth = 0;
   Crypto::Hash hash;
   uint64_t difficulty = 0;
+  uint64_t cumulativeDifficulty = 0;
   uint64_t reward = 0;
   uint64_t stake = 0;
   uint64_t baseReward = 0;
