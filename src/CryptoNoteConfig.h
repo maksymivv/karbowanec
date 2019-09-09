@@ -81,9 +81,10 @@ const size_t   DIFFICULTY_LAG                                = 15;  // !!!
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
 const size_t   MULTI_DIFFICULTY_ADJUSTMENT_WINDOW            = 12;  // blocks
-const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN               = 256;
-const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU           = 3;
-const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER         = 1;
+// work factor = absolute work ratio * optimization factor
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN               = 34 * 8;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU           = 3 * 4;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER         = 2 * 4;
 
 const uint64_t AVERAGE_DIFFICULTY_WINDOW                     = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 7 * 4;
 
@@ -110,7 +111,7 @@ const uint32_t UPGRADE_HEIGHT_V2                             = 60000;
 const uint32_t UPGRADE_HEIGHT_V3                             = 216000;
 const uint32_t UPGRADE_HEIGHT_V4                             = 266000;
 const uint32_t UPGRADE_HEIGHT_LWMA3                          = 300000;
-const uint32_t UPGRADE_HEIGHT_V5                             = 391650;
+const uint32_t UPGRADE_HEIGHT_V5                             = 398679;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90; // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
