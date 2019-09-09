@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -115,6 +116,7 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   if (block.baseTransaction.inputs.front().type() != typeid(BaseInput))
     return false;
   blockDetails.height = block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? block.blockIndex : boost::get<BaseInput>(block.baseTransaction.inputs.front()).blockIndex;
+  blockDetails.depth = core.get_current_blockchain_height() - blockDetails.height - 1;
 
   Crypto::Hash tmpHash = core.getBlockIdByHeight(blockDetails.height);
   blockDetails.isOrphaned = hash != tmpHash;
@@ -128,6 +130,9 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
     return false;
   }
   blockDetails.sizeMedian = median(blocksSizes);
+
+  size_t blockGrantedFullRewardZone = CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
+  blockDetails.effectiveSizeMedian = std::max(blockDetails.sizeMedian, blockGrantedFullRewardZone);
 
   size_t blockSize = 0;
   if (!core.getBlockSize(hash, blockSize)) {
