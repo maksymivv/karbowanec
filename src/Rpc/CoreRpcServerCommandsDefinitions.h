@@ -530,6 +530,30 @@ struct transaction_pool_response {
   }
 };
 
+struct block_short_response {
+  uint64_t timestamp;
+  uint32_t height;
+  std::string hash;
+  uint64_t tx_count;
+  uint64_t cumul_size;
+  difficulty_type difficulty;
+  algo_difficulties algo_difficulties;
+  uint64_t min_tx_fee;
+  int algo;
+
+  void serialize(ISerializer &s) {
+    KV_MEMBER(timestamp)
+    KV_MEMBER(height)
+    KV_MEMBER(hash)
+    KV_MEMBER(cumul_size)
+    KV_MEMBER(tx_count)
+    KV_MEMBER(difficulty)
+    KV_MEMBER(algo_difficulties)
+    KV_MEMBER(min_tx_fee)
+    KV_MEMBER(algo)
+  }
+};
+
 struct f_transaction_details_extra_response {
   std::vector<size_t> padding;
   Crypto::PublicKey publicKey; 
@@ -589,34 +613,6 @@ struct f_mempool_transaction_response {
 	KV_MEMBER(max_used_block_id)
 	KV_MEMBER(last_failed_height)
 	KV_MEMBER(last_failed_id)
-  }
-};
-
-struct f_block_short_response {
-  uint64_t timestamp;
-  uint32_t height;
-  std::string hash;
-  uint64_t tx_count;
-  uint64_t cumul_size;
-  difficulty_type difficulty;
-  algo_difficulties algo_difficulties;
-  uint64_t min_tx_fee;
-  uint64_t actual_stake;
-  uint64_t minimal_stake;
-  int algo;
-
-  void serialize(ISerializer &s) {
-    KV_MEMBER(timestamp)
-    KV_MEMBER(height)
-    KV_MEMBER(hash)
-    KV_MEMBER(cumul_size)
-    KV_MEMBER(tx_count)
-    KV_MEMBER(difficulty)
-    KV_MEMBER(algo_difficulties)
-    KV_MEMBER(min_tx_fee)
-    KV_MEMBER(actual_stake)
-    KV_MEMBER(minimal_stake)
-    KV_MEMBER(algo)
   }
 };
 
@@ -703,7 +699,7 @@ struct COMMAND_RPC_GET_BLOCK_HEADER_BY_HEIGHT {
   typedef BLOCK_HEADER_RESPONSE response;
 };
 
-struct F_COMMAND_RPC_GET_BLOCKS_LIST {
+struct COMMAND_RPC_GET_BLOCKS_LIST {
   struct request {
     uint32_t height;
     uint32_t count = 10;
@@ -715,7 +711,7 @@ struct F_COMMAND_RPC_GET_BLOCKS_LIST {
   };
 
   struct response {
-    std::vector<f_block_short_response> blocks; //transactions blobs as hex
+    std::vector<block_short_response> blocks;
     std::string status;
 
     void serialize(ISerializer &s) {
@@ -778,7 +774,7 @@ struct F_COMMAND_RPC_GET_TRANSACTION_DETAILS {
   struct response {
     Transaction tx;
     f_transaction_details_response txDetails;
-    f_block_short_response block;
+    block_short_response block;
     std::string status;
 
     void serialize(ISerializer &s) {
