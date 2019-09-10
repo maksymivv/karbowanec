@@ -22,7 +22,6 @@
 
 #include <CryptoTypes.h>
 #include "generic-ops.h"
-#include "balloon.h"
 
 namespace Crypto {
 
@@ -68,10 +67,6 @@ namespace Crypto {
   {
     hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
   };
-
-  inline void blimp_hash(const unsigned char* input, Hash &output, uint64_t length, const unsigned char* salt, uint64_t salt_length) {
-    balloon_blake(input, reinterpret_cast<char *>(&output), length, salt, salt_length);
-  }
 
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
     tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
