@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2018, The Karbo developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
 		}
 
 #ifndef __ANDROID__
-		checkpoints.load_checkpoints_from_dns();
+//		checkpoints.load_checkpoints_from_dns();
 #endif
 
 		bool manual_checkpoints = !command_line::get_arg(vm, arg_load_checkpoints).empty();

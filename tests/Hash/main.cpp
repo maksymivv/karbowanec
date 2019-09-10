@@ -21,7 +21,9 @@
 #include <ios>
 #include <string>
 
+#include "crypto/cn_slow_hash.hpp"
 #include "crypto/hash.h"
+#include "crypto/aux_hash.h"
 #include "../Io.h"
 
 using namespace std;
@@ -41,18 +43,13 @@ extern "C" {
     Crypto::tree_hash((const char (*)[32]) data, length >> 5, hash);
   }
 
-  static void slow_hash(const void *data, size_t length, char *hash) {
-    cn_slow_hash(*context, data, length, *reinterpret_cast<chash *>(hash));
-  }
 }
 
 extern "C" typedef void hash_f(const void *, size_t, char *);
 struct hash_func {
   const string name;
   hash_f &f;
-} hashes[] = {{"fast", Crypto::cn_fast_hash}, {"slow", slow_hash}, {"tree", hash_tree},
-  {"extra-blake", Crypto::hash_extra_blake}, {"extra-groestl", Crypto::hash_extra_groestl},
-  {"extra-jh", Crypto::hash_extra_jh}, {"extra-skein", Crypto::hash_extra_skein}};
+} hashes[] = {{"fast", cn_fast_hash}, {"pow-original", cn_pow_hash_original}, {"tree", hash_tree}, /*{"extra-blake", hash_extra_blake}, {"extra-groestl", hash_extra_groestl}, {"extra-jh", hash_extra_jh}, {"extra-skein", hash_extra_skein},*/ {"pow-heavy", cn_pow_hash_heavy}};
 
 int main(int argc, char *argv[]) {
   hash_f *f;
@@ -76,9 +73,7 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
-  if (f == slow_hash) {
-    context = new Crypto::cn_context();
-  }
+
   input.open(argv[2], ios_base::in);
   for (;;) {
     ++test;

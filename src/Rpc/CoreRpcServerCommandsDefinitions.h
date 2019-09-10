@@ -44,6 +44,19 @@ struct STATUS_STRUCT {
   }
 };
 
+
+struct algo_difficulties {
+  difficulty_type cryptonight;
+  difficulty_type cn_gpu;
+  difficulty_type cn_power;
+
+  void serialize(ISerializer &s) {
+    KV_MEMBER(cryptonight)
+    KV_MEMBER(cn_gpu)
+    KV_MEMBER(cn_power)
+  }
+};
+
 struct COMMAND_RPC_GET_HEIGHT {
   typedef EMPTY_STRUCT request;
 
@@ -281,6 +294,7 @@ struct COMMAND_RPC_GET_INFO {
     uint32_t height;
     std::string top_block_hash;
     uint64_t difficulty;
+    uint64_t cumulative_difficulty;
     uint64_t min_tx_fee;
     std::string readable_tx_fee;
     uint64_t tx_count;
@@ -302,7 +316,7 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t last_block_timestamp;
     uint64_t last_block_difficulty;
     uint64_t avg_historic_difficulty;
-    uint64_t cumulative_difficulty;
+    algo_difficulties multi_algo_difficulties;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
@@ -310,6 +324,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(height)
       KV_MEMBER(top_block_hash)
       KV_MEMBER(difficulty)
+      KV_MEMBER(cumulative_difficulty)
       KV_MEMBER(min_tx_fee)
       KV_MEMBER(readable_tx_fee)
       KV_MEMBER(tx_count)
@@ -331,7 +346,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(last_block_timestamp)
       KV_MEMBER(last_block_difficulty)
       KV_MEMBER(avg_historic_difficulty)
-      KV_MEMBER(cumulative_difficulty)
+      KV_MEMBER(multi_algo_difficulties)
     }
   };
 };
@@ -401,10 +416,12 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
   struct request {
     uint64_t reserve_size; //max 255 bytes
     std::string wallet_address;
+    int algo = 0;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(reserve_size)
       KV_MEMBER(wallet_address)
+      KV_MEMBER(algo)
     }
   };
 
@@ -534,7 +551,7 @@ struct f_transaction_details_response {
 };
 
 struct f_mempool_transaction_response {
-std::string hash;
+  std::string hash;
   uint64_t fee;
   uint64_t amount_out;
   uint64_t size;
@@ -566,9 +583,11 @@ struct f_block_short_response {
   uint64_t tx_count;
   uint64_t cumul_size;
   difficulty_type difficulty;
+  algo_difficulties algo_difficulties;
   uint64_t min_tx_fee;
   uint64_t actual_stake;
   uint64_t minimal_stake;
+  int algo;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(timestamp)
@@ -577,9 +596,11 @@ struct f_block_short_response {
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
     KV_MEMBER(difficulty)
+    KV_MEMBER(algo_difficulties)
     KV_MEMBER(min_tx_fee)
     KV_MEMBER(actual_stake)
     KV_MEMBER(minimal_stake)
+    KV_MEMBER(algo)
   }
 };
 
@@ -606,6 +627,7 @@ struct f_block_details_response {
   uint64_t baseReward;
   double penalty;
   uint64_t totalFeeAmount;
+  int algo;
   std::vector<f_transaction_short_response> transactions;
 
   void serialize(ISerializer &s) {
@@ -631,6 +653,7 @@ struct f_block_details_response {
     KV_MEMBER(baseReward)
     KV_MEMBER(penalty)
     KV_MEMBER(totalFeeAmount)
+    KV_MEMBER(algo)
     KV_MEMBER(transactions)
   }
 };
@@ -1165,11 +1188,13 @@ struct K_COMMAND_RPC_CHECK_RESERVE_PROOF {
 		std::string address;
 		std::string message;
 		std::string signature;
+		uint32_t height = 0;
 		
 		void serialize(ISerializer &s) {
 			KV_MEMBER(address)
 			KV_MEMBER(message)
 			KV_MEMBER(signature)
+			KV_MEMBER(height)
 		}
 	};
 

@@ -2,7 +2,7 @@
 // Copyright (c) 2014-2018, The Monero project
 // Copyright (c) 2014-2018, The Forknote developers
 // Copyright (c) 2018, Ryo Currency Project
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -83,6 +83,12 @@ const size_t   DIFFICULTY_WINDOW_V4                          = 120; // blocks
 const size_t   DIFFICULTY_CUT                                = 60;  // timestamps to cut after sorting
 const size_t   DIFFICULTY_LAG                                = 15;  // !!!
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
+
+const size_t   MULTI_DIFFICULTY_ADJUSTMENT_WINDOW            = 12;  // blocks
+// work factor = absolute work ratio * optimization factor
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN               = 34 * 8;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU           = 3 * 4;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER         = 2 * 4;
 
 const uint64_t AVERAGE_DIFFICULTY_WINDOW                     = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 7 * 4;
 

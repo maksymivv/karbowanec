@@ -785,17 +785,17 @@ namespace CryptoNote {
 	difficulty_type Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion,
 		std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulativeDifficulties) const {
 
-		// LWMA-1 difficulty algorithm 
+		// LWMA-1 difficulty algorithm (modified, for orig. see link below)
 		// Copyright (c) 2017-2018 Zawy, MIT License
 		// See commented link below for required config file changes. Fix FTL and MTP.
 		// https://github.com/zawy12/difficulty-algorithms/issues/3
 
-		assert(timestamps.size() == cumulativeDifficulties.size());
-
-		// reset difficulty for pos-ASICs epoch
-		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-			return !isTestnet() ? 100000 : 10000;
+		// reset difficulty for new epoch
+		if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
+			return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
 		}
+
+		assert(timestamps.size() == cumulativeDifficulties.size());
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
 		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
@@ -807,7 +807,6 @@ namespace CryptoNote {
 			if (timestamps[i] > previous_timestamp) { this_timestamp = timestamps[i]; }
 			else { this_timestamp = previous_timestamp + 1; }
 			L += i * std::min<uint64_t>(6 * T, this_timestamp - previous_timestamp);
-			previous_timestamp = this_timestamp;
 		}
 		if (L < N * N * T / 20) { L = N * N * T / 20; }
 		avg_D = (cumulativeDifficulties[N] - cumulativeDifficulties[0]) / N;
@@ -826,33 +825,76 @@ namespace CryptoNote {
 		}
 
 		// minimum limit
-		if (!isTestnet() && next_D < 1000000) {
-			next_D = 1000000;
+		if (!isTestnet() && next_D < 100000) {
+			next_D = 100000;
 		}
 
 		return next_D;
 	}
 
-	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
-		Crypto::Hash& proofOfWork) const {
+  int Currency::getAlgoWorkFactor(int algo) const {
+    switch (algo)
+    {
+    case ALGO_CN:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
+    case ALGO_CN_GPU:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU;
+    case ALGO_CN_POWER:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER;
+    default:
+      return 1;
+    }
+  }
+
+  difficulty_type Currency::algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& prevAlgos) const {
+    difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
+    for (int i = 0; i < prevAlgos.size(); i++) {
+      if (prevAlgos[i] == currAlgo) {
+        adjDiff *= 2;
+      }
+      else {
+        adjDiff /= sqrt(2);
+      }
+    }
+    adjDiff = std::max<uint64_t>(adjDiff, currentDiffic);
+   
+    return adjDiff;
+  }
+
+	bool Currency::checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
+    const std::vector<int>& algos, Crypto::Hash& proofOfWork) const {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
 		}
 
-		if (!get_block_longhash(context, block, proofOfWork)) {
-			return false;
-		}
+    if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      int currAlgo = getAlgo(block);
+      if (currAlgo == ALGO_UNKNOWN) {
+        logger(ERROR) << "Unknown algo tag: " << Common::podToHex(block.algorithm);
+      }
+      if (!get_block_longhash(hash_ctx, currAlgo, block, proofOfWork)) {
+        return false;
+      }
 
-		return check_hash(proofOfWork, currentDiffic);
+      return check_hash(proofOfWork, algoDifficulty(currentDiffic, currAlgo, algos));
+    }
+
+    if (!get_block_longhash(hash_ctx, 0, block, proofOfWork)) {
+      return false;
+    }
+
+    return check_hash(proofOfWork, currentDiffic);
 	}
 
-	bool Currency::checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
+	bool Currency::checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
 		Crypto::Hash& proofOfWork) const {
+
 		if (block.majorVersion < BLOCK_MAJOR_VERSION_2) {
 			return false;
 		}
 
-		if (!get_block_longhash(context, block, proofOfWork)) {
+    int powAlgo = 0;
+		if (!get_block_longhash(hash_ctx, powAlgo, block, proofOfWork)) {
 			return false;
 		}
 
@@ -887,16 +929,16 @@ namespace CryptoNote {
 		return true;
 	}
 
-	bool Currency::checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
+	bool Currency::checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const {
 		switch (block.majorVersion) {
 		case BLOCK_MAJOR_VERSION_1:
 		case BLOCK_MAJOR_VERSION_4:
 		case BLOCK_MAJOR_VERSION_5:
-			return checkProofOfWorkV1(context, block, currentDiffic, proofOfWork);
+			return checkProofOfWorkV1(hash_ctx, block, currentDiffic, algos, proofOfWork);
 
 		case BLOCK_MAJOR_VERSION_2:
 		case BLOCK_MAJOR_VERSION_3:
-			return checkProofOfWorkV2(context, block, currentDiffic, proofOfWork);
+			return checkProofOfWorkV2(hash_ctx, block, currentDiffic, proofOfWork);
 		}
 
 		logger(ERROR, BRIGHT_RED) << "Unknown block major version: " << block.majorVersion << "." << block.minorVersion;

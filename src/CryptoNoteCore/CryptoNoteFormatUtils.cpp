@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -519,7 +519,7 @@ bool get_aux_block_header_hash(const Block& b, Hash& res) {
   return getObjectHash(blob, res);
 }
 
-bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
+bool get_block_longhash(cn_pow_hash_v2 &ctx, int algo, const Block& b, Hash& res) {
   BinaryArray bd;
   if (b.majorVersion == BLOCK_MAJOR_VERSION_1 || b.majorVersion >= BLOCK_MAJOR_VERSION_4) {
     if (!get_block_hashing_blob(b, bd)) {
@@ -533,7 +533,31 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
     return false;
   }
 
-  cn_slow_hash(context, bd.data(), bd.size(), res);
+  if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    if (algo == ALGO_CN) {
+      // Cryptonight
+      cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+      ctx_v1.hash(bd.data(), bd.size(), res.data);
+    }
+    else if (algo == ALGO_CN_GPU) {
+      // Cryptonight-GPU
+      cn_pow_hash_v3 ctx_v3 = cn_pow_hash_v3::make_borrowed_v3(ctx);
+      ctx_v3.hash(bd.data(), bd.size(), res.data);
+    }
+    else if (algo == ALGO_CN_POWER) {
+      // Cryptonight-Heavy + Yespower
+      Hash h;
+      ctx.hash(bd.data(), bd.size(), h.data);
+      yespower_hash((const char*)h.data, sizeof(h.data), res.data);
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+    ctx_v1.hash(bd.data(), bd.size(), res.data);
+  }
 
   return true;
 }

@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, The Karbo developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -394,6 +394,9 @@ void serializeBlockHeader(BlockHeader& header, ISerializer& serializer) {
   }
   else {
     throw std::runtime_error("Wrong major version");
+  }
+  if (header.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    serializer(header.algorithm, "algorithm");
   }
 }
 

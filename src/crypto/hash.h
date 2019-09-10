@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2019, The Tax developers
 // Copyright (c) 2019, Karbo developers
 //
 // This file is part of Karbo.
@@ -25,13 +26,18 @@
 
 namespace Crypto {
 
-  extern "C" {
+extern "C" {
 #include "hash-ops.h"
-  }
 
-  /*
-    Cryptonight hash functions
-  */
+#include "yespower.h"
+#include "sysendian.h"
+
+  static const yespower_params_t ypp_v1 = { YESPOWER_1_0, 4096, 32, NULL, 0 };
+
+  inline int yespower_hash(const void *input, size_t length, uint8_t *output) {
+    return yespower_tls((uint8_t *)input, length, &ypp_v1, (yespower_binary_t *)output);
+  }
+}
 
   inline void cn_fast_hash(const void *data, size_t length, Hash &hash) {
     cn_fast_hash(data, length, reinterpret_cast<char *>(&hash));
@@ -42,31 +48,6 @@ namespace Crypto {
     cn_fast_hash(data, length, reinterpret_cast<char *>(&h));
     return h;
   }
-
-  class cn_context {
-  public:
-
-    cn_context();
-    ~cn_context();
-#if !defined(_MSC_VER) || _MSC_VER >= 1800
-    cn_context(const cn_context &) = delete;
-    void operator=(const cn_context &) = delete;
-#endif
-
-  private:
-
-    void *data;
-    friend inline void cn_slow_hash(cn_context &, const void *, size_t, Hash &);
-  };
-
-  inline void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
-  }
-
-  void(*const extra_hashes[4])(const void *, size_t, char *) =
-  {
-    hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
-  };
 
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
     tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
