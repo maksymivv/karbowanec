@@ -237,14 +237,14 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "check_tx_key", { makeMemberMethod(&RpcServer::on_check_tx_key), false } },
       { "check_tx_with_view_key", { makeMemberMethod(&RpcServer::on_check_tx_with_view_key), false } },
       { "check_tx_proof", { makeMemberMethod(&RpcServer::on_check_tx_proof), false } },
-      { "check_reserve_proof", { makeMemberMethod(&RpcServer::on_check_reserve_proof), false } }
+      { "check_reserve_proof", { makeMemberMethod(&RpcServer::on_check_reserve_proof), false } },
 
       /* Deprecated (remove handlers - use BlockchainExplorer instead of Forknote) */
       { "f_block_json", { makeMemberMethod(&RpcServer::f_on_block_json), false } },
       { "f_transaction_json", { makeMemberMethod(&RpcServer::f_on_transaction_json), false } },
       { "f_on_transactions_pool_json", { makeMemberMethod(&RpcServer::f_on_transactions_pool_json), false } },
       { "f_pool_json", { makeMemberMethod(&RpcServer::f_on_pool_json), false } },
-      { "f_mempool_json", { makeMemberMethod(&RpcServer::f_on_mempool_json), false } },
+      { "f_mempool_json", { makeMemberMethod(&RpcServer::f_on_mempool_json), false } }
 
     };
 
@@ -505,53 +505,6 @@ bool RpcServer::onGetBlocksDetailsByHeights(const COMMAND_RPC_GET_BLOCKS_DETAILS
 
   rsp.status = CORE_RPC_STATUS_OK;
   return true;
-}
-
-bool RpcServer::onGetAvgStatsByHeights(const COMMAND_RPC_GET_AVG_STAT_BY_HEIGHTS::request& req, COMMAND_RPC_GET_AVG_STAT_BY_HEIGHTS::response& rsp) {
-  if (m_restricted_rpc) {
-    rsp.status = "Failed, restricted handle";
-    return false;
-  }
-	try {
-		std::vector<uint64_t> avgDiffs;
-		std::vector<uint64_t> rewards;
-		std::vector<uint64_t> diffs;
-		std::vector<uint64_t> fees;
-		for (const uint32_t& height : req.heights) {
-			if (m_core.get_current_blockchain_height() <= height) {
-				throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT,
-				  std::string("To big height: ") + std::to_string(height) + ", current blockchain height = " + std::to_string(m_core.get_current_blockchain_height() - 1) };
-			}
-      Hash h = m_core.getBlockIdByHeight(height);
-      Block b;
-      if (!m_core.getBlockByHash(h, b)) {
-        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM,  std::string("Couldn't get block by height ") + std::to_string(height) };
-      }
-      uint64_t reward = get_block_reward(b);
-      rewards.push_back(reward);
-			uint64_t avgDiff = m_core.getAvgDifficulty(height);
-			avgDiffs.push_back(avgDiff);
-			uint64_t diff;
-			m_core.getBlockDifficulty(height, diff);
-			diffs.push_back(diff);
-			uint64_t fee = m_core.getMinimalFeeForHeight(height);
-			fees.push_back(fee);
-		}
-		rsp.avgDifficulties = std::move(avgDiffs);
-		rsp.difficulties = std::move(diffs);
-		rsp.rewards = std::move(rewards);
-		rsp.minFees = std::move(fees);
-	}
-	catch (std::system_error& e) {
-		rsp.status = e.what();
-		return false;
-	}
-	catch (std::exception& e) {
-		rsp.status = "Error: " + std::string(e.what());
-		return false;
-	}
-	rsp.status = CORE_RPC_STATUS_OK;
-	return true;
 }
 
 bool RpcServer::onGetBlocksDetailsByHashes(const COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HASHES::request& req, COMMAND_RPC_GET_BLOCKS_DETAILS_BY_HASHES::response& rsp) {

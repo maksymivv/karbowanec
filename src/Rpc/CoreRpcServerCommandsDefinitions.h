@@ -539,6 +539,8 @@ struct block_short_response {
   difficulty_type difficulty;
   algo_difficulties algo_difficulties;
   uint64_t min_tx_fee;
+  uint64_t actual_stake;
+  uint64_t minimal_stake;
   int algo;
 
   void serialize(ISerializer &s) {
@@ -550,6 +552,8 @@ struct block_short_response {
     KV_MEMBER(difficulty)
     KV_MEMBER(algo_difficulties)
     KV_MEMBER(min_tx_fee)
+    KV_MEMBER(actual_stake)
+    KV_MEMBER(minimal_stake)
     KV_MEMBER(algo)
   }
 };
