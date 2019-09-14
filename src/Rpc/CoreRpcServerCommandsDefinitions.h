@@ -317,6 +317,9 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t last_block_difficulty;
     uint64_t avg_historic_difficulty;
     algo_difficulties multi_algo_difficulties;
+    uint64_t next_reward;
+    uint64_t next_stake;
+    uint64_t total_coins_locked;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
@@ -347,6 +350,9 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(last_block_difficulty)
       KV_MEMBER(avg_historic_difficulty)
       KV_MEMBER(multi_algo_difficulties)
+      KV_MEMBER(next_reward)
+      KV_MEMBER(next_stake)
+      KV_MEMBER(total_coins_locked)
     }
   };
 };
@@ -1295,11 +1301,13 @@ struct COMMAND_RPC_GET_STAKE_INFO {
 
   struct response {
     std::string status;
+    uint64_t next_reward;
     uint64_t next_stake;
     uint64_t total_coins_locked;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(status)
+      KV_MEMBER(next_reward)
       KV_MEMBER(next_stake)
       KV_MEMBER(total_coins_locked)
     }
