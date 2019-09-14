@@ -176,7 +176,7 @@ public:
 
   difficulty_type algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& algos) const;
   int getAlgoWorkFactor(int algo) const;
-  uint64_t nextStake(uint32_t height, uint64_t& reward, uint64_t& fee, uint64_t& alreadyGeneratedCoins, uint64_t& alreadyGeneratedCoinsBeforeStake, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const;
+  uint64_t nextStake(uint32_t height, uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins, uint64_t& alreadyGeneratedCoinsBeforeStake, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const;
 
   bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const;
   bool checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
