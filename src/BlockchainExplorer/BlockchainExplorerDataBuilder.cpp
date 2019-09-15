@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -92,7 +93,7 @@ size_t BlockchainExplorerDataBuilder::median(std::vector<size_t>& v) {
 
 bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDetails& blockDetails) {
   Crypto::Hash hash = get_block_hash(block);
-
+  blockDetails.algo = getAlgo(block);
   blockDetails.majorVersion = block.majorVersion;
   blockDetails.minorVersion = block.minorVersion;
   blockDetails.timestamp = block.timestamp;
@@ -113,8 +114,8 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   Crypto::Hash tmpHash = core.getBlockIdByHeight(blockDetails.height);
   blockDetails.isOrphaned = hash != tmpHash;
 
-  Crypto::cn_context context;
-  if (!get_block_longhash(context, block, blockDetails.proofOfWork)) {
+   cn_pow_hash_v2 pow_ctx;
+  if (!get_block_longhash(pow_ctx, blockDetails.algo, block, blockDetails.proofOfWork)) {
     return false;
   }
 
@@ -124,6 +125,14 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
 
   if (!core.getBlockCumulativeDifficulty(blockDetails.height, blockDetails.cumulativeDifficulty)) {
     return false;
+  }
+
+  if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    if (!core.getAlgoDifficulty(blockDetails.height, blockDetails.algo, blockDetails.algoDifficulty)) {
+      return false;
+    }
+  } else {
+    blockDetails.algoDifficulty = blockDetails.difficulty;
   }
 
   std::vector<size_t> blocksSizes;
@@ -212,7 +221,7 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
 bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& transaction, TransactionDetails& transactionDetails, uint64_t timestamp) {
   Crypto::Hash hash = getObjectHash(transaction);
   transactionDetails.hash = hash;
-
+  transactionDetails.version = transaction.version;
   transactionDetails.timestamp = timestamp;
 
   Crypto::Hash blockHash;
@@ -247,6 +256,14 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
     //It's gen transaction
     transactionDetails.fee = 0;
     transactionDetails.mixin = 0;
+  } else if (transaction.inputs.size() > 0 && blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    //It's gen transaction with stake
+    transactionDetails.fee = 0;
+    uint64_t mixin;
+    if (!getMixin(transaction, mixin)) {
+  	  return false;
+    }
+    transactionDetails.mixin = mixin;
   } else {
     uint64_t fee;
     if (!get_tx_fee(transaction, fee)) {

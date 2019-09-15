@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -115,6 +116,7 @@ public:
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) = 0;
   virtual uint64_t getMinimalFeeForHeight(uint32_t height) = 0;
   virtual uint64_t getMinimalFee() = 0;
+  virtual uint64_t getNextBlockDifficulty() = 0;
   virtual bool check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_context& tvc, uint32_t height) = 0;
   
   virtual uint32_t get_current_blockchain_height() = 0;
@@ -131,6 +133,7 @@ public:
   virtual void rollbackBlockchain(const uint32_t height) = 0;
 
   virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) = 0;
+  virtual bool getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) = 0;
 };
 
 } //namespace CryptoNote
