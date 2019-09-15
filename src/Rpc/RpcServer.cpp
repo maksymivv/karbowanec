@@ -703,26 +703,27 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       "Internal error: couldn't get algo difficulties" };
   }
 
-  // calculate next stake
-  if (!m_core.getBlockCumulativeDifficulty(index, res.cumulative_difficulty)) {
-    throw JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
-  }
-  uint64_t cumulDiffBeforeStake = 0;
-  if (!m_core.getBlockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, cumulDiffBeforeStake)) {
-    throw JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get cumulative difficulty for POWS hardfork height." };
-  }
-  uint64_t emissionBeforeStake;
-  if (!m_core.getAlreadyGeneratedCoins(m_core.getBlockIdByHeight(CryptoNote::parameters::UPGRADE_HEIGHT_V5), emissionBeforeStake)) {
-    throw JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins." };
-  }
-  res.next_stake = m_core.currency().nextStake(res.height, res.next_reward, 0, alreadyGeneratedCoins, emissionBeforeStake, res.cumulative_difficulty, cumulDiffBeforeStake, res.next_difficulty);
-
-  // calculate stake stats
+  uint64_t nextStake = 0;
   uint64_t totalStake = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    // calculate next stake
+    if (!m_core.getBlockCumulativeDifficulty(index, res.cumulative_difficulty)) {
+      throw JsonRpc::JsonRpcError{
+        CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
+    }
+    uint64_t cumulDiffBeforeStake = 0;
+    if (!m_core.getBlockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, cumulDiffBeforeStake)) {
+      throw JsonRpc::JsonRpcError{
+        CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get cumulative difficulty for POWS hardfork height." };
+    }
+    uint64_t emissionBeforeStake;
+    if (!m_core.getAlreadyGeneratedCoins(m_core.getBlockIdByHeight(CryptoNote::parameters::UPGRADE_HEIGHT_V5), emissionBeforeStake)) {
+      throw JsonRpc::JsonRpcError{
+        CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins." };
+    }
+    nextStake = m_core.currency().nextStake(res.height, res.next_reward, 0, alreadyGeneratedCoins, emissionBeforeStake, res.cumulative_difficulty, cumulDiffBeforeStake, res.next_difficulty);
+
+    // calculate stake stats
     uint32_t blocks_count = parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     uint32_t last_height = index - blocks_count;
     if (index <= blocks_count) {
@@ -745,6 +746,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       totalStake += stake;
     }
   }
+  res.next_stake = nextStake;
   res.total_coins_locked = totalStake;
 
   res.status = CORE_RPC_STATUS_OK;
