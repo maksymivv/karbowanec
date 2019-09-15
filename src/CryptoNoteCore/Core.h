@@ -171,7 +171,7 @@ namespace CryptoNote {
      uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
      virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;
 
-     bool core::getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty);
+     virtual bool getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) override;
 
      bool is_key_image_spent(const Crypto::KeyImage& key_im);
      bool is_key_image_spent(const Crypto::KeyImage& key_im, uint32_t height);

@@ -93,7 +93,7 @@ size_t BlockchainExplorerDataBuilder::median(std::vector<size_t>& v) {
 
 bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDetails& blockDetails) {
   Crypto::Hash hash = get_block_hash(block);
-
+  blockDetails.algo = getAlgo(block);
   blockDetails.majorVersion = block.majorVersion;
   blockDetails.minorVersion = block.minorVersion;
   blockDetails.timestamp = block.timestamp;
@@ -121,12 +121,25 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   Crypto::Hash tmpHash = core.getBlockIdByHeight(blockDetails.height);
   blockDetails.isOrphaned = hash != tmpHash;
 
+   cn_pow_hash_v2 pow_ctx;
+  if (!get_block_longhash(pow_ctx, blockDetails.algo, block, blockDetails.proofOfWork)) {
+    return false;
+  }
+
   if (!core.getBlockDifficulty(blockDetails.height, blockDetails.difficulty)) {
     return false;
   }
 
   if (!core.getBlockCumulativeDifficulty(blockDetails.height, blockDetails.cumulativeDifficulty)) {
     return false;
+  }
+
+  if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    if (!core.getAlgoDifficulty(blockDetails.height, blockDetails.algo, blockDetails.algoDifficulty)) {
+      return false;
+    }
+  } else {
+    blockDetails.algoDifficulty = blockDetails.difficulty;
   }
 
   std::vector<size_t> blocksSizes;
