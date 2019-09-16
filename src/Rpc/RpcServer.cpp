@@ -703,14 +703,15 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       "Internal error: couldn't get algo difficulties" };
   }
 
+  if (!m_core.getBlockCumulativeDifficulty(index, res.cumulative_difficulty)) {
+    throw JsonRpc::JsonRpcError{
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
+  }
+
   uint64_t nextStake = 0;
   uint64_t totalStake = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
     // calculate next stake
-    if (!m_core.getBlockCumulativeDifficulty(index, res.cumulative_difficulty)) {
-      throw JsonRpc::JsonRpcError{
-        CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
-    }
     uint64_t cumulDiffBeforeStake = 0;
     if (!m_core.getBlockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5, cumulDiffBeforeStake)) {
       throw JsonRpc::JsonRpcError{
