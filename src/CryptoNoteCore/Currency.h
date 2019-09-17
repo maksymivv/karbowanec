@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016, The Karbowanec developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -24,6 +24,7 @@
 #include <boost/utility.hpp>
 #include "../CryptoNoteConfig.h"
 #include "../crypto/hash.h"
+#include "../crypto/cn_slow_hash.hpp"
 #include "../Logging/LoggerRef.h"
 #include "CryptoNoteBasic.h"
 #include "Difficulty.h"
@@ -81,7 +82,7 @@ public:
   uint64_t coin() const { return m_coin; }
 
   uint64_t minimumFee() const { return m_minimumFee; }
-  uint64_t getMinimalFee(uint64_t dailyDifficulty, uint64_t reward, uint64_t avgHistoricalDifficulty, uint64_t medianHistoricalReward, uint32_t height) const;
+  uint64_t getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const;
   uint64_t defaultDustThreshold() const { return m_defaultDustThreshold; }
 
   uint64_t difficultyTarget() const { return m_difficultyTarget; }
@@ -89,7 +90,10 @@ public:
   size_t difficultyLag() const { return m_difficultyLag; }
   size_t difficultyCut() const { return m_difficultyCut; }
   size_t difficultyBlocksCountByBlockVersion(uint8_t blockMajorVersion) const {
-    if (blockMajorVersion >= BLOCK_MAJOR_VERSION_3) {
+    if (blockMajorVersion >= BLOCK_MAJOR_VERSION_5) {
+      return difficultyBlocksCount4() + 1;
+    }
+    else if (blockMajorVersion == BLOCK_MAJOR_VERSION_3 || blockMajorVersion == BLOCK_MAJOR_VERSION_4) {
       return difficultyBlocksCount3() + 1;
     }
     else if (blockMajorVersion == BLOCK_MAJOR_VERSION_2) {
@@ -102,6 +106,8 @@ public:
   size_t difficultyBlocksCount() const { return m_difficultyWindow + m_difficultyLag; }
   size_t difficultyBlocksCount2() const { return CryptoNote::parameters::DIFFICULTY_WINDOW_V2; }
   size_t difficultyBlocksCount3() const { return CryptoNote::parameters::DIFFICULTY_WINDOW_V3; }
+  size_t difficultyBlocksCount4() const { return CryptoNote::parameters::DIFFICULTY_WINDOW_V4; }
+  uint64_t averageDifficultyWindow() const { return m_averageDifficultyWindow; }
 
   size_t maxBlockSizeInitial() const { return m_maxBlockSizeInitial; }
   uint64_t maxBlockSizeGrowthSpeedNumerator() const { return m_maxBlockSizeGrowthSpeedNumerator; }
@@ -119,6 +125,7 @@ public:
   size_t fusionTxMinInOutCountRatio() const { return m_fusionTxMinInOutCountRatio; }
 
   uint32_t upgradeHeight(uint8_t majorVersion) const;
+  uint32_t upgradeHeightV5() const;
   unsigned int upgradeVotingThreshold() const { return m_upgradeVotingThreshold; }
   uint32_t upgradeVotingWindow() const { return m_upgradeVotingWindow; }
   uint32_t upgradeWindow() const { return m_upgradeWindow; }
@@ -165,10 +172,15 @@ public:
   difficulty_type nextDifficultyV2(std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV3(std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV4(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
+  difficulty_type nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
 
-  bool checkProofOfWorkV1(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
-  bool checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
-  bool checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
+  difficulty_type algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& algos) const;
+  int getAlgoWorkFactor(int algo) const;
+  uint64_t nextStake(uint32_t height, uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins, uint64_t& alreadyGeneratedCoinsBeforeStake, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const;
+
+  bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const;
 
   size_t getApproximateMaximumInputCount(size_t transactionSize, size_t outputCount, size_t mixinCount) const;
 
@@ -220,6 +232,7 @@ private:
   size_t m_difficultyWindow;
   size_t m_difficultyLag;
   size_t m_difficultyCut;
+  uint64_t m_averageDifficultyWindow;
 
   size_t m_maxBlockSizeInitial;
   uint64_t m_maxBlockSizeGrowthSpeedNumerator;
@@ -307,6 +320,7 @@ public:
   CurrencyBuilder& difficultyWindow(size_t val);
   CurrencyBuilder& difficultyLag(size_t val) { m_currency.m_difficultyLag = val; return *this; }
   CurrencyBuilder& difficultyCut(size_t val) { m_currency.m_difficultyCut = val; return *this; }
+  CurrencyBuilder& averageDifficultyWindow(uint64_t val) { m_currency.m_averageDifficultyWindow = val; return *this; }
 
   CurrencyBuilder& maxBlockSizeInitial(size_t val) { m_currency.m_maxBlockSizeInitial = val; return *this; }
   CurrencyBuilder& maxBlockSizeGrowthSpeedNumerator(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedNumerator = val; return *this; }

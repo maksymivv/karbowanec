@@ -148,6 +148,7 @@ void serialize(TransactionDetails& transaction, ISerializer& serializer) {
   serializer(transaction.mixin, "mixin");
   serializer(transaction.unlockTime, "unlockTime");
   serializer(transaction.timestamp, "timestamp");
+  serializer(transaction.version, "version");
   serializePod(transaction.paymentId, "paymentId", serializer);
   serializer(transaction.inBlockchain, "inBlockchain");
   serializePod(transaction.blockHash, "blockHash", serializer);
@@ -185,21 +186,29 @@ void serialize(TransactionDetails& transaction, ISerializer& serializer) {
 }
 
 void serialize(BlockDetails& block, ISerializer& serializer) {
+  serializer(block.algo, "algo");
   serializer(block.majorVersion, "majorVersion");
   serializer(block.minorVersion, "minorVersion");
   serializer(block.timestamp, "timestamp");
   serializePod(block.prevBlockHash, "prevBlockHash", serializer);
+  serializePod(block.proofOfWork, "proofOfWork", serializer);
   serializer(block.nonce, "nonce");
+  serializer(block.isOrphaned, "isOrphaned");
   serializer(block.height, "index");
+  serializer(block.depth, "depth");
   serializePod(block.hash, "hash", serializer);
   serializer(block.difficulty, "difficulty");
+  serializer(block.cumulativeDifficulty, "cumulativeDifficulty");
+  serializer(block.algoDifficulty, "algoDifficulty");
   serializer(block.reward, "reward");
+  serializer(block.stake, "stake");
   serializer(block.baseReward, "baseReward");
   serializer(block.blockSize, "blockSize");
   serializer(block.transactionsCumulativeSize, "transactionsCumulativeSize");
   serializer(block.alreadyGeneratedCoins, "alreadyGeneratedCoins");
   serializer(block.alreadyGeneratedTransactions, "alreadyGeneratedTransactions");
   serializer(block.sizeMedian, "sizeMedian");
+  serializer(block.effectiveSizeMedian, "effectiveSizeMedian");
   serializer(block.penalty, "penalty");
   serializer(block.totalFeeAmount, "totalFeeAmount");
   serializer(block.transactions, "transactions");

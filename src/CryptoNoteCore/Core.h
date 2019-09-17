@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -45,7 +46,7 @@ namespace CryptoNote {
 
   class core : public ICore, public IMinerHandler, public IBlockchainStorageObserver, public ITxPoolObserver {
    public:
-     core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, bool blockchainIndexesEnabled);
+     core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher& dispatcher, bool blockchainIndexesEnabled);
      ~core();
 
      bool on_idle() override;
@@ -56,7 +57,8 @@ namespace CryptoNote {
 
      //-------------------- IMinerHandler -----------------------
      virtual bool handle_block_found(Block& b) override;
-     virtual bool get_block_template(Block& b, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce) override;
+     virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, int algo, bool local_dispatcher) override;
+     virtual bool requestStakeTransaction(uint8_t blockMajorVersion, uint64_t& fee, uint32_t& height, difficulty_type& next_diff, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize, const AccountPublicAddress& minerAddress, const CryptoNote::BinaryArray& extra_nonce, bool local_dispatcher, Transaction& transaction) override;
 
      bool addObserver(ICoreObserver* observer) override;
      bool removeObserver(ICoreObserver* observer) override;
@@ -78,6 +80,8 @@ namespace CryptoNote {
      virtual bool scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pair<Crypto::Hash, size_t>>& outputReferences) override;
      virtual bool getBlockDifficulty(uint32_t height, difficulty_type& difficulty) override;
      virtual bool getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) override;
+     virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window) override;
+     virtual difficulty_type getAvgDifficulty(uint32_t height) override;
      virtual bool getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) override;
      virtual bool getMultisigOutputReference(const MultisignatureInput& txInMultisig, std::pair<Crypto::Hash, size_t>& output_reference) override;
      virtual bool getGeneratedTransactionsNumber(uint32_t height, uint64_t& generatedTransactions) override;
@@ -100,7 +104,7 @@ namespace CryptoNote {
 
      uint32_t get_current_blockchain_height() override;
      uint8_t getCurrentBlockMajorVersion() override;
-     uint8_t getBlockMajorVersionForHeight(uint32_t height) override;
+     virtual uint8_t getBlockMajorVersionForHeight(uint32_t height) override;
 
      static bool getPaymentId(const Transaction& transaction, Crypto::Hash& paymentId);
 
@@ -167,7 +171,10 @@ namespace CryptoNote {
      uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
      virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;
 
+     virtual bool getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) override;
+
      bool is_key_image_spent(const Crypto::KeyImage& key_im);
+     bool is_key_image_spent(const Crypto::KeyImage& key_im, uint32_t height);
 
    private:
      bool add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block);
@@ -198,6 +205,7 @@ namespace CryptoNote {
      bool findStartAndFullOffsets(const std::vector<Crypto::Hash>& knownBlockIds, uint64_t timestamp, uint32_t& startOffset, uint32_t& startFullOffset);
      std::vector<Crypto::Hash> findIdsForShortBlocks(uint32_t startOffset, uint32_t startFullOffset);
 
+     System::Dispatcher& m_dispatcher;
      const Currency& m_currency;
      Checkpoints m_checkpoints;
      Logging::LoggerRef logger;
@@ -212,5 +220,11 @@ namespace CryptoNote {
      std::atomic<bool> m_starter_message_showed;
      Tools::ObserverManager<ICoreObserver> m_observerManager;
      time_t start_time;
+
+     std::string m_wallet_host;
+     std::string m_wallet_rpc_user;
+     std::string m_wallet_rpc_password;
+     uint16_t m_wallet_port;
+     size_t m_mixin = 0;
    };
 }

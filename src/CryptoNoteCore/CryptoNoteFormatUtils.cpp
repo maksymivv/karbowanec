@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -32,8 +32,6 @@
 #include "CryptoNoteTools.h"
 #include "Currency.h"
 
-#include "CryptoNoteConfig.h"
-
 using namespace Logging;
 using namespace Crypto;
 using namespace Common;
@@ -47,7 +45,9 @@ bool parseAndValidateTransactionFromBinaryArray(const BinaryArray& tx_blob, Tran
 
   //TODO: validate tx
   cn_fast_hash(tx_blob.data(), tx_blob.size(), tx_hash);
-  getObjectHash(*static_cast<TransactionPrefix*>(&tx), tx_prefix_hash);
+  if (!getObjectHash(*static_cast<TransactionPrefix*>(&tx), tx_prefix_hash)) {
+    return false;
+  }
   return true;
 }
 
@@ -123,14 +123,16 @@ bool constructTransaction(
   Transaction& tx,
   uint64_t unlock_time,
   Crypto::SecretKey &tx_key,
-  Logging::ILogger& log) {
+  Logging::ILogger& log,
+  uint8_t version
+) {
   LoggerRef logger(log, "construct_tx");
 
   tx.inputs.clear();
   tx.outputs.clear();
   tx.signatures.clear();
 
-  tx.version = CURRENT_TRANSACTION_VERSION;
+  tx.version = version;
   tx.unlockTime = unlock_time;
 
   tx.extra = extra;
@@ -227,10 +229,10 @@ bool constructTransaction(
   }
 
   //check money
-  if (summary_outs_money > summary_inputs_money) {
-    logger(ERROR) << "Transaction inputs money (" << summary_inputs_money << ") less than outputs money (" << summary_outs_money << ")";
-    return false;
-  }
+  //if (summary_outs_money > summary_inputs_money) {
+  //  logger(ERROR) << "Transaction inputs money (" << summary_inputs_money << ") less than outputs money (" << summary_outs_money << ")";
+  //  return false;
+  //}
 
   //generate ring signatures
   Hash tx_prefix_hash;
@@ -272,14 +274,15 @@ bool get_inputs_money_amount(const Transaction& tx, uint64_t& money) {
 }
 
 uint32_t get_block_height(const Block& b) {
-  if (b.baseTransaction.inputs.size() != 1) {
-    return 0;
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    const auto& in = b.baseTransaction.inputs[0];
+    if (in.type() != typeid(BaseInput)) {
+      return 0;
+    }
+    return boost::get<BaseInput>(in).blockIndex;
+  } else {
+    return b.blockIndex;
   }
-  const auto& in = b.baseTransaction.inputs[0];
-  if (in.type() != typeid(BaseInput)) {
-    return 0;
-  }
-  return boost::get<BaseInput>(in).blockIndex;
 }
 
 bool check_inputs_types_supported(const TransactionPrefix& tx) {
@@ -516,7 +519,7 @@ bool get_aux_block_header_hash(const Block& b, Hash& res) {
   return getObjectHash(blob, res);
 }
 
-bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
+bool get_block_longhash(cn_pow_hash_v2 &ctx, int algo, const Block& b, Hash& res) {
   BinaryArray bd;
   if (b.majorVersion == BLOCK_MAJOR_VERSION_1 || b.majorVersion >= BLOCK_MAJOR_VERSION_4) {
     if (!get_block_hashing_blob(b, bd)) {
@@ -529,7 +532,33 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   } else {
     return false;
   }
-  cn_slow_hash(context, bd.data(), bd.size(), res);
+
+  if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    if (algo == ALGO_CN) {
+      // Cryptonight
+      cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+      ctx_v1.hash(bd.data(), bd.size(), res.data);
+    }
+    else if (algo == ALGO_CN_GPU) {
+      // Cryptonight-GPU
+      cn_pow_hash_v3 ctx_v3 = cn_pow_hash_v3::make_borrowed_v3(ctx);
+      ctx_v3.hash(bd.data(), bd.size(), res.data);
+    }
+    else if (algo == ALGO_CN_POWER) {
+      // Cryptonight-Heavy + Yespower
+      Hash h;
+      ctx.hash(bd.data(), bd.size(), h.data);
+      yespower_hash((const char*)h.data, sizeof(h.data), res.data);
+    }
+    else {
+      return false;
+    }
+  }
+  else {
+    cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+    ctx_v1.hash(bd.data(), bd.size(), res.data);
+  }
+
   return true;
 }
 
@@ -564,7 +593,10 @@ Hash get_tx_tree_hash(const std::vector<Hash>& tx_hashes) {
 Hash get_tx_tree_hash(const Block& b) {
   std::vector<Hash> txs_ids;
   Hash h = NULL_HASH;
-  getObjectHash(b.baseTransaction, h);
+  bool r = getObjectHash(b.baseTransaction, h);
+
+  assert(r && "failed to get object hash in get_tx_tree_hash");
+
   txs_ids.push_back(h);
   for (auto& th : b.transactionHashes) {
     txs_ids.push_back(th);

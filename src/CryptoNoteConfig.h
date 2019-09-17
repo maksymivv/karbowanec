@@ -2,7 +2,7 @@
 // Copyright (c) 2014-2018, The Monero project
 // Copyright (c) 2014-2018, The Forknote developers
 // Copyright (c) 2018, Ryo Currency Project
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -41,10 +41,14 @@ const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V1         = DIFFICULTY_TARGET
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V1          = 11;
 
-// MONEY_SUPPLY - total number coins to be generated
+// MONEY_SUPPLY - total number of coins to be generated before tail emission
 const uint64_t MONEY_SUPPLY                                  = UINT64_C(10000000000000000000);
 const uint64_t COIN                                          = UINT64_C(1000000000000);
 const uint64_t TAIL_EMISSION_REWARD                          = UINT64_C(1000000000000);
+
+const uint64_t STAKE_MAX_LIMIT                               = UINT64_C(10000) * COIN;
+const uint64_t STAKE_EMISSION_FRACTION                       = 4;
+
 const size_t CRYPTONOTE_COIN_VERSION                         = 1;
 const unsigned EMISSION_SPEED_FACTOR                         = 18;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
@@ -75,13 +79,22 @@ const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; // blocks
 const size_t   DIFFICULTY_WINDOW_V2                          = 17;  // blocks
 const size_t   DIFFICULTY_WINDOW_V3                          = 60;  // blocks
+const size_t   DIFFICULTY_WINDOW_V4                          = 120; // blocks
 const size_t   DIFFICULTY_CUT                                = 60;  // timestamps to cut after sorting
 const size_t   DIFFICULTY_LAG                                = 15;  // !!!
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
+const size_t   MULTI_DIFFICULTY_ADJUSTMENT_WINDOW            = 12;  // blocks
+// work factor = absolute work ratio * optimization factor
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN               = 34 * 8;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU           = 3 * 4;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER         = 2 * 4;
+
+const uint64_t AVERAGE_DIFFICULTY_WINDOW                     = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 7 * 4;
+
 const uint64_t POISSON_CHECK_TRIGGER = 10; // Reorg size that triggers poisson timestamp check
 const uint64_t POISSON_CHECK_DEPTH = 60;   // Main-chain depth of the poisson check. The attacker will have to tamper 50% of those blocks
-const double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
+const double   POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
 
 const size_t   MAX_BLOCK_SIZE_INITIAL                        = 1000000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
@@ -122,12 +135,17 @@ const char     CRYPTONOTE_NAME[]                             = "karbowanec";
 const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
 const char     DNS_CHECKPOINTS_HOST[]                        = "checkpoints.karbo.org";
 
-const uint8_t  CURRENT_TRANSACTION_VERSION                   =  1;
+const uint8_t  TRANSACTION_VERSION_1                         =  1;
+const uint8_t  TRANSACTION_VERSION_2                         =  2;
+const uint8_t  STAKE_TRANSACTION_VERSION                     =  TRANSACTION_VERSION_2;
+const uint8_t  CURRENT_TRANSACTION_VERSION                   =  TRANSACTION_VERSION_1;
+
 const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;
 const uint8_t  BLOCK_MAJOR_VERSION_2                         =  2;
 const uint8_t  BLOCK_MAJOR_VERSION_3                         =  3;
 const uint8_t  BLOCK_MAJOR_VERSION_4                         =  4;
 const uint8_t  BLOCK_MAJOR_VERSION_5                         =  5;
+const uint8_t  BLOCK_MAJOR_VERSION_6                         =  6;
 const uint8_t  BLOCK_MINOR_VERSION_0                         =  0;
 const uint8_t  BLOCK_MINOR_VERSION_1                         =  1;
 

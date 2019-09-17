@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -25,6 +25,9 @@
 
 #include "Serialization/BinaryOutputStreamSerializer.h"
 #include "Serialization/BinaryInputStreamSerializer.h"
+#include "crypto/cn_slow_hash.hpp"
+
+#include "CryptoNoteConfig.h"
 
 namespace Logging {
 class ILogger;
@@ -57,7 +60,12 @@ bool constructTransaction(
   const AccountKeys& senderAccountKeys,
   const std::vector<TransactionSourceEntry>& sources,
   const std::vector<TransactionDestinationEntry>& destinations,
-  std::vector<uint8_t> extra, Transaction& transaction, uint64_t unlock_time, Crypto::SecretKey &tx_key, Logging::ILogger& log);
+  std::vector<uint8_t> extra,
+  Transaction& transaction,
+  uint64_t unlock_time,
+  Crypto::SecretKey &tx_key,
+  Logging::ILogger& log,
+  uint8_t version = CryptoNote::CURRENT_TRANSACTION_VERSION);
 
 
 bool is_out_to_acc(const AccountKeys& acc, const KeyOutput& out_key, const Crypto::PublicKey& tx_pub_key, size_t keyIndex);
@@ -74,7 +82,7 @@ bool get_parent_block_hashing_blob(const Block& b, BinaryArray& blob);
 bool get_aux_block_header_hash(const Block& b, Crypto::Hash& res);
 bool get_block_hash(const Block& b, Crypto::Hash& res);
 Crypto::Hash get_block_hash(const Block& b);
-bool get_block_longhash(Crypto::cn_context &context, const Block& b, Crypto::Hash& res);
+bool get_block_longhash(cn_pow_hash_v2 &ctx, int algo, const Block& b, Crypto::Hash& res);
 bool get_inputs_money_amount(const Transaction& tx, uint64_t& money);
 uint64_t get_outs_money_amount(const Transaction& tx);
 bool check_inputs_types_supported(const TransactionPrefix& tx);

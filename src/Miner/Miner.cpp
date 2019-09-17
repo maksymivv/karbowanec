@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -20,6 +21,8 @@
 #include <functional>
 
 #include "crypto/crypto.h"
+#include "crypto/random.h"
+#include "crypto/cn_slow_hash.hpp"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 
 #include <System/InterruptedException.h>
@@ -76,7 +79,7 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
   m_logger(Logging::INFO) << "Starting mining for difficulty " << blockMiningParameters.difficulty;
 
   try {
-    blockMiningParameters.blockTemplate.nonce = Crypto::rand<uint32_t>();
+    blockMiningParameters.blockTemplate.nonce = Random::randomValue<uint32_t>();
 
     for (size_t i = 0; i < threadCount; ++i) {
       m_workers.emplace_back(std::unique_ptr<System::RemoteContext<void>> (
@@ -99,11 +102,12 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
 void Miner::workerFunc(const Block& blockTemplate, difficulty_type difficulty, uint32_t nonceStep) {
   try {
     Block block = blockTemplate;
-    Crypto::cn_context cryptoContext;
-
+	cn_pow_hash_v2 hash_ctx;
+    
     while (m_state == MiningState::MINING_IN_PROGRESS) {
       Crypto::Hash hash;
-      if (!get_block_longhash(cryptoContext, block, hash)) {
+      int algo = 0;
+      if (!get_block_longhash(hash_ctx, algo, block, hash)) {
         //error occured
         m_logger(Logging::DEBUGGING) << "calculating long hash error occured";
         m_state = MiningState::MINING_STOPPED;

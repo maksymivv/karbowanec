@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2018, The Karbo developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -240,7 +240,8 @@ int main(int argc, char* argv[])
       return 1;
     }
     CryptoNote::Currency currency = currencyBuilder.currency();
-    CryptoNote::core ccore(currency, nullptr, logManager, command_line::get_arg(vm, arg_enable_blockchain_indexes));
+    System::Dispatcher dispatcher;
+    CryptoNote::core ccore(currency, nullptr, logManager, dispatcher, command_line::get_arg(vm, arg_enable_blockchain_indexes));
 
 	bool disable_checkpoints = command_line::get_arg(vm, arg_disable_checkpoints);
 	if (!disable_checkpoints) {
@@ -251,7 +252,7 @@ int main(int argc, char* argv[])
 		}
 
 #ifndef __ANDROID__
-		checkpoints.load_checkpoints_from_dns();
+//		checkpoints.load_checkpoints_from_dns();
 #endif
 
 		bool manual_checkpoints = !command_line::get_arg(vm, arg_load_checkpoints).empty();
@@ -290,8 +291,6 @@ int main(int argc, char* argv[])
         throw std::runtime_error("Can't create directory: " + coreConfig.configFolder);
       }
     }
-
-    System::Dispatcher dispatcher;
 
     CryptoNote::CryptoNoteProtocolHandler cprotocol(currency, dispatcher, ccore, nullptr, logManager);
     CryptoNote::NodeServer p2psrv(dispatcher, cprotocol, logManager);
