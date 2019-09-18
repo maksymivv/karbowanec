@@ -722,7 +722,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       throw JsonRpc::JsonRpcError{
         CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins." };
     }
-    nextStake = m_core.currency().nextStake(res.height, res.next_reward, 0, alreadyGeneratedCoins, emissionBeforeStake, res.cumulative_difficulty, cumulDiffBeforeStake, res.next_difficulty);
+    nextStake = m_core.currency().nextStake(res.height, res.next_reward, 0, alreadyGeneratedCoins, emissionBeforeStake, res.cumulative_difficulty, cumulDiffBeforeStake, res.difficulty);
 
     // calculate stake stats
     uint32_t blocks_count = parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
