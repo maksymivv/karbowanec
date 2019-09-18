@@ -293,7 +293,7 @@ struct COMMAND_RPC_GET_INFO {
     std::string version;
     uint32_t height;
     std::string top_block_hash;
-    uint64_t next_difficulty;
+    uint64_t difficulty;
     uint64_t cumulative_difficulty;
     uint64_t avg_difficulty;
     algo_difficulties multi_algo_difficulties;
@@ -322,7 +322,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(version)
       KV_MEMBER(height)
       KV_MEMBER(top_block_hash)
-      KV_MEMBER(next_difficulty)
+      KV_MEMBER(difficulty)
       KV_MEMBER(cumulative_difficulty)
       KV_MEMBER(avg_difficulty)
       KV_MEMBER(multi_algo_difficulties)
