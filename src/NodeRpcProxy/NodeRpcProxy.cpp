@@ -275,7 +275,7 @@ void NodeRpcProxy::updateBlockchainStatus() {
 
 	m_minimalFee.store(getInfoResp.min_tx_fee, std::memory_order_relaxed);
 	m_nodeHeight.store(getInfoResp.height, std::memory_order_relaxed);
-	m_nextDifficulty.store(getInfoResp.next_difficulty, std::memory_order_relaxed);
+	m_nextDifficulty.store(getInfoResp.difficulty, std::memory_order_relaxed);
   }
 
   if (m_connected != m_httpClient->isConnected()) {
