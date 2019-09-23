@@ -1802,12 +1802,12 @@ bool RpcServer::on_check_reserve_proof(const K_COMMAND_RPC_CHECK_RESERVE_PROOF::
 	if (!Common::fromHex(sig_decoded, ba)) {
 		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Proof decoding error" };
 	}
-	reserve_proof proof_decoded;
+	ReserveProof proof_decoded;
 	if (!fromBinaryArray(proof_decoded, ba)) {
 		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "BinaryArray decoding error" };
 	}
 
-	std::vector<reserve_proof_entry>& proofs = proof_decoded.proofs;
+	std::vector<ReserveProofEntry>& proofs = proof_decoded.proofs;
 	
 	// compute signature prefix hash
 	std::string prefix_data = req.message;
@@ -1834,7 +1834,7 @@ bool RpcServer::on_check_reserve_proof(const K_COMMAND_RPC_CHECK_RESERVE_PROOF::
 	res.spent = 0;
 	res.locked = 0;
 	for (size_t i = 0; i < proofs.size(); ++i) {
-		const reserve_proof_entry& proof = proofs[i];
+		const ReserveProofEntry& proof = proofs[i];
 
 		CryptoNote::TransactionPrefix tx = *static_cast<const TransactionPrefix*>(&transactions[i]);
     

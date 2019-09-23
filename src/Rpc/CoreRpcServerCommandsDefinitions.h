@@ -1153,35 +1153,6 @@ struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
 };
 
 //-----------------------------------------------
-struct reserve_proof_entry
-{
-	Crypto::Hash txid;
-	uint64_t index_in_tx;
-	Crypto::PublicKey shared_secret;
-	Crypto::KeyImage key_image;
-	Crypto::Signature shared_secret_sig;
-	Crypto::Signature key_image_sig;
-
-	void serialize(ISerializer& s)
-	{
-		KV_MEMBER(txid)
-		KV_MEMBER(index_in_tx)
-		KV_MEMBER(shared_secret)
-		KV_MEMBER(key_image)
-		KV_MEMBER(shared_secret_sig)
-		KV_MEMBER(key_image_sig)
-	}
-};
-
-struct reserve_proof {
-	std::vector<reserve_proof_entry> proofs;
-	Crypto::Signature signature;
-
-	void serialize(ISerializer &s) {
-		KV_MEMBER(proofs)
-		KV_MEMBER(signature)
-	}
-};
 
 struct K_COMMAND_RPC_CHECK_TX_PROOF {
     struct request {

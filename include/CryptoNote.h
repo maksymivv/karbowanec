@@ -93,21 +93,6 @@ enum algo : int {
 #define CURRENCY_BLOCK_POW_TYPE_CN_GPU   0x01
 #define CURRENCY_BLOCK_POW_TYPE_CN_POWER 0x02
 
-struct BlockHeader {
-  uint8_t majorVersion;
-  uint8_t minorVersion;
-  uint32_t nonce;
-  uint64_t timestamp;
-  Crypto::Hash previousBlockHash;
-  uint8_t algorithm;
-};
-
-struct Block : public BlockHeader {
-  ParentBlock parentBlock;
-  Transaction baseTransaction;
-  std::vector<Crypto::Hash> transactionHashes;
-};
-
 struct AccountPublicAddress {
   Crypto::PublicKey spendPublicKey;
   Crypto::PublicKey viewPublicKey;
@@ -125,5 +110,40 @@ struct KeyPair {
 };
 
 using BinaryArray = std::vector<uint8_t>;
+
+struct ReserveProofEntry {
+  Crypto::Hash txid;
+  uint64_t index_in_tx;
+  Crypto::PublicKey shared_secret;
+  Crypto::KeyImage key_image;
+  Crypto::Signature shared_secret_sig;
+  Crypto::Signature key_image_sig;
+};
+
+struct ReserveProof {
+  std::vector<ReserveProofEntry> proofs;
+  Crypto::Signature signature;
+};
+
+struct Stake {
+  ReserveProof reserve_proof;
+  AccountPublicAddress address;
+};
+
+struct BlockHeader {
+  uint8_t majorVersion;
+  uint8_t minorVersion;
+  uint32_t nonce;
+  uint64_t timestamp;
+  Crypto::Hash previousBlockHash;
+  uint8_t algorithm;
+};
+
+struct Block : public BlockHeader {
+  ParentBlock parentBlock;
+  Transaction baseTransaction;
+  Stake stake;
+  std::vector<Crypto::Hash> transactionHashes;
+};
 
 }

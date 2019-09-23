@@ -2810,11 +2810,11 @@ std::string WalletGreen::getReserveProof(const uint64_t &reserve, const std::str
   Crypto::cn_fast_hash(prefix_data.data(), prefix_data.size(), prefix_hash);
 
   // generate proof entries
-  std::vector<reserve_proof_entry> proofs(selectedTransfers.size());
+  std::vector<ReserveProofEntry> proofs(selectedTransfers.size());
 
   for (size_t i = 0; i < selectedTransfers.size(); ++i) {
     const TransactionOutputInformation &td = selectedTransfers[i];
-    reserve_proof_entry& proof = proofs[i];
+    ReserveProofEntry& proof = proofs[i];
     proof.key_image = kimages[i];
     proof.txid = td.transactionHash;
     proof.index_in_tx = td.outputInTransaction;
@@ -2858,7 +2858,7 @@ std::string WalletGreen::getReserveProof(const uint64_t &reserve, const std::str
   Crypto::generate_signature(prefix_hash, keys.address.spendPublicKey, keys.spendSecretKey, signature);
 
   // serialize & encode
-  reserve_proof p;
+  ReserveProof p;
   p.proofs.assign(proofs.begin(), proofs.end());
   memcpy(&p.signature, &signature, sizeof(signature));
 

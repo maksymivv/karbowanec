@@ -309,7 +309,6 @@ void serialize(MultisignatureOutput& multisignature, ISerializer& serializer) {
 
 void serialize(ParentBlockSerializer& pbs, ISerializer& serializer) {
   serializer(pbs.m_parentBlock.majorVersion, "majorVersion");
-
   serializer(pbs.m_parentBlock.minorVersion, "minorVersion");
   serializer(pbs.m_timestamp, "timestamp");
   serializer(pbs.m_parentBlock.previousBlockHash, "prevId");
@@ -457,5 +456,18 @@ void serialize(KeyPair& keyPair, ISerializer& serializer) {
   serializer(keyPair.publicKey, "public_key");
 }
 
+void serialize(ReserveProofEntry& reserveProofEntry, ISerializer& serializer) {
+  serializer(reserveProofEntry.txid, "txid");
+  serializer(reserveProofEntry.index_in_tx, "index_in_tx");
+  serializer(reserveProofEntry.shared_secret, "shared_secret");
+  serializer(reserveProofEntry.key_image, "key_image");
+  serializer(reserveProofEntry.shared_secret_sig, "shared_secret_sig");
+  serializer(reserveProofEntry.key_image_sig, "key_image_sig");
+}
+
+void serialize(ReserveProof& reserveProof, ISerializer& serializer) {
+  serializer(reserveProof.proofs, "proofs");
+  serializer(reserveProof.signature, "signature");
+}
 
 } //namespace CryptoNote

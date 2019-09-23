@@ -1027,11 +1027,11 @@ std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::st
 	Crypto::cn_fast_hash(prefix_data.data(), prefix_data.size(), prefix_hash);
 
 	// generate proof entries
-	std::vector<reserve_proof_entry> proofs(selected_transfers.size());
+	std::vector<ReserveProofEntry> proofs(selected_transfers.size());
 	
 	for (size_t i = 0; i < selected_transfers.size(); ++i) {
 		const TransactionOutputInformation &td = selected_transfers[i];
-		reserve_proof_entry& proof = proofs[i];
+		ReserveProofEntry& proof = proofs[i];
 		proof.key_image = kimages[i];
 		proof.txid = td.transactionHash;
 		proof.index_in_tx = td.outputInTransaction;
@@ -1074,7 +1074,7 @@ std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::st
 	Crypto::generate_signature(prefix_hash, keys.address.spendPublicKey, keys.spendSecretKey, signature);
 
 	// serialize & encode
-	reserve_proof p;
+	ReserveProof p;
 	p.proofs.assign(proofs.begin(), proofs.end());
 	memcpy(&p.signature, &signature, sizeof(signature));
 
