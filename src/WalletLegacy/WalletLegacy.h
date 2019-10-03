@@ -100,7 +100,7 @@ public:
   virtual bool getTransfer(TransferId transferId, WalletLegacyTransfer& transfer) override;
   virtual std::vector<Payments> getTransactionsByPaymentIds(const std::vector<PaymentId>& paymentIds) const override;
   virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, Crypto::SecretKey& tx_key, std::string& sig_str) override;
-  virtual std::string getReserveProof(const uint64_t &reserve, const std::string &message) override;
+  virtual std::string getReserveProof(const uint64_t &reserve, const std::string &message, bool includeAll) override;
   virtual Crypto::SecretKey getTxKey(Crypto::Hash& txid) override;
   virtual bool get_tx_key(Crypto::Hash& txid, Crypto::SecretKey& txSecretKey) override;
   virtual void getAccountKeys(AccountKeys& keys) override;

@@ -131,7 +131,7 @@ public:
   virtual bool getTransfer(TransferId transferId, WalletLegacyTransfer& transfer) = 0;
   virtual std::vector<Payments> getTransactionsByPaymentIds(const std::vector<PaymentId>& paymentIds) const = 0;
   virtual bool getTxProof(Crypto::Hash& txid, CryptoNote::AccountPublicAddress& address, Crypto::SecretKey& tx_key, std::string& sig_str) = 0;
-  virtual std::string getReserveProof(const uint64_t &reserve, const std::string &message) = 0;
+  virtual std::string getReserveProof(const uint64_t &reserve, const std::string &message, bool selectAll) = 0;
   virtual Crypto::SecretKey getTxKey(Crypto::Hash& txid) = 0;
   virtual bool get_tx_key(Crypto::Hash& txid, Crypto::SecretKey& txSecretKey) = 0;
   virtual void getAccountKeys(AccountKeys& keys) = 0;

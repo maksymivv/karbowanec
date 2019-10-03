@@ -967,7 +967,7 @@ bool compareTransactionOutputInformationByAmount(const TransactionOutputInformat
   return a.amount < b.amount;
 }
 
-std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::string &message) {
+std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::string &message, bool includeAll) {
 	const CryptoNote::AccountKeys keys = m_account.getAccountKeys();
 	Crypto::SecretKey viewSecretKey = keys.viewSecretKey;
 
@@ -979,13 +979,13 @@ std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::st
 		throw std::runtime_error("Zero balance");
 	}
 
-	if (actualBalance() < reserve) {
+    if (actualBalance() + includeAll ? pendingBalance() : 0 < reserve) {
 		throw std::runtime_error("Not enough balance for the requested minimum reserve amount");
 	}
 
 	// determine which outputs to include in the proof
 	std::vector<TransactionOutputInformation> selected_transfers;
-	m_transferDetails->getOutputs(selected_transfers, ITransfersContainer::IncludeAllUnlocked);
+    m_transferDetails->getOutputs(selected_transfers, includeAll ? ITransfersContainer::IncludeAll : ITransfersContainer::IncludeAllUnlocked);
 	
 	// minimize the number of outputs included in the proof, by only picking the N largest outputs that can cover the requested min reserve amount
 	std::sort(selected_transfers.begin(), selected_transfers.end(), compareTransactionOutputInformationByAmount);
