@@ -503,6 +503,25 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 
 		aes_round(cx, ax);
 
+		if(VERSION == 3)
+		{
+			__m128i bx_xmm = _mm_set_epi64x(bx.v64x1, bx.v64x0);
+			while((cx.v64x0 & 0xf) != 0)
+			{
+				__m128i cx_xmm = _mm_set_epi64x(cx.v64x1, cx.v64x0);
+				cx_xmm = _mm_xor_si128(cx_xmm, bx_xmm);
+				__m128d da = _mm_cvtepi32_pd(cx_xmm);
+				__m128d db = _mm_cvtepi32_pd(_mm_shuffle_epi32(cx_xmm, _MM_SHUFFLE(0,1,2,3)));
+				da = _mm_mul_pd(da, db);
+				__m128i dx = _mm_castpd_si128(da);
+				cx.v64x0 = _mm_cvtsi128_si64(dx);
+				dx = _mm_shuffle_epi32(dx, _MM_SHUFFLE(1,0,3,2));
+				cx.v64x1 = _mm_cvtsi128_si64(dx);
+				aes_round(cx, ax);
+			}
+			aes_round(cx, ax);
+		}
+
 		bx ^= cx;
 		bx.write(idx);
 		idx = scratchpad_ptr(cx.v64x0);
@@ -516,7 +535,7 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 
 		ax ^= bx;
 		idx = scratchpad_ptr(ax.v64x0);
-		if(VERSION > 0)
+		if(VERSION > 0 && VERSION < 3)
 		{
 			int64_t n = idx.as_qword(0);
 			int32_t d = idx.as_dword(2);
@@ -534,6 +553,25 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 
 		aes_round(bx, ax);
 
+		if(VERSION == 3)
+		{
+			__m128i cx_xmm = _mm_set_epi64x(cx.v64x1, cx.v64x0);
+			while((bx.v64x0 & 0xf) != 0)
+			{
+				__m128i bx_xmm = _mm_set_epi64x(bx.v64x1, bx.v64x0);
+				bx_xmm = _mm_xor_si128(bx_xmm, cx_xmm);
+				__m128d da = _mm_cvtepi32_pd(bx_xmm);
+				__m128d db = _mm_cvtepi32_pd(_mm_shuffle_epi32(bx_xmm, _MM_SHUFFLE(0,1,2,3)));
+				da = _mm_mul_pd(da, db);
+				__m128i dx = _mm_castpd_si128(da);
+				bx.v64x0 = _mm_cvtsi128_si64(dx);
+				dx = _mm_shuffle_epi32(dx, _MM_SHUFFLE(1,0,3,2));
+				bx.v64x1 = _mm_cvtsi128_si64(dx);
+				aes_round(bx, ax);
+			}
+			aes_round(bx, ax);
+		}
+
 		cx ^= bx;
 		cx.write(idx);
 		idx = scratchpad_ptr(bx.v64x0);
@@ -546,7 +584,7 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 		ax.write(idx);
 		ax ^= cx;
 		idx = scratchpad_ptr(ax.v64x0);
-		if(VERSION > 0)
+		if(VERSION > 0 && VERSION < 3)
 		{
 			int64_t n = idx.as_qword(0); // read bytes 0 - 7
 			int32_t d = idx.as_dword(2); // read bytes 8 - 11
@@ -585,3 +623,4 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 template class cn_v1_hash_t;
 template class cn_v2_hash_t;
 template class cn_v3_hash_t;
+template class cn_v4_hash_t;

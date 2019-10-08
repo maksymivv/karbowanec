@@ -37,6 +37,8 @@
 #define cn_v2_hash_t cn_slow_hash<4 * 1024 * 1024, 0x40000, 1>
 // Cryptonight-GPU
 #define cn_v3_hash_t cn_slow_hash<2 * 1024 * 1024, 0xC000, 2>
+// Cryptonight-KRB
+#define cn_v4_hash_t cn_slow_hash<2 * 1024 * 1024, 0x8000, 3>
 
 // Use the types below
 template <size_t MEMORY, size_t ITER, size_t VERSION>
@@ -44,6 +46,7 @@ class cn_slow_hash;
 using cn_pow_hash_v1 = cn_v1_hash_t;
 using cn_pow_hash_v2 = cn_v2_hash_t;
 using cn_pow_hash_v3 = cn_v3_hash_t;
+using cn_pow_hash_v4 = cn_v4_hash_t;
 
 #ifdef HAS_INTEL_HW
 inline void cpuid(uint32_t eax, int32_t ecx, int32_t val[4])
@@ -127,7 +130,7 @@ class cn_sptr
 template <size_t MEMORY, size_t ITER, size_t VERSION>
 class cn_slow_hash
 {
-  public:
+public:
 	cn_slow_hash() : borrowed_pad(false)
 	{
 		lpad.set(boost::alignment::aligned_alloc(4096, MEMORY));
@@ -150,6 +153,11 @@ class cn_slow_hash
 	static cn_pow_hash_v3 make_borrowed_v3(cn_pow_hash_v2& t)
 	{
 		return cn_pow_hash_v3(t.lpad.as_void(), t.spad.as_void());
+	}
+
+	static cn_pow_hash_v4 make_borrowed_v4(cn_pow_hash_v2& t)
+	{
+		return cn_pow_hash_v4(t.lpad.as_void(), t.spad.as_void());
 	}
 
 	cn_slow_hash& operator=(cn_slow_hash&& other) noexcept
@@ -175,19 +183,19 @@ class cn_slow_hash
 
 	void hash(const void* in, size_t len, void* out)
 	{
-		if(VERSION <= 1)
-		{
-			if(hw_check_aes() && !check_override())
-				hardware_hash(in, len, out);
-			else
-				software_hash(in, len, out);
-		}
-		else
+		if(VERSION == 2)
 		{
 			if(hw_check_aes() && !check_override())
 				hardware_hash_3(in, len, out);
 			else
 				software_hash_3(in, len, out);
+		}
+		else
+		{
+			if(hw_check_aes() && !check_override())
+				hardware_hash(in, len, out);
+			else
+				software_hash(in, len, out);
 		}
 	}
 
@@ -205,12 +213,13 @@ class cn_slow_hash
 	void hardware_hash_3(const void* in, size_t len, void* pout);
 #endif
 
-  private:
+private:
 	static constexpr size_t MASK = VERSION <= 1 ? ((MEMORY - 1) >> 4) << 4 : ((MEMORY - 1) >> 6) << 6;
 
 	friend cn_pow_hash_v1;
 	friend cn_pow_hash_v2;
 	friend cn_pow_hash_v3;
+	friend cn_pow_hash_v4;
 
 	// Constructor enabling v1 hash to borrow v2's buffer
 	cn_slow_hash(void* lptr, void* sptr)
@@ -280,3 +289,4 @@ class cn_slow_hash
 extern template class cn_v1_hash_t;
 extern template class cn_v2_hash_t;
 extern template class cn_v3_hash_t;
+extern template class cn_v4_hash_t;

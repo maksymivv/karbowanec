@@ -541,6 +541,9 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, int algo, const Block& b, Hash& res
       ctx_v3.hash(bd.data(), bd.size(), res.data);
     }
     else if (algo == ALGO_CN_POWER) {
+      // CPU algo: Cryptonight-KRB
+      cn_pow_hash_v4 ctx_v4 = cn_pow_hash_v4::make_borrowed_v4(ctx);
+      ctx_v4.hash(bd.data(), bd.size(), res.data);
     }
     else {
       return false;
