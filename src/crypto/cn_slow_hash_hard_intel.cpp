@@ -325,7 +325,20 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::hardware_hash(const void* in, size_t l
 		__m128i cx;
 		cx = _mm_load_si128(scratchpad_ptr(idx0).template as_ptr<__m128i>());
 
-		cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah0, al0));
+		__m128i ax0 =  _mm_set_epi64x(ah0, al0);
+		cx = _mm_aesenc_si128(cx, ax0);
+		if(VERSION == 3)
+		{
+			while((_mm_cvtsi128_si32(cx) & 0xf) != 0)
+			{
+				cx = _mm_xor_si128(cx, bx0);
+				__m128d da = _mm_cvtepi32_pd(cx);
+				__m128d db = _mm_cvtepi32_pd(_mm_shuffle_epi32(cx, _MM_SHUFFLE(0,1,2,3)));
+				da = _mm_mul_pd(da, db);
+				cx = _mm_aesenc_si128(_mm_castpd_si128(da), ax0);
+			}
+			cx = _mm_aesenc_si128(cx, ax0);
+		}
 
 		_mm_store_si128(scratchpad_ptr(idx0).template as_ptr<__m128i>(), _mm_xor_si128(bx0, cx));
 		idx0 = xmm_extract_64(cx);
@@ -345,7 +358,7 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::hardware_hash(const void* in, size_t l
 		al0 ^= cl;
 		idx0 = al0;
 
-		if(VERSION > 0)
+		if(VERSION > 0 && VERSION < 3)
 		{
 			int64_t n = scratchpad_ptr(idx0).as_qword(0);
 			int32_t d = scratchpad_ptr(idx0).as_dword(2);
@@ -589,4 +602,5 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash_3(const void* in, size_t
 template class cn_v1_hash_t;
 template class cn_v2_hash_t;
 template class cn_v3_hash_t;
+template class cn_v4_hash_t;
 #endif

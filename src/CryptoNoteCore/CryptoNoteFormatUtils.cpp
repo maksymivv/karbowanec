@@ -538,7 +538,8 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
 	  ctx_v1.hash(bd.data(), bd.size(), res.data);
   }
   else {
-	  ctx.hash(bd.data(), bd.size(), res.data);
+      cn_pow_hash_v4 ctx_v4 = cn_pow_hash_v4::make_borrowed_v4(ctx);
+      ctx_v4.hash(bd.data(), bd.size(), res.data);
   }
 
   return true;
