@@ -541,10 +541,6 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, int algo, const Block& b, Hash& res
       ctx_v3.hash(bd.data(), bd.size(), res.data);
     }
     else if (algo == ALGO_CN_POWER) {
-      // CPU algo: Cryptonight-Heavy + Yespower
-      Hash h;
-      ctx.hash(bd.data(), bd.size(), h.data);
-      yespower_hash((const char*)h.data, sizeof(h.data), res.data);
     }
     else {
       return false;
