@@ -256,8 +256,8 @@ inline void xor_shift(aesdata& x0, aesdata& x1, aesdata& x2, aesdata& x3, aesdat
 	x7 ^= tmp;
 }
 
-template <size_t MEMORY, size_t ITER, size_t VERSION>
-void cn_slow_hash<MEMORY, ITER, VERSION>::implode_scratchpad_soft()
+template <size_t MEMORY, size_t ITER, size_t POW_VER>
+void cn_slow_hash<MEMORY, ITER, POW_VER>::implode_scratchpad_soft()
 {
 	aesdata x0, x1, x2, x3, x4, x5, x6, x7;
 	aesdata k0, k1, k2, k3, k4, k5, k6, k7, k8, k9;
@@ -295,12 +295,12 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::implode_scratchpad_soft()
 		aes_round8(k8, x0, x1, x2, x3, x4, x5, x6, x7);
 		aes_round8(k9, x0, x1, x2, x3, x4, x5, x6, x7);
 
-		if(VERSION > 0)
+		if(POW_VER > 0)
 			xor_shift(x0, x1, x2, x3, x4, x5, x6, x7);
 	}
 
-	// Note, this loop is only executed if VERSION > 0
-	for(size_t i = 0; VERSION > 0 && i < MEMORY / sizeof(uint64_t); i += 16)
+	// Note, this loop is only executed if POW_VER > 0
+	for(size_t i = 0; POW_VER > 0 && i < MEMORY / sizeof(uint64_t); i += 16)
 	{
 		x0.xor_load(lpad.as_uqword() + i + 0);
 		x1.xor_load(lpad.as_uqword() + i + 2);
@@ -325,8 +325,8 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::implode_scratchpad_soft()
 		xor_shift(x0, x1, x2, x3, x4, x5, x6, x7);
 	}
 
-	// Note, this loop is only executed if VERSION > 0
-	for(size_t i = 0; VERSION > 0 && i < 16; i++)
+	// Note, this loop is only executed if POW_VER > 0
+	for(size_t i = 0; POW_VER > 0 && i < 16; i++)
 	{
 		aes_round8(k0, x0, x1, x2, x3, x4, x5, x6, x7);
 		aes_round8(k1, x0, x1, x2, x3, x4, x5, x6, x7);
@@ -352,8 +352,8 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::implode_scratchpad_soft()
 	x7.write(spad.as_uqword() + 22);
 }
 
-template <size_t MEMORY, size_t ITER, size_t VERSION>
-void cn_slow_hash<MEMORY, ITER, VERSION>::explode_scratchpad_soft()
+template <size_t MEMORY, size_t ITER, size_t POW_VER>
+void cn_slow_hash<MEMORY, ITER, POW_VER>::explode_scratchpad_soft()
 {
 	aesdata x0, x1, x2, x3, x4, x5, x6, x7;
 	aesdata k0, k1, k2, k3, k4, k5, k6, k7, k8, k9;
@@ -369,8 +369,8 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::explode_scratchpad_soft()
 	x6.load(spad.as_uqword() + 20);
 	x7.load(spad.as_uqword() + 22);
 
-	// Note, this loop is only executed if VERSION > 0
-	for(size_t i = 0; VERSION > 0 && i < 16; i++)
+	// Note, this loop is only executed if POW_VER > 0
+	for(size_t i = 0; POW_VER > 0 && i < 16; i++)
 	{
 		aes_round8(k0, x0, x1, x2, x3, x4, x5, x6, x7);
 		aes_round8(k1, x0, x1, x2, x3, x4, x5, x6, x7);
@@ -430,8 +430,8 @@ inline void generate_512(uint64_t idx, const uint64_t* in, uint8_t* out)
 	memcpy(out, hash, 176);
 }
 
-template <size_t MEMORY, size_t ITER, size_t VERSION>
-void cn_slow_hash<MEMORY, ITER, VERSION>::explode_scratchpad_3()
+template <size_t MEMORY, size_t ITER, size_t POW_VER>
+void cn_slow_hash<MEMORY, ITER, POW_VER>::explode_scratchpad_3()
 {
 	for(uint64_t i = 0; i < MEMORY / 512; i++)
 	{
@@ -476,8 +476,8 @@ inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t* hi)
 #endif
 #endif
 
-template <size_t MEMORY, size_t ITER, size_t VERSION>
-void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t len, void* out)
+template <size_t MEMORY, size_t ITER, size_t POW_VER>
+void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash(const void* in, size_t len, void* out)
 {
 	keccak((const uint8_t*)in, len, spad.as_byte(), 200);
 
@@ -503,7 +503,7 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 
 		aes_round(cx, ax);
 
-		if(VERSION == 3)
+		if(POW_VER == 3)
 		{
 			__m128i bx_xmm = _mm_set_epi64x(bx.v64x1, bx.v64x0);
 			while((cx.v64x0 & 0xf) != 0)
@@ -535,7 +535,7 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 
 		ax ^= bx;
 		idx = scratchpad_ptr(ax.v64x0);
-		if(VERSION > 0 && VERSION < 3)
+		if(POW_VER > 0 && POW_VER < 3)
 		{
 			int64_t n = idx.as_qword(0);
 			int32_t d = idx.as_dword(2);
@@ -553,7 +553,7 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 
 		aes_round(bx, ax);
 
-		if(VERSION == 3)
+		if(POW_VER == 3)
 		{
 			__m128i cx_xmm = _mm_set_epi64x(cx.v64x1, cx.v64x0);
 			while((bx.v64x0 & 0xf) != 0)
@@ -584,7 +584,7 @@ void cn_slow_hash<MEMORY, ITER, VERSION>::software_hash(const void* in, size_t l
 		ax.write(idx);
 		ax ^= cx;
 		idx = scratchpad_ptr(ax.v64x0);
-		if(VERSION > 0 && VERSION < 3)
+		if(POW_VER > 0 && POW_VER < 3)
 		{
 			int64_t n = idx.as_qword(0); // read bytes 0 - 7
 			int32_t d = idx.as_dword(2); // read bytes 8 - 11
