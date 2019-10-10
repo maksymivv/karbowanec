@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2017, The CryptoNote developers, The Karbo developers
+// Copyright (c) 2012-2017, The CryptoNote developers
 // Copyright (c) 2019, The TurtleCoin Developers
 // Copyright (c) 2019, The Karbo Developers
 //
@@ -93,7 +93,7 @@ namespace Random
      * Obtain the generator used internally. Helpful for passing to functions
      * like std::shuffle.
      */
-    inline auto generator()
+    inline std::mt19937 generator()
     {
         return gen;
     }
