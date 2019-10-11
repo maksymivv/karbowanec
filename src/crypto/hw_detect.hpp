@@ -68,11 +68,11 @@
 #endif
 #include "arm_vfp.hpp"
 #elif defined(HAS_INTEL_HW) && defined(INTEL_AVX2)
-#ifndef __clang__
+#if !defined(__clang__) && !defined(_WIN64)
 #pragma GCC target("aes,avx2")
 #endif
 #elif defined(HAS_INTEL_HW)
-#ifndef __clang__
+#if !defined(__clang__) && !defined(_WIN64)
 #pragma GCC target("aes,sse2")
 #endif
 #endif
