@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cfenv>
+
 #include "Common/SignalHandler.h"
 
 #include "Logging/LoggerGroup.h"
@@ -26,6 +28,9 @@
 #include <System/Dispatcher.h>
 
 int main(int argc, char** argv) {
+#pragma STDC FENV_ACCESS ON
+  std::fesetround(FE_TONEAREST);
+	
   try {
     CryptoNote::MiningConfig config;
     config.parse(argc, argv);

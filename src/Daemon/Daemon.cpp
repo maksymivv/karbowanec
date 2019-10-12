@@ -20,6 +20,7 @@
 
 #include "version.h"
 
+#include <cfenv>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
@@ -107,6 +108,9 @@ JsonValue buildLoggerConfiguration(Level level, const std::string& logfile) {
 
 int main(int argc, char* argv[])
 {
+
+#pragma STDC FENV_ACCESS ON
+  std::fesetround(FE_TONEAREST);
 
 #ifdef WIN32
   _CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
