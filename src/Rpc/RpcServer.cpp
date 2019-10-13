@@ -1354,6 +1354,11 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
   Block b = boost::value_initialized<Block>();
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
+
+  if (req.algo != ALGO_CN && req.algo != ALGO_CN_GPU && req.algo != ALGO_CN_POWER) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Wrong algo" };
+  }
+
   if (!m_core.get_block_template(b, acc, res.difficulty, res.height, blob_reserve, req.algo)) {
     logger(ERROR) << "Failed to create block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to create block template" };
