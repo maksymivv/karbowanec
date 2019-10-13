@@ -27,6 +27,7 @@
 
 #include "CryptoNoteConfig.h"
 #include "Logging/ILogger.h"
+#include <CryptoNote.h>
 
 namespace po = boost::program_options;
 
@@ -36,6 +37,7 @@ namespace {
 
 const size_t DEFAULT_SCANT_PERIOD = 30;
 const char* DEFAULT_DAEMON_HOST = "127.0.0.1";
+const char* DEFAULT_ALGO = "cn-power";
 const size_t CONCURRENCY_LEVEL = std::thread::hardware_concurrency();
 
 po::options_description cmdOptions;
@@ -72,11 +74,12 @@ MiningConfig::MiningConfig(): help(false) {
       ("daemon-address", po::value<std::string>(), "Daemon host:port. If you use this option you must not use --daemon-host and --daemon-port options")
       ("threads", po::value<size_t>()->default_value(CONCURRENCY_LEVEL), "Mining threads count. Must not be greater than you concurrency level. Default value is your hardware concurrency level")
       ("scan-time", po::value<size_t>()->default_value(DEFAULT_SCANT_PERIOD), "Blockchain polling interval (seconds). How often miner will check blockchain for updates")
-      ("log-level", po::value<int>()->default_value(1), "Log level. Must be 0..5")
+      ("log-level", po::value<int>()->default_value(3), "Log level. Must be 0...4")
       ("limit", po::value<size_t>()->default_value(0), "Mine exact quantity of blocks. 0 means no limit")
       ("first-block-timestamp", po::value<uint64_t>()->default_value(0), "Set timestamp to the first mined block. 0 means leave timestamp unchanged")
       ("block-timestamp-interval", po::value<int64_t>()->default_value(0), "Timestamp step for each subsequent block. May be set only if --first-block-timestamp has been set."
-                                                         " If not set blocks' timestamps remain unchanged");
+                                                         " If not set blocks' timestamps remain unchanged")
+      ("mining-algo", po::value<std::string>()->default_value(DEFAULT_ALGO), "Mining algo");
 }
 
 void MiningConfig::parse(int argc, char** argv) {
@@ -129,6 +132,20 @@ void MiningConfig::parse(int argc, char** argv) {
 
   firstBlockTimestamp = options["first-block-timestamp"].as<uint64_t>();
   blockTimestampInterval = options["block-timestamp-interval"].as<int64_t>();
+
+  if (!options["mining-algo"].empty()) {
+    if (options["mining-algo"].as<std::string>() == "cryptonight") {
+      miningAlgo = ALGO_CN;
+    } else if (options["mining-algo"].as<std::string>() == "cn-gpu") {
+      miningAlgo = ALGO_CN_GPU;
+    } else if (options["mining-algo"].as<std::string>() == "cn-power") {
+      miningAlgo = ALGO_CN_POWER;
+    } else {
+      throw std::runtime_error("Wrong --mining-algo parameter, supported algos: cryptonight, cn-gpu, cn-power");
+    }
+  } else {
+    miningAlgo = ALGO_CN_POWER;
+  }
 }
 
 void MiningConfig::printHelp() {

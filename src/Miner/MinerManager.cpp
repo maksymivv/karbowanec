@@ -90,7 +90,7 @@ void MinerManager::start() {
     m_logger(Logging::INFO) << "requesting mining parameters";
 
     try {
-      params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+      params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress, m_config.miningAlgo);
     } catch (ConnectException& e) {
       m_logger(Logging::WARNING) << "Couldn't connect to daemon: " << e.what();
       System::Timer timer(m_dispatcher);
@@ -129,7 +129,7 @@ void MinerManager::eventLoop() {
           }
         }
 
-        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress, m_config.miningAlgo);
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
@@ -141,7 +141,7 @@ void MinerManager::eventLoop() {
         m_logger(Logging::DEBUGGING) << "got BLOCKCHAIN_UPDATED event";
         stopMining();
         stopBlockchainMonitoring();
-        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress, m_config.miningAlgo);
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
@@ -176,7 +176,7 @@ void MinerManager::pushEvent(MinerEvent&& event) {
 void MinerManager::startMining(const CryptoNote::BlockMiningParameters& params) {
   m_contextGroup.spawn([this, params] () {
     try {
-      m_minedBlock = m_miner.mine(params, m_config.threadCount);
+      m_minedBlock = m_miner.mine(params, m_config.threadCount, m_config.miningAlgo);
       pushEvent(BlockMinedEvent());
     } catch (System::InterruptedException&) {
     } catch (std::exception& e) {
@@ -225,13 +225,14 @@ bool MinerManager::submitBlock(const Block& minedBlock, const std::string& daemo
   }
 }
 
-BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress) {
+BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress, int algo) {
   try {
     HttpClient client(dispatcher, daemonHost, daemonPort);
 
     COMMAND_RPC_GETBLOCKTEMPLATE::request request;
     request.wallet_address = miningAddress;
     request.reserve_size = 0;
+    request.algo = algo;
 
     COMMAND_RPC_GETBLOCKTEMPLATE::response response;
 

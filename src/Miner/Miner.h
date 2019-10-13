@@ -41,7 +41,7 @@ public:
   Miner(System::Dispatcher& dispatcher, Logging::ILogger& logger);
   ~Miner();
 
-  Block mine(const BlockMiningParameters& blockMiningParameters, size_t threadCount);
+  Block mine(const BlockMiningParameters& blockMiningParameters, size_t threadCount, int algo);
 
   //NOTE! this is blocking method
   void stop();
@@ -59,8 +59,8 @@ private:
 
   Logging::LoggerRef m_logger;
 
-  void runWorkers(BlockMiningParameters blockMiningParameters, size_t threadCount);
-  void workerFunc(const Block& blockTemplate, difficulty_type difficulty, uint32_t nonceStep);
+  void runWorkers(BlockMiningParameters blockMiningParameters, size_t threadCount, int algo);
+  void workerFunc(const Block& blockTemplate, difficulty_type difficulty, int algo, uint32_t nonceStep);
   bool setStateBlockFound();
 };
 

@@ -24,6 +24,7 @@
 #include "crypto/random.h"
 #include "crypto/cn_slow_hash.hpp"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
+#include "Common/StringTools.h"
 
 #include <System/InterruptedException.h>
 
@@ -40,7 +41,7 @@ Miner::~Miner() {
   assert(m_state != MiningState::MINING_IN_PROGRESS);
 }
 
-Block Miner::mine(const BlockMiningParameters& blockMiningParameters, size_t threadCount) {
+Block Miner::mine(const BlockMiningParameters& blockMiningParameters, size_t threadCount, int algo) {
   if (threadCount == 0) {
     throw std::runtime_error("Miner requires at least one thread");
   }
@@ -52,7 +53,7 @@ Block Miner::mine(const BlockMiningParameters& blockMiningParameters, size_t thr
   m_state = MiningState::MINING_IN_PROGRESS;
   m_miningStopped.clear();
 
-  runWorkers(blockMiningParameters, threadCount);
+  runWorkers(blockMiningParameters, threadCount, algo);
 
   assert(m_state != MiningState::MINING_IN_PROGRESS);
   if (m_state == MiningState::MINING_STOPPED) {
@@ -73,17 +74,30 @@ void Miner::stop() {
   }
 }
 
-void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threadCount) {
+std::string printAlgo(int algo) {
+  if (algo == ALGO_CN) {
+    return "CryptoNight";
+  } else if (algo == ALGO_CN_GPU) {
+    return "CN-GPU";
+  } else if (algo == ALGO_CN_POWER) {
+    return "CN-POWER";
+  } else {
+    return "Unknown";
+  }
+}
+
+void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threadCount, int algo) {
   assert(threadCount > 0);
 
-  m_logger(Logging::INFO) << "Starting mining for difficulty " << blockMiningParameters.difficulty;
+  m_logger(Logging::INFO) << "Starting mining for difficulty " << blockMiningParameters.difficulty << " on \""
+                          << printAlgo(algo) << "\" algo";
 
   try {
     blockMiningParameters.blockTemplate.nonce = Random::randomValue<uint32_t>();
 
     for (size_t i = 0; i < threadCount; ++i) {
       m_workers.emplace_back(std::unique_ptr<System::RemoteContext<void>> (
-        new System::RemoteContext<void>(m_dispatcher, std::bind(&Miner::workerFunc, this, blockMiningParameters.blockTemplate, blockMiningParameters.difficulty, threadCount)))
+        new System::RemoteContext<void>(m_dispatcher, std::bind(&Miner::workerFunc, this, blockMiningParameters.blockTemplate, blockMiningParameters.difficulty, algo, threadCount)))
       );
 
       blockMiningParameters.blockTemplate.nonce++;
@@ -99,14 +113,12 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
   m_miningStopped.set();
 }
 
-void Miner::workerFunc(const Block& blockTemplate, difficulty_type difficulty, uint32_t nonceStep) {
+void Miner::workerFunc(const Block& blockTemplate, difficulty_type difficulty, int algo, uint32_t nonceStep) {
   try {
     Block block = blockTemplate;
-	cn_pow_hash_v2 hash_ctx;
-    
+    cn_pow_hash_v2 hash_ctx;
     while (m_state == MiningState::MINING_IN_PROGRESS) {
       Crypto::Hash hash;
-      int algo = 0;
       if (!get_block_longhash(hash_ctx, algo, block, hash)) {
         //error occured
         m_logger(Logging::DEBUGGING) << "calculating long hash error occured";
@@ -115,7 +127,7 @@ void Miner::workerFunc(const Block& blockTemplate, difficulty_type difficulty, u
       }
 
       if (check_hash(hash, difficulty)) {
-        m_logger(Logging::INFO) << "Found block for difficulty " << difficulty;
+        m_logger(Logging::INFO, Logging::GREEN) << "Found block for difficulty " << difficulty << std::endl << "pow: " << Common::podToHex(hash);
 
         if (!setStateBlockFound()) {
           m_logger(Logging::DEBUGGING) << "block is already found or mining stopped";
