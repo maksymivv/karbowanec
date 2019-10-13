@@ -108,8 +108,6 @@ JsonValue buildLoggerConfiguration(Level level, const std::string& logfile) {
 
 int main(int argc, char* argv[])
 {
-
-#pragma STDC FENV_ACCESS ON
   std::fesetround(FE_TONEAREST);
 
 #ifdef WIN32

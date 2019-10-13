@@ -295,8 +295,7 @@ int unregisterService() {
 int main(int argc, char** argv) {
   PaymentGateService pg; 
   ppg = &pg;
-  
-#pragma STDC FENV_ACCESS ON
+
   std::fesetround(FE_TONEAREST);
 
   try {
