@@ -133,7 +133,7 @@ public:
   virtual void rollbackBlockchain(const uint32_t height) = 0;
 
   virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) = 0;
-  virtual bool getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) = 0;
+  virtual bool getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) = 0;
 };
 
 } //namespace CryptoNote

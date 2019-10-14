@@ -715,9 +715,9 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
   }
 
-  if (!m_core.getAlgoDifficulty(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
-      !m_core.getAlgoDifficulty(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu)  ||
-      !m_core.getAlgoDifficulty(res.height, ALGO_CN_POWER, res.multi_algo_difficulties.cn_power)) {
+  if (!m_core.getNextDifficultyForAlgo(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
+      !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu)  ||
+      !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_POWER, res.multi_algo_difficulties.cn_power)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
       "Internal error: couldn't get algo difficulties" };
   }
@@ -937,17 +937,12 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
     block_short.algo = blk.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(blk) : -1;
     if (blk.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-      if (!m_core.getAlgoDifficulty(i, ALGO_CN, block_short.algo_difficulties.cryptonight) ||
-          !m_core.getAlgoDifficulty(i, ALGO_CN_GPU, block_short.algo_difficulties.cn_gpu)  ||
-          !m_core.getAlgoDifficulty(i, ALGO_CN_POWER, block_short.algo_difficulties.cn_power)) {
+      if (!m_core.getNextDifficultyForAlgo(i - 1, block_short.algo, block_short.algo_difficulty)) {
         throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-          "Internal error: couldn't get algo difficulties for height " + std::to_string(i) + '.' };
+          "Internal error: couldn't get algo difficulty for height " + std::to_string(i) + '.' };
       }
-    }
-    else {
-      block_short.algo_difficulties.cryptonight = blockDiff;
-      block_short.algo_difficulties.cn_gpu = 0;
-      block_short.algo_difficulties.cn_power = 0;
+    } else {
+      block_short.algo_difficulty = blockDiff;
     }
     res.blocks.push_back(block_short);
 

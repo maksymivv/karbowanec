@@ -1313,9 +1313,9 @@ bool core::getMixin(const Transaction& transaction, uint64_t& mixin) {
   return true;
 }
 
-bool core::getAlgoDifficulty(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
+bool core::getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
   difficulty_type base_diffic = height < get_current_blockchain_height() ? 
-    m_blockchain.blockDifficulty(height) : getNextBlockDifficulty();
+    m_blockchain.blockDifficulty(height + 1) : getNextBlockDifficulty();
   std::vector<int> prev_algos;
   Block prevBlk;
   Crypto::Hash prevHash = getBlockIdByHeight(height < get_current_blockchain_height() ? height : get_current_blockchain_height() - 1);

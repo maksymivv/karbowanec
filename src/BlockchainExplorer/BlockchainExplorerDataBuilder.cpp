@@ -128,7 +128,7 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   }
 
   if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    if (!core.getAlgoDifficulty(blockDetails.height, blockDetails.algo, blockDetails.algoDifficulty)) {
+    if (!core.getNextDifficultyForAlgo(blockDetails.height - 1, blockDetails.algo, blockDetails.algoDifficulty)) {
       return false;
     }
   } else {

@@ -523,7 +523,7 @@ struct block_short_response {
   uint64_t tx_count;
   uint64_t cumul_size;
   difficulty_type difficulty;
-  algo_difficulties algo_difficulties;
+  difficulty_type algo_difficulty;
   uint64_t min_tx_fee;
   int algo;
 
@@ -534,7 +534,7 @@ struct block_short_response {
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
     KV_MEMBER(difficulty)
-    KV_MEMBER(algo_difficulties)
+    KV_MEMBER(algo_difficulty)
     KV_MEMBER(min_tx_fee)
     KV_MEMBER(algo)
   }
