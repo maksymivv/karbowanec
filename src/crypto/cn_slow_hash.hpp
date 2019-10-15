@@ -143,7 +143,7 @@ public:
 		other.spad.set(nullptr);
 	}
 
-	// Factory function enabling to temporaliy turn v2 object into v1
+	// Factory function enabling to temporarily turn v2 object into v1
 	// It is caller's responsibility to ensure that v2 object is not hashing at the same time!!
 	static cn_pow_hash_v1 make_borrowed(cn_pow_hash_v2& t)
 	{
