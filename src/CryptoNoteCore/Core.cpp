@@ -501,7 +501,17 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
       b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_4) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
     } else if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
       b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_5) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
-      b.algorithm = algo;
+      
+      if (algo == 0) {
+        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN;
+      } else if (algo == 1) {
+        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN_GPU;
+      } else if (algo == 2) {
+        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN_POWER;
+      } else {
+        logger(ERROR, BRIGHT_RED) << "Failed to set block pow type field: wrong algo";
+        return false;
+      }
     }
 
     b.previousBlockHash = get_tail_id();
