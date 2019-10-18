@@ -422,11 +422,12 @@ uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, bo
 
   while (foundMoney < neededMoney && (!unusedTransfers.empty() || !unusedDust.empty() || !unusedUnmixable.empty())) {
     size_t idx;
+    std::mt19937 urng = Random::generator();
     if (selectOneUnmixable) {
-      idx = popRandomValue(Random::generator(), unusedUnmixable);
+      idx = popRandomValue(urng, unusedUnmixable);
 	  selectOneUnmixable = false;
     } else {
-      idx = !unusedTransfers.empty() ? popRandomValue(Random::generator(), unusedTransfers) : popRandomValue(Random::generator(), unusedDust);
+      idx = !unusedTransfers.empty() ? popRandomValue(urng, unusedTransfers) : popRandomValue(urng, unusedDust);
     }
     selectedTransfers.push_back(outputs[idx]);
     foundMoney += outputs[idx].amount;
@@ -469,7 +470,8 @@ uint64_t WalletTransactionSender::selectDustTransfersToSend(uint64_t neededMoney
 	if (!unusedUnmixable.empty()) {
 		while (foundMoney < neededUnmixable && !unusedUnmixable.empty()) {
 			size_t idx;
-			idx = popRandomValue(Random::generator(), unusedUnmixable);
+			std::mt19937 urng = Random::generator();
+			idx = popRandomValue(urng, unusedUnmixable);
 			foundMoney += outputs[idx].amount;
 			selectedTransfers.push_back(outputs[idx]);
 		}
@@ -478,7 +480,8 @@ uint64_t WalletTransactionSender::selectDustTransfersToSend(uint64_t neededMoney
 	if (foundMoney < neededMoney) {
 		while (foundMoney < neededMoney && !unusedDust.empty()) {
 			size_t idx;
-			idx = popRandomValue(Random::generator(), unusedDust);
+			std::mt19937 urng = Random::generator();
+			idx = popRandomValue(urng, unusedDust);
 			selectedTransfers.push_back(outputs[idx]);
 			foundMoney += outputs[idx].amount;
 		}
@@ -487,7 +490,8 @@ uint64_t WalletTransactionSender::selectDustTransfersToSend(uint64_t neededMoney
 	if (foundMoney < neededMoney) {
 		while (foundMoney < neededMoney && !unusedTransfers.empty()) {
 			size_t idx;
-			idx = popRandomValue(Random::generator(), unusedTransfers);
+			std::mt19937 urng = Random::generator();
+			idx = popRandomValue(urng, unusedTransfers);
 			selectedTransfers.push_back(outputs[idx]);
 			foundMoney += outputs[idx].amount;
 		}
