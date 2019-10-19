@@ -570,7 +570,7 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::inner_hash_3()
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash_3(const void* in, size_t len, void* pout)
 {
-	keccak((const uint8_t*)in, (int)len, spad.as_byte(), 200);
+	keccak((const uint8_t*)in, len, spad.as_byte(), 200);
 
 	explode_scratchpad_3();
 	if(check_avx2())
@@ -586,7 +586,7 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash_3(const void* in, size_t
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash_3(const void* in, size_t len, void* pout)
 {
-	keccak((const uint8_t*)in, (int)len, spad.as_byte(), 200);
+	keccak((const uint8_t*)in, len, spad.as_byte(), 200);
 
 	explode_scratchpad_3();
 	if(check_avx2())
