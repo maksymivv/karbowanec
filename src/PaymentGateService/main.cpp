@@ -18,7 +18,7 @@
 #include <iostream>
 #include <memory>
 #include <thread>
-#include <cfenv>
+
 #include <string.h>
 
 #include "PaymentGateService.h"
@@ -295,8 +295,6 @@ int unregisterService() {
 int main(int argc, char** argv) {
   PaymentGateService pg; 
   ppg = &pg;
-
-  std::fesetround(FE_TONEAREST);
 
   try {
     if (!pg.init(argc, argv)) {
