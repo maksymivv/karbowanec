@@ -256,14 +256,6 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
     //It's gen transaction
     transactionDetails.fee = 0;
     transactionDetails.mixin = 0;
-  } else if (transaction.inputs.size() > 0 && blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-    //It's gen transaction with stake
-    transactionDetails.fee = 0;
-    uint64_t mixin;
-    if (!getMixin(transaction, mixin)) {
-  	  return false;
-    }
-    transactionDetails.mixin = mixin;
   } else {
     uint64_t fee;
     if (!get_tx_fee(transaction, fee)) {
