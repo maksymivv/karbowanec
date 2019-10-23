@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Monero developers
 // Copyright (c) 2018, Ryo Currency Project
-// Copyright (c) 2016-2018, The Karbo developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -744,13 +744,24 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
     ++offset;
   }
   for (; offset < m_blocks.size(); offset++) {
-    timestamps.push_back(m_blocks[offset].bl.timestamp);
-    cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
+    if (m_blocks.size() > CryptoNote::parameters::UPGRADE_HEIGHT_V5 && offset < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+      // skip to reset difficulty for hardfork block 5
+    }
+    else {
+      timestamps.push_back(m_blocks[offset].bl.timestamp);
+      cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
+    }
   }
+
+  // push penultimate diff for hardfork block 5 reset
+  if (m_blocks.size() == CryptoNote::parameters::UPGRADE_HEIGHT_V5 + 1) {
+    cumulative_difficulties.push_back(m_blocks[CryptoNote::parameters::UPGRADE_HEIGHT_V5 - 1].cumulative_difficulty);
+  }
+
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 
-difficulty_type Blockchain::getAvgDifficultyForHeight(uint32_t height, uint32_t window) {
+difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   height = std::min<uint32_t>(height, (uint32_t)m_blocks.size() - 1);
   if (height <= 1)
@@ -769,58 +780,86 @@ difficulty_type Blockchain::getAvgDifficultyForHeight(uint32_t height, uint32_t 
   return cumulDiffForPeriod / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), window);
 }
 
+difficulty_type Blockchain::getAvgDifficulty(uint32_t height) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (height <= 1)
+    return 1;
+  return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty / std::min<difficulty_type>(height, m_blocks.size());
+}
+
 uint64_t Blockchain::getBlockTimestamp(uint32_t height) {
   assert(height < m_blocks.size());
   return m_blocks[height].bl.timestamp;
 }
 
 uint64_t Blockchain::getMinimalFee(uint32_t height) {
-	std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-	if (height == 0 || m_blocks.size() <= 1) {
-	    return 0;
-	}
+  if (height == 0 || m_blocks.size() <= 1) {
+    return 0;
+  }
 
-	if (height > static_cast<uint32_t>(m_blocks.size()) - 1) {
-		height = static_cast<uint32_t>(m_blocks.size()) - 1;
-	}
-	if (height < 3) {
-		height = 3;
-	}
+  if (height > static_cast<uint32_t>(m_blocks.size()) - 1) {
+    height = static_cast<uint32_t>(m_blocks.size()) - 1;
+  }
+  if (height < 3) {
+    height = 3;
+  }
   uint32_t window = std::min(height, std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size()), static_cast<uint32_t>(m_currency.expectedNumberOfBlocksPerDay())));
-	if (window == 0) {
-		++window;
-	}
-	size_t offset = height - window;
-	if (offset == 0) {
-		++offset;
-	}
+  if (window == 0) {
+    ++window;
+  }
+  size_t offset = height - window;
+  if (offset == 0) {
+    ++offset;
+  }
 
-	// calculate average difficulty for ~last month
-	uint64_t avgDifficultyCurrent = getAvgDifficultyForHeight(height, window * 7 * 4);
-	
-	// historical reference moving average difficulty
-	uint64_t avgDifficultyHistorical = m_blocks[height].cumulative_difficulty / height;
+  uint32_t epochDuration = 0;
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
+    if (epochDuration == 0)
+      epochDuration = 1;
+  }
 
-	/*
-	* Total reward with transaction fees is used as the level of usage metric
-	* to take into account transaction volume and cost of space in blockchain.
-	*/
+  // calculate average difficulty for ~last month
+  uint64_t avgDifficultyCurrent = 0;
+  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    avgDifficultyCurrent = getAvgDifficulty(height, m_currency.averageDifficultyWindow());
+  }
+  else {
+    // At the beginning of the post-ASICs epoch exclude difficulties before it
+    avgDifficultyCurrent = getAvgDifficulty(height, std::min<uint32_t>(m_currency.averageDifficultyWindow(), epochDuration));
+  }
 
-	// calculate average reward for ~last day
-	std::vector<uint64_t> rewards;
-	rewards.reserve(window);
-	for (; offset < height; offset++) {
-		rewards.push_back(get_outs_money_amount(m_blocks[offset].bl.baseTransaction));
-	}
-	uint64_t avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
-	rewards.clear();
-	rewards.shrink_to_fit();
+  // historical reference moving average difficulty
+  uint64_t avgDifficultyHistorical = getAvgDifficulty(height);
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    // Calculate average historic difficulty for current, post-ASICs epoch,
+    // to eliminate their influence.
+    avgDifficultyHistorical = getAvgDifficulty(height, epochDuration);
+  }
 
-	// historical reference moving average reward
-	uint64_t avgRewardHistorical = m_blocks[height].already_generated_coins / height;
+  // calculate average reward for ~last day
+  uint64_t avgRewardCurrent = 0;
 
-	return m_currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
+  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    std::vector<uint64_t> rewards;
+    rewards.reserve(window);
+    for (; offset < height; offset++) {
+      rewards.push_back(get_outs_money_amount(m_blocks[offset].bl.baseTransaction));
+    }
+    avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
+    rewards.clear();
+    rewards.shrink_to_fit();
+  }
+  else {
+    avgRewardCurrent = (m_blocks[height].already_generated_coins - m_blocks[offset].already_generated_coins) / window;
+  }
+
+  // historical reference moving average reward
+  uint64_t avgRewardHistorical = m_blocks[height].already_generated_coins / height;
+
+  return m_currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
 }
 
 uint64_t Blockchain::getCoinsInCirculation() {
@@ -1116,11 +1155,11 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
     return false;
   }
 
-  if (!(b.baseTransaction.unlockTime == height + (height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()))) {
+  if (!(b.baseTransaction.unlockTime == height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()))) {
     logger(ERROR, BRIGHT_RED)
       << "coinbase transaction transaction have wrong unlock time="
       << b.baseTransaction.unlockTime << ", expected "
-      << height + (height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1());
+      << height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1());
     return false;
   }
 
@@ -1222,7 +1261,8 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
 
   // get fresh checkpoints from DNS - the best we have right now
 #ifndef __ANDROID__
-  m_checkpoints.load_checkpoints_from_dns();
+//  if (!m_currency.isTestnet())
+//    m_checkpoints.load_checkpoints_from_dns();
 #endif
 
   if (!m_checkpoints.is_alternative_block_allowed(getCurrentBlockchainHeight(), block_height)) {
@@ -1234,6 +1274,11 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
   }
 
   if (!checkBlockVersion(b, id)) {
+    bvc.m_verification_failed = true;
+    return false;
+  }
+
+  if (!checkPowAlgo(b, id)) {
     bvc.m_verification_failed = true;
     return false;
   }
@@ -1324,10 +1369,34 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     if (!(current_diff)) { logger(ERROR, BRIGHT_RED) << "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!"; return false; }
     Crypto::Hash proof_of_work = NULL_HASH;
-    if (!m_currency.checkProofOfWork(m_cn_context, bei.bl, current_diff, proof_of_work)) {
+
+    Block prevBlk;
+    if (!getBlockByHash(bei.bl.previousBlockHash, prevBlk)) {
+      logger(INFO, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << bei.bl.previousBlockHash;
+      bvc.m_verification_failed = true;
+      return false;
+    }
+
+    std::vector<int> prev_algos;
+    int prevBlkAlgo = getAlgo(prevBlk);
+    prev_algos.push_back(prevBlkAlgo);
+    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+      Crypto::Hash prevHash = prevBlk.previousBlockHash;
+      if (!getBlockByHash(prevHash, prevBlk)) {
+        logger(INFO, BRIGHT_RED) <<
+          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+        bvc.m_verification_failed = true;
+        return false;
+      }
+      int algo = getAlgo(prevBlk);
+      prev_algos.push_back(algo);
+    }
+
+    if (!m_currency.checkProofOfWork(m_pow_ctx, bei.bl, current_diff, prev_algos, proof_of_work)) {
       logger(INFO, BRIGHT_RED) <<
         "Block with id: " << id
-        << ENDL << " for alternative chain, have not enough proof of work: " << proof_of_work
+        << ENDL << " for alternative chain, has not enough proof of work: " << proof_of_work
         << ENDL << " expected difficulty: " << current_diff;
       bvc.m_verification_failed = true;
       return false;
@@ -1503,7 +1572,7 @@ size_t Blockchain::find_end_of_allowed_index(const std::vector<std::pair<Transac
   size_t i = amount_outs.size();
   do {
     --i;
-    if (amount_outs[i].first.block + (amount_outs[i].first.block < CryptoNote::parameters::UPGRADE_HEIGHT_V5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()) <= getCurrentBlockchainHeight()) {
+    if (amount_outs[i].first.block + (getBlockMajorVersionForHeight(amount_outs[i].first.block) < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()) <= getCurrentBlockchainHeight()) {
       return i + 1;
     }
   } while (i != 0);
@@ -1537,7 +1606,7 @@ bool Blockchain::getRandomOutsByAmount(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_
       for(uint64_t j = 0; j != req.outs_count && try_count < up_index_limit;)
       {
 	    // triangular distribution over [a,b) with a=0, mode c=b=up_index_limit
-        uint64_t r = Crypto::rand<uint64_t>() % ((uint64_t)1 << 53);
+        uint64_t r = Random::randomValue<size_t>() % ((uint64_t)1 << 53);
         double frac = std::sqrt((double)r / ((uint64_t)1 << 53));
         size_t i = (size_t)(frac*up_index_limit);
         if(used.count(i))
@@ -1943,6 +2012,16 @@ bool Blockchain::checkBlockVersion(const Block& b, const Crypto::Hash& blockHash
   return true;
 }
 
+bool Blockchain::checkPowAlgo(const Block& b, const Crypto::Hash& blockHash) {
+  if (b.majorVersion >= BLOCK_MAJOR_VERSION_5 && getAlgo(b) == ALGO_UNKNOWN) {
+    logger(ERROR) << "Block " << blockHash << " has unknown algo tag: " 
+                  << Common::podToHex(b.algorithm);
+    return false;
+  }
+
+  return true;
+}
+
 bool Blockchain::checkParentBlockSize(const Block& b, const Crypto::Hash& blockHash) {
   if (b.majorVersion == BLOCK_MAJOR_VERSION_2 || b.majorVersion == BLOCK_MAJOR_VERSION_3) {
     auto serializer = makeParentBlockSerializer(b, false, false);
@@ -2091,6 +2170,11 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     bvc.m_verification_failed = true;
     return false;
   }
+  
+  if (!checkPowAlgo(blockData, blockHash)) {
+    bvc.m_verification_failed = true;
+    return false;
+  }
 
   if (!checkParentBlockSize(blockData, blockHash)) {
     bvc.m_verification_failed = true;
@@ -2140,7 +2224,31 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
       return false;
     }
   } else {
-    if (!m_currency.checkProofOfWork(m_cn_context, blockData, currentDifficulty, proof_of_work)) {
+    Block prevBlk;
+    Crypto::Hash prevHash = blockData.previousBlockHash;
+    if (!getBlockByHash(prevHash, prevBlk)) {
+      logger(INFO, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+      bvc.m_verification_failed = true;
+      return false;
+    }
+
+    std::vector<int> algos;
+    int prevBlkAlgo = getAlgo(prevBlk);
+    algos.push_back(prevBlkAlgo);
+    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+      Crypto::Hash prevHash = prevBlk.previousBlockHash;
+      if (!getBlockByHash(prevHash, prevBlk)) {
+        logger(INFO, BRIGHT_RED) <<
+          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+        bvc.m_verification_failed = true;
+        return false;
+      }
+      int algo = getAlgo(prevBlk);
+      algos.push_back(algo);
+    }
+
+    if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, currentDifficulty, algos, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
         "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
       bvc.m_verification_failed = true;

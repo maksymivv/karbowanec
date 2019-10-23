@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -29,7 +30,9 @@
 #include <boost/limits.hpp>
 #include <boost/utility/value_init.hpp>
 
+#include "crypto/cn_slow_hash.hpp"
 #include "crypto/crypto.h"
+#include "crypto/random.h"
 #include "Common/CommandLine.h"
 #include "Common/StringTools.h"
 #include "Serialization/SerializationTools.h"
@@ -59,7 +62,8 @@ namespace CryptoNote
     m_do_mining(false),
     m_current_hash_rate(0),
     m_update_block_template_interval(5),
-    m_update_merge_hr_interval(2)
+    m_update_merge_hr_interval(2),
+    m_algo(0)
   {
   }
   //-----------------------------------------------------------------------------------------------------
@@ -87,7 +91,7 @@ namespace CryptoNote
 
     m_diffic = di;
     ++m_template_no;
-    m_starter_nonce = Crypto::rand<uint32_t>();
+    m_starter_nonce = Random::randomValue<uint32_t>();
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -109,7 +113,7 @@ namespace CryptoNote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    if(!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce)) {
+    if(!m_handler.get_block_template(bl, m_mine_address, di, height, extra_nonce, m_algo)) {
       logger(ERROR) << "Failed to get_block_template(), stopping mining";
       return false;
     }
@@ -156,8 +160,8 @@ namespace CryptoNote
 
       if(m_do_print_hashrate) {
         uint64_t total_hr = std::accumulate(m_last_hash_rates.begin(), m_last_hash_rates.end(), static_cast<uint64_t>(0));
-        float hr = static_cast<float>(total_hr)/static_cast<float>(m_last_hash_rates.size());
-        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << ENDL;
+        float hr = static_cast<float>(total_hr) / static_cast<float>(m_last_hash_rates.size()) / static_cast<float>(1000);
+        std::cout << "hashrate: " << std::setprecision(4) << std::fixed << hr << " kH/s" << ENDL;
       }
     }
     
@@ -166,6 +170,27 @@ namespace CryptoNote
   }
 
   bool miner::init(const MinerConfig& config) {
+    if (!config.algo.empty()) {
+      m_algo_name = config.algo;
+
+      if (config.algo == "cryptonight") {
+        m_algo = ALGO_CN;
+      }
+      //else if (config.algo == "cn-heavy") {
+      //  m_algo = ALGO_CN_HEAVY;
+      //}
+      else if (config.algo == "cn-gpu") {
+        m_algo = ALGO_CN_GPU;
+      }
+      else if (config.algo == "cn-power") {
+        m_algo = ALGO_CN_POWER;
+      }
+      else {
+        logger(ERROR) << "Wrong algo " << config.algo << " in config, starting daemon canceled." <<
+          ENDL << "Possible algos: cryptonight, cn-gpu, cn-power";
+        return false;
+      }
+    }
     if (!config.extraMessages.empty()) {
       std::string buff;
       if (!Common::loadFileToString(config.extraMessages, buff)) {
@@ -230,7 +255,7 @@ namespace CryptoNote
 
     m_mine_address = adr;
     m_threads_total = static_cast<uint32_t>(threads_count);
-    m_starter_nonce = Crypto::rand<uint32_t>();
+    m_starter_nonce = Random::randomValue<uint32_t>();
 
     if (!m_template_no) {
       request_block_template(); //lets update block template
@@ -242,7 +267,9 @@ namespace CryptoNote
       m_threads.push_back(std::thread(std::bind(&miner::worker_thread, this, i)));
     }
 
-    logger(INFO) << "Mining has started with " << threads_count << " threads, good luck!";
+    logger(INFO) << "Mining has started with " << threads_count
+      << " threads at difficulty " << m_diffic << " using "
+      << m_algo_name << " algo, good luck!";
     return true;
   }
   
@@ -274,64 +301,6 @@ namespace CryptoNote
     m_threads.clear();
     logger(INFO) << "Mining has been stopped, " << m_threads.size() << " finished" ;
     return true;
-  }
-  //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(Crypto::cn_context &context, Block& bl, const difficulty_type& diffic) {
-
-    unsigned nthreads = std::thread::hardware_concurrency();
-
-    if (nthreads > 0 && diffic > 5) {
-      std::vector<std::future<void>> threads(nthreads);
-      std::atomic<uint32_t> foundNonce;
-      std::atomic<bool> found(false);
-      uint32_t startNonce = Crypto::rand<uint32_t>();
-
-      for (unsigned i = 0; i < nthreads; ++i) {
-        threads[i] = std::async(std::launch::async, [&, i]() {
-          Crypto::cn_context localctx;
-          Crypto::Hash h;
-
-          Block lb(bl); // copy to local block
-
-          for (uint32_t nonce = startNonce + i; !found; nonce += nthreads) {
-            lb.nonce = nonce;
-
-            if (!get_block_longhash(localctx, lb, h)) {
-              return;
-            }
-
-            if (check_hash(h, diffic)) {
-              foundNonce = nonce;
-              found = true;
-              return;
-            }
-          }
-        });
-      }
-
-      for (auto& t : threads) {
-        t.wait();
-      }
-
-      if (found) {
-        bl.nonce = foundNonce.load();
-      }
-
-      return found;
-    } else {
-      for (; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++) {
-        Crypto::Hash h;
-        if (!get_block_longhash(context, bl, h)) {
-          return false;
-        }
-
-        if (check_hash(h, diffic)) {
-          return true;
-        }
-      }
-    }
-
-    return false;
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::on_synchronized()
@@ -368,7 +337,7 @@ namespace CryptoNote
     uint32_t nonce = m_starter_nonce + th_local_index;
     difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
-    Crypto::cn_context context;
+    cn_pow_hash_v2 hash_ctx;
     Block b;
 
     while(!m_stop)
@@ -398,7 +367,7 @@ namespace CryptoNote
 
       b.nonce = nonce;
       Crypto::Hash h;
-      if (!m_stop && !get_block_longhash(context, b, h)) {
+      if (!m_stop && !get_block_longhash(hash_ctx, m_algo, b, h)) {
         logger(ERROR) << "Failed to get block long hash";
         m_stop = true;
       }
@@ -408,7 +377,13 @@ namespace CryptoNote
         //we lucky!
         ++m_config.current_extra_message_index;
 
-        logger(INFO, GREEN) << "Found block for difficulty: " << local_diff;
+        logger(INFO, GREEN) << "Found block for difficulty: " 
+                            << local_diff << std::endl 
+                            << " pow: " << Common::podToHex(h);
+
+        Crypto::Hash id;
+        if (get_block_hash(b, id))
+          logger(INFO, GREEN) << "hash: " << Common::podToHex(id);
 
         if(!m_handler.handle_block_found(b)) {
           --m_config.current_extra_message_index;

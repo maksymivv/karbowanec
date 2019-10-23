@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
 // Copyright (c) 2016, The Forknote developers
-// Copyright (c) 2016-2019, The Karbowanec developers
+// Copyright (c) 2016-2018, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 // CryptoNote
+#include <crypto/random.h>
 #include "BlockchainExplorerData.h"
 #include "Common/StringTools.h"
 #include "Common/Base58.h"
@@ -204,7 +205,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "verifymessage", { makeMemberMethod(&RpcServer::on_verify_message), false } },
       { "submitblock", { makeMemberMethod(&RpcServer::on_submitblock), false } },
 
-      /* Deprecated (rename, see above new names, remove only methods) */
+      /* Deprecated (rename, see above new names) */
       { "on_getblockhash", { makeMemberMethod(&RpcServer::on_getblockhash), false } },
       { "f_blocks_list_json", { makeMemberMethod(&RpcServer::on_blocks_list_json), false } },
       { "k_transactions_by_payment_id", { makeMemberMethod(&RpcServer::on_get_transactions_by_payment_id), false } },
@@ -221,7 +222,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "check_tx_proof", { makeMemberMethod(&RpcServer::on_check_tx_proof), false } },
       { "check_reserve_proof", { makeMemberMethod(&RpcServer::on_check_reserve_proof), false } },
 
-      /* Deprecated (remove handlers - use BlockchainExplorer instead of Forknote) */
+      /* Deprecated (remove) */
       { "f_block_json", { makeMemberMethod(&RpcServer::f_on_block_json), false } },
       { "f_transaction_json", { makeMemberMethod(&RpcServer::f_on_transaction_json), false } },
       { "f_on_transactions_pool_json", { makeMemberMethod(&RpcServer::f_on_transactions_pool_json), false } },
@@ -649,7 +650,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.white_peerlist_size = m_p2p.getPeerlistManager().get_white_peers_count();
   res.grey_peerlist_size = m_p2p.getPeerlistManager().get_gray_peers_count();
   res.last_known_block_index = std::max(static_cast<uint32_t>(1), m_protocolQuery.getObservedHeight()) - 1;
-  Crypto::Hash last_block_hash = m_core.getBlockIdByHeight(res.height - 1);
+  Crypto::Hash last_block_hash = m_core.getBlockIdByHeight(m_core.get_current_blockchain_height() - 1);
   res.top_block_hash = Common::podToHex(last_block_hash);
   res.version = PROJECT_VERSION_LONG;
   res.fee_address = m_fee_address.empty() ? std::string() : m_fee_address;
@@ -674,10 +675,17 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins for prev. block." };
   }
   res.next_reward = nextReward;
-  
+
   if (!m_core.getBlockCumulativeDifficulty(res.height - 1, res.cumulative_difficulty)) {
     throw JsonRpc::JsonRpcError{
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
+  }
+
+  if (!m_core.getNextDifficultyForAlgo(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
+      !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu)  ||
+      !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_POWER, res.multi_algo_difficulties.cn_power)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+      "Internal error: couldn't get algo difficulties" };
   }
 
   res.status = CORE_RPC_STATUS_OK;
@@ -756,11 +764,11 @@ bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMM
   }
 
   if (!m_fee_address.empty() && m_view_key != NULL_SECRET_KEY) {
-	if (!masternode_check_incoming_tx(tx_blob)) {
-	  logger(INFO) << "Transaction not relayed due to lack of masternode fee";		
-      res.status = "Not relayed due to lack of node fee";
-      return true;
-	}
+	  if (!masternode_check_incoming_tx(tx_blob)) {
+	    logger(INFO) << "Transaction not relayed due to lack of masternode fee";		
+        res.status = "Not relayed due to lack of node fee";
+        return true;
+	  }
   }
 
   NOTIFY_NEW_TRANSACTIONS::request r;
@@ -845,7 +853,9 @@ bool RpcServer::on_get_peer_list(const COMMAND_RPC_GET_PEER_LIST::request& req, 
 }
 
 bool RpcServer::on_get_payment_id(const COMMAND_RPC_GEN_PAYMENT_ID::request& req, COMMAND_RPC_GEN_PAYMENT_ID::response& res) {
-  res.payment_id = Common::podToHex(Crypto::rand<Crypto::Hash>());
+  Crypto::Hash result;
+  Random::randomBytes(32, result.data);
+  res.payment_id = Common::podToHex(result);
   return true;
 }
 
@@ -891,7 +901,15 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     block_short.tx_count = blk.transactionHashes.size() + 1;
     block_short.difficulty = blockDiff;
     block_short.min_tx_fee = m_core.getMinimalFeeForHeight(i);
-
+    block_short.algo = blk.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(blk) : -1;
+    if (blk.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      if (!m_core.getNextDifficultyForAlgo(i - 1, block_short.algo, block_short.algo_difficulty)) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+          "Internal error: couldn't get algo difficulty for height " + std::to_string(i) + '.' };
+      }
+    } else {
+      block_short.algo_difficulty = blockDiff;
+    }
     res.blocks.push_back(block_short);
 
     if (i == 0)
@@ -945,7 +963,6 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
   res.block.depth = block_header.depth;
   res.block.orphan_status = block_header.orphan_status;
   m_core.getBlockDifficulty(res.block.height, res.block.difficulty);
-  m_core.getBlockCumulativeDifficulty(res.block.height, res.block.cumulativeDifficulty);
 
   res.block.reward = block_header.reward;
 
@@ -1003,6 +1020,7 @@ bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& 
     }
     res.block.penalty = static_cast<double>(maxReward - currentReward) / static_cast<double>(maxReward);
   }
+  res.block.algo = blk.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(blk) : -1;
 
   // Base transaction adding
   f_transaction_short_response transaction_short;
@@ -1296,7 +1314,12 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
   Block b = boost::value_initialized<Block>();
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
-  if (!m_core.get_block_template(b, acc, res.difficulty, res.height, blob_reserve)) {
+
+  if (req.algo != ALGO_CN && req.algo != ALGO_CN_GPU && req.algo != ALGO_CN_POWER) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Wrong algo" };
+  }
+
+  if (!m_core.get_block_template(b, acc, res.difficulty, res.height, blob_reserve, req.algo)) {
     logger(ERROR) << "Failed to create block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to create block template" };
   }

@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -43,5 +44,7 @@ namespace CryptoNote {
     Block& blockRef = const_cast<Block&>(b);
     return ParentBlockSerializer(blockRef.parentBlock, blockRef.timestamp, blockRef.nonce, hashingSerialization, headerOnly);
   }
+
+  int getAlgo(const Block& b);
 
 }

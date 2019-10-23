@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016-2018  zawy12
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -149,20 +149,19 @@ namespace CryptoNote {
 
 	bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
 		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
-		// assert(alreadyGeneratedCoins <= m_moneySupply);
 		assert(m_emissionSpeedFactor > 0 && m_emissionSpeedFactor <= 8 * sizeof(uint64_t));
 
 		// Tail emission
-
 		uint64_t baseReward = (m_moneySupply - alreadyGeneratedCoins) >> m_emissionSpeedFactor;
 		if (alreadyGeneratedCoins + CryptoNote::parameters::TAIL_EMISSION_REWARD >= m_moneySupply || baseReward < CryptoNote::parameters::TAIL_EMISSION_REWARD)
 		{
 			// flat rate tail emission reward
 			//baseReward = CryptoNote::parameters::TAIL_EMISSION_REWARD;
 
+			// Friedman's k-percent rule
 			// inflation 2% of total coins in circulation
 			const uint64_t blocksInOneYear = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365;
-			uint64_t twoPercentOfEmission = static_cast<double>(alreadyGeneratedCoins) / 100 * 2;
+			uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
 			baseReward = twoPercentOfEmission / blocksInOneYear;
 		}
 
@@ -269,7 +268,7 @@ namespace CryptoNote {
 
 		tx.version = CURRENT_TRANSACTION_VERSION;
 		//lock
-		tx.unlockTime = height + (height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 ? m_minedMoneyUnlockWindow : m_minedMoneyUnlockWindow_v1);
+		tx.unlockTime = height + (blockMajorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_minedMoneyUnlockWindow : m_minedMoneyUnlockWindow_v1);
 		tx.inputs.push_back(in);
 		return true;
 	}
@@ -430,23 +429,38 @@ namespace CryptoNote {
 		return Common::fromString(strAmount, amount);
 	}
 
-	// Copyright (c) 2017-2018 Zawy 
-	// http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
-	// Moore's law application by Sergey Kozlov
-	uint64_t Currency::getMinimalFee(uint64_t dailyDifficulty, uint64_t reward, uint64_t avgHistoricalDifficulty, uint64_t medianHistoricalReward, uint32_t height) const {
-		const uint64_t blocksInTwoYears = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365 * 2;
-		const double gauge = double(0.25);
-		uint64_t minimumFee(0);
-		double dailyDifficultyMoore = dailyDifficulty / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
-		double minFee = gauge * CryptoNote::parameters::COIN * static_cast<double>(avgHistoricalDifficulty) 
-			/ dailyDifficultyMoore * static_cast<double>(reward)
-			/ static_cast<double>(medianHistoricalReward);
-		if (minFee == 0 || !std::isfinite(minFee))
-			return CryptoNote::parameters::MAXIMUM_FEE; // zero test 
-		minimumFee = static_cast<uint64_t>(minFee);
+  // Copyright (c) 2017-2018 Zawy 
+  // http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
+  // Moore's law application by Sergey Kozlov
+  uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const {
+    double minFee(0.0);
+    double baseFee = static_cast<double>(CryptoNote::parameters::MAXIMUM_FEE);
+    uint64_t minimumFee(0);
+    const double gauge = double(0.25);
+    if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+      const uint64_t blocksInTwoYears = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365 * 2;
+      double dailyDifficultyMoore = static_cast<double>(avgCurrentDifficulty) / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
+      minFee = gauge * CryptoNote::parameters::COIN * static_cast<double>(avgHistoricDifficulty) /
+        dailyDifficultyMoore * static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
+    }
+    else {
+      minFee = baseFee * static_cast<double>(avgHistoricDifficulty) / static_cast<double>(avgCurrentDifficulty);//* static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
+    }
 
-		return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
-	}
+    // zero test 
+    if (minFee == 0 || !std::isfinite(minFee))
+      return CryptoNote::parameters::MAXIMUM_FEE;
+    minimumFee = static_cast<uint64_t>(minFee);
+
+    // Make all insignificant digits zero for easy reading
+    uint64_t i = 1000000000;
+    while (i > 1) {
+      if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
+      else { i /= 10; }
+    }
+
+    return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
+  }
 
 	uint64_t Currency::roundUpMinFee(uint64_t minimalFee, int digits) const {
 		uint64_t ret(0);
@@ -463,10 +477,13 @@ namespace CryptoNote {
 
 	difficulty_type Currency::nextDifficulty(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps,
 		std::vector<difficulty_type> cumulativeDifficulties) const {
-		if (blockMajorVersion >= BLOCK_MAJOR_VERSION_4) {
+		if (blockMajorVersion >= BLOCK_MAJOR_VERSION_5) {
+			return nextDifficultyV5(height, blockMajorVersion, timestamps, cumulativeDifficulties);
+		}
+		else if (blockMajorVersion == BLOCK_MAJOR_VERSION_4) {
 			return nextDifficultyV4(height, blockMajorVersion, timestamps, cumulativeDifficulties);
 		}
-		else if (blockMajorVersion >= BLOCK_MAJOR_VERSION_3) {
+		else if (blockMajorVersion == BLOCK_MAJOR_VERSION_3) {
 			return nextDifficultyV3(timestamps, cumulativeDifficulties);
 		}
 		else if (blockMajorVersion == BLOCK_MAJOR_VERSION_2) {
@@ -702,26 +719,120 @@ namespace CryptoNote {
 		return next_D;
 	}
 
-	bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
-		Crypto::Hash& proofOfWork) const {
+	difficulty_type Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion,
+		std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulativeDifficulties) const {
+
+		// LWMA-1 difficulty algorithm (modified, for orig. see link below)
+		// Copyright (c) 2017-2018 Zawy, MIT License
+		// See commented link below for required config file changes. Fix FTL and MTP.
+		// https://github.com/zawy12/difficulty-algorithms/issues/3
+
+		// reset difficulty for new epoch
+		if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
+			return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
+		}
+
+		assert(timestamps.size() == cumulativeDifficulties.size());
+
+		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
+		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
+		uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
+
+		previous_timestamp = timestamps[0] - T;
+		for (i = 1; i <= N; i++) {
+			// Safely prevent out-of-sequence timestamps
+			if (timestamps[i] > previous_timestamp) { this_timestamp = timestamps[i]; }
+			else { this_timestamp = previous_timestamp + 1; }
+			L += i * std::min<uint64_t>(6 * T, this_timestamp - previous_timestamp);
+			previous_timestamp = this_timestamp;
+		}
+		if (L < N * N * T / 20) { L = N * N * T / 20; }
+		avg_D = (cumulativeDifficulties[N] - cumulativeDifficulties[0]) / N;
+
+		// Prevent round off error for small D and overflow for large D.
+		if (avg_D > 2000000 * N * N * T) {
+			next_D = (avg_D / (200 * L)) * (N * (N + 1) * T * 99);
+		}
+		else { next_D = (avg_D * N * (N + 1) * T * 99) / (200 * L); }
+
+		// Optional. Make all insignificant digits zero for easy reading.
+		i = 1000000000;
+		while (i > 1) {
+			if (next_D > i * 100) { next_D = ((next_D + i / 2) / i) * i; break; }
+			else { i /= 10; }
+		}
+
+		// minimum limit
+		if (!isTestnet() && next_D < 100000) {
+			next_D = 100000;
+		}
+
+		return next_D;
+	}
+
+  int Currency::getAlgoWorkFactor(int algo) const {
+    switch (algo)
+    {
+    case ALGO_CN:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
+    case ALGO_CN_GPU:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU;
+    case ALGO_CN_POWER:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER;
+    default:
+      return 1;
+    }
+  }
+
+  difficulty_type Currency::algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& prevAlgos) const {
+    difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
+    for (int i = 0; i < prevAlgos.size(); i++) {
+      if (prevAlgos[i] == currAlgo) {
+        adjDiff *= 2;
+      }
+      else {
+        adjDiff /= sqrt(2);
+      }
+    }
+    adjDiff = std::max<uint64_t>(adjDiff, currentDiffic);
+   
+    return adjDiff;
+  }
+
+	bool Currency::checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
+    const std::vector<int>& algos, Crypto::Hash& proofOfWork) const {
 		if (BLOCK_MAJOR_VERSION_2 == block.majorVersion || BLOCK_MAJOR_VERSION_3 == block.majorVersion) {
 			return false;
 		}
 
-		if (!get_block_longhash(context, block, proofOfWork)) {
-			return false;
-		}
+    if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      int currAlgo = getAlgo(block);
+      if (currAlgo == ALGO_UNKNOWN) {
+        logger(ERROR) << "Unknown algo tag: " << Common::podToHex(block.algorithm);
+      }
+      if (!get_block_longhash(hash_ctx, currAlgo, block, proofOfWork)) {
+        return false;
+      }
 
-		return check_hash(proofOfWork, currentDiffic);
+      return check_hash(proofOfWork, algoDifficulty(currentDiffic, currAlgo, algos));
+    }
+
+    if (!get_block_longhash(hash_ctx, 0, block, proofOfWork)) {
+      return false;
+    }
+
+    return check_hash(proofOfWork, currentDiffic);
 	}
 
-	bool Currency::checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic,
+	bool Currency::checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
 		Crypto::Hash& proofOfWork) const {
+
 		if (block.majorVersion < BLOCK_MAJOR_VERSION_2) {
 			return false;
 		}
 
-		if (!get_block_longhash(context, block, proofOfWork)) {
+    int powAlgo = 0;
+		if (!get_block_longhash(hash_ctx, powAlgo, block, proofOfWork)) {
 			return false;
 		}
 
@@ -756,16 +867,16 @@ namespace CryptoNote {
 		return true;
 	}
 
-	bool Currency::checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const {
+	bool Currency::checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const {
 		switch (block.majorVersion) {
 		case BLOCK_MAJOR_VERSION_1:
 		case BLOCK_MAJOR_VERSION_4:
 		case BLOCK_MAJOR_VERSION_5:
-			return checkProofOfWorkV1(context, block, currentDiffic, proofOfWork);
+			return checkProofOfWorkV1(hash_ctx, block, currentDiffic, algos, proofOfWork);
 
 		case BLOCK_MAJOR_VERSION_2:
 		case BLOCK_MAJOR_VERSION_3:
-			return checkProofOfWorkV2(context, block, currentDiffic, proofOfWork);
+			return checkProofOfWorkV2(hash_ctx, block, currentDiffic, proofOfWork);
 		}
 
 		logger(ERROR, BRIGHT_RED) << "Unknown block major version: " << block.majorVersion << "." << block.minorVersion;
@@ -831,6 +942,7 @@ namespace CryptoNote {
 		difficultyWindow(parameters::DIFFICULTY_WINDOW);
 		difficultyLag(parameters::DIFFICULTY_LAG);
 		difficultyCut(parameters::DIFFICULTY_CUT);
+		averageDifficultyWindow(CryptoNote::parameters::AVERAGE_DIFFICULTY_WINDOW);
 
 		maxBlockSizeInitial(parameters::MAX_BLOCK_SIZE_INITIAL);
 		maxBlockSizeGrowthSpeedNumerator(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR);

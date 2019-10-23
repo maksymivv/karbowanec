@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -49,8 +50,6 @@ namespace CryptoNote {
     bool is_mining();
     bool on_idle();
     void on_synchronized();
-    //synchronous analog (for fast calls)
-    static bool find_nonce_for_given_block(Crypto::cn_context &context, Block& bl, const difficulty_type& diffic);
     void pause();
     void resume();
     void do_print_hashrate(bool do_hr);
@@ -58,7 +57,7 @@ namespace CryptoNote {
   private:
     bool worker_thread(uint32_t th_local_index);
     bool request_block_template();
-    void  merge_hr();
+    void merge_hr();
 
     struct miner_config
     {
@@ -99,5 +98,7 @@ namespace CryptoNote {
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
+    int m_algo;
+    std::string m_algo_name;
   };
 }

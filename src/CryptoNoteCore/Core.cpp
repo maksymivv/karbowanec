@@ -1,4 +1,5 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Karbowanec developers
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -78,7 +79,7 @@ m_starter_message_showed(false),
 m_checkpoints(logger) {
   set_cryptonote_protocol(pprotocol);
   m_blockchain.addObserver(this);
-    m_mempool.addObserver(this);
+  m_mempool.addObserver(this);
   }
   //-----------------------------------------------------------------------------------------------
   core::~core() {
@@ -462,15 +463,15 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
   return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block);
 }
 
-bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce) {
+bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, int algo) {
   size_t median_size;
   uint64_t already_generated_coins;
 
   {
     LockedBlockchainStorage blockchainLock(m_blockchain);
     height = m_blockchain.getCurrentBlockchainHeight();
-    diffic = m_blockchain.getDifficultyForNextBlock();
-    if (!(diffic)) {
+    difficulty_type base_diffic = m_blockchain.getDifficultyForNextBlock();
+    if (!(base_diffic)) {
       logger(ERROR, BRIGHT_RED) << "difficulty overhead.";
       return false;
     }
@@ -500,10 +501,43 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
       b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_4) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
     } else if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
       b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_5) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
+      
+      if (algo == 0) {
+        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN;
+      } else if (algo == 1) {
+        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN_GPU;
+      } else if (algo == 2) {
+        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN_POWER;
+      } else {
+        logger(ERROR, BRIGHT_RED) << "Failed to set block pow type field: wrong algo";
+        return false;
+      }
     }
 
     b.previousBlockHash = get_tail_id();
     b.timestamp = time(NULL);
+
+    std::vector<int> prev_algos;
+    Block prevBlk;
+    Crypto::Hash prevHash = b.previousBlockHash;
+    if (!getBlockByHash(prevHash, prevBlk)) {
+      logger(ERROR, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+      return false;
+    }
+    int prevBlkAlgo = getAlgo(prevBlk);
+    prev_algos.push_back(prevBlkAlgo);
+    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+      Crypto::Hash prevHash = prevBlk.previousBlockHash;
+      if (!getBlockByHash(prevHash, prevBlk)) {
+        logger(ERROR, BRIGHT_RED) <<
+          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+        return false;
+      }
+      int algo = getAlgo(prevBlk);
+      prev_algos.push_back(algo);
+    }
+    diffic = m_currency.algoDifficulty(base_diffic, algo, prev_algos);
 
     // Don't generate a block template with invalid timestamp
     // Fix by Jagerman
@@ -618,8 +652,14 @@ void core::pause_mining() {
 }
 
 void core::update_block_template_and_resume_mining() {
-  update_miner_block_template();
-  m_miner->resume();
+  if (update_miner_block_template()) {
+    m_miner->resume();
+    logger(DEBUGGING) << "updated block template and resumed mining";
+  } 
+  else {
+    logger(ERROR) << "updating block template failed, mining not resumed";
+    m_miner->stop();
+  }
 }
 
 bool core::handle_block_found(Block& b) {
@@ -806,8 +846,7 @@ std::string core::print_pool(bool short_format) {
 }
 
 bool core::update_miner_block_template() {
-  m_miner->on_block_chain_update();
-  return true;
+  return m_miner->on_block_chain_update();
 }
 
 bool core::on_idle() {
@@ -1143,6 +1182,14 @@ std::vector<Crypto::Hash> core::getTransactionHashesByPaymentId(const Crypto::Ha
   return blockchainTransactionHashes;
 }
 
+difficulty_type core::getAvgDifficulty(uint32_t height, size_t window) {
+  return m_blockchain.getAvgDifficulty(height, window);
+}
+
+difficulty_type core::getAvgDifficulty(uint32_t height) {
+  return m_blockchain.getAvgDifficulty(height);
+}
+
 uint64_t core::getMinimalFee() {
   return getMinimalFeeForHeight(get_current_blockchain_height() - 1);
 }
@@ -1273,6 +1320,35 @@ bool core::getMixin(const Transaction& transaction, uint64_t& mixin) {
       mixin = currentMixin;
     }
   }
+  return true;
+}
+
+bool core::getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
+  difficulty_type base_diffic = height < get_current_blockchain_height() ? 
+    m_blockchain.blockDifficulty(height + 1) : getNextBlockDifficulty();
+  std::vector<int> prev_algos;
+  Block prevBlk;
+  Crypto::Hash prevHash = getBlockIdByHeight(height < get_current_blockchain_height() ? height : get_current_blockchain_height() - 1);
+  if (!getBlockByHash(prevHash, prevBlk)) {
+    logger(ERROR, BRIGHT_RED) <<
+      "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+    return false;
+  }
+  int prevBlkAlgo = getAlgo(prevBlk);
+  prev_algos.push_back(prevBlkAlgo);
+  for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+    Crypto::Hash prevHash = prevBlk.previousBlockHash;
+    if (!getBlockByHash(prevHash, prevBlk)) {
+      logger(ERROR, BRIGHT_RED) <<
+        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
+      return false;
+    }
+    int algo = getAlgo(prevBlk);
+    prev_algos.push_back(algo);
+  }
+  
+  algoDifficulty = m_currency.algoDifficulty(base_diffic, algo, prev_algos);
+
   return true;
 }
 

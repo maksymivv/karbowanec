@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -80,12 +81,25 @@ struct ParentBlock {
   std::vector<Crypto::Hash> blockchainBranch;
 };
 
+enum algo : int {
+  ALGO_UNKNOWN  = -1,
+  ALGO_CN       =  0,
+  ALGO_CN_GPU   =  1,
+  ALGO_CN_POWER =  2,
+  NUM_ALGOS_IMPL
+};
+
+#define CURRENCY_BLOCK_POW_TYPE_CN       0x00
+#define CURRENCY_BLOCK_POW_TYPE_CN_GPU   0x01
+#define CURRENCY_BLOCK_POW_TYPE_CN_POWER 0x02
+
 struct BlockHeader {
   uint8_t majorVersion;
   uint8_t minorVersion;
   uint32_t nonce;
   uint64_t timestamp;
   Crypto::Hash previousBlockHash;
+  uint8_t algorithm;
 };
 
 struct Block : public BlockHeader {

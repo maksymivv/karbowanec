@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -92,7 +93,7 @@ size_t BlockchainExplorerDataBuilder::median(std::vector<size_t>& v) {
 
 bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDetails& blockDetails) {
   Crypto::Hash hash = get_block_hash(block);
-
+  blockDetails.algo = getAlgo(block);
   blockDetails.majorVersion = block.majorVersion;
   blockDetails.minorVersion = block.minorVersion;
   blockDetails.timestamp = block.timestamp;
@@ -113,8 +114,8 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   Crypto::Hash tmpHash = core.getBlockIdByHeight(blockDetails.height);
   blockDetails.isOrphaned = hash != tmpHash;
 
-  Crypto::cn_context context;
-  if (!get_block_longhash(context, block, blockDetails.proofOfWork)) {
+   cn_pow_hash_v2 pow_ctx;
+  if (!get_block_longhash(pow_ctx, blockDetails.algo, block, blockDetails.proofOfWork)) {
     return false;
   }
 
@@ -124,6 +125,14 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
 
   if (!core.getBlockCumulativeDifficulty(blockDetails.height, blockDetails.cumulativeDifficulty)) {
     return false;
+  }
+
+  if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    if (!core.getNextDifficultyForAlgo(blockDetails.height - 1, blockDetails.algo, blockDetails.algoDifficulty)) {
+      return false;
+    }
+  } else {
+    blockDetails.algoDifficulty = blockDetails.difficulty;
   }
 
   std::vector<size_t> blocksSizes;

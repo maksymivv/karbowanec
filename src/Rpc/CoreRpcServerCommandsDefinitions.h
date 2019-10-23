@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
-// Copyright (c) 2017-2018, The Karbo developers
+// Copyright (c) 2017-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -41,6 +41,19 @@ struct STATUS_STRUCT {
 
   void serialize(ISerializer &s) {
     KV_MEMBER(status)
+  }
+};
+
+
+struct algo_difficulties {
+  difficulty_type cryptonight;
+  difficulty_type cn_gpu;
+  difficulty_type cn_power;
+
+  void serialize(ISerializer &s) {
+    KV_MEMBER(cryptonight)
+    KV_MEMBER(cn_gpu)
+    KV_MEMBER(cn_power)
   }
 };
 
@@ -292,6 +305,7 @@ struct COMMAND_RPC_GET_INFO {
     std::string fee_address;
     uint8_t block_major_version;
     std::string already_generated_coins;
+    algo_difficulties multi_algo_difficulties;
     std::string contact;   
 
     void serialize(ISerializer &s) {
@@ -317,6 +331,7 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(fee_address)
       KV_MEMBER(block_major_version)
       KV_MEMBER(already_generated_coins)
+      KV_MEMBER(multi_algo_difficulties)
       KV_MEMBER(contact)      
     }
   };
@@ -387,10 +402,12 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
   struct request {
     uint64_t reserve_size; //max 255 bytes
     std::string wallet_address;
+    int algo = 0;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(reserve_size)
       KV_MEMBER(wallet_address)
+      KV_MEMBER(algo)
     }
   };
 
@@ -399,7 +416,7 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
     uint32_t height;
     uint64_t reserved_offset;
     std::string blocktemplate_blob;
-	std::string blockhashing_blob;
+    std::string blockhashing_blob;
     std::string status;
 
     void serialize(ISerializer &s) {
@@ -407,7 +424,7 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
       KV_MEMBER(height)
       KV_MEMBER(reserved_offset)
       KV_MEMBER(blocktemplate_blob)
-	  KV_MEMBER(blockhashing_blob)
+      KV_MEMBER(blockhashing_blob)
       KV_MEMBER(status)
     }
   };
@@ -506,7 +523,9 @@ struct block_short_response {
   uint64_t tx_count;
   uint64_t cumul_size;
   difficulty_type difficulty;
+  difficulty_type algo_difficulty;
   uint64_t min_tx_fee;
+  int algo;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(timestamp)
@@ -515,7 +534,9 @@ struct block_short_response {
     KV_MEMBER(cumul_size)
     KV_MEMBER(tx_count)
     KV_MEMBER(difficulty)
+    KV_MEMBER(algo_difficulty)
     KV_MEMBER(min_tx_fee)
+    KV_MEMBER(algo)
   }
 };
 
@@ -592,7 +613,6 @@ struct f_block_details_response {
   uint32_t depth;
   std::string hash;
   difficulty_type difficulty;
-  difficulty_type cumulativeDifficulty;
   uint64_t reward;
   uint64_t blockSize;
   size_t sizeMedian;
@@ -603,6 +623,7 @@ struct f_block_details_response {
   uint64_t baseReward;
   double penalty;
   uint64_t totalFeeAmount;
+  int algo;
   std::vector<f_transaction_short_response> transactions;
 
   void serialize(ISerializer &s) {
@@ -616,7 +637,6 @@ struct f_block_details_response {
     KV_MEMBER(depth)
     KV_MEMBER(hash)
     KV_MEMBER(difficulty)
-    KV_MEMBER(cumulativeDifficulty)
     KV_MEMBER(reward)
     KV_MEMBER(blockSize)
     KV_MEMBER(sizeMedian)
@@ -627,6 +647,7 @@ struct f_block_details_response {
     KV_MEMBER(baseReward)
     KV_MEMBER(penalty)
     KV_MEMBER(totalFeeAmount)
+    KV_MEMBER(algo)
     KV_MEMBER(transactions)
   }
 };

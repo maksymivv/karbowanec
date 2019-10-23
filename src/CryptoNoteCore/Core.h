@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -56,7 +57,7 @@ namespace CryptoNote {
 
      //-------------------- IMinerHandler -----------------------
      virtual bool handle_block_found(Block& b) override;
-     virtual bool get_block_template(Block& b, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce) override;
+     virtual bool get_block_template(Block& b, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, int algo) override;
 
      bool addObserver(ICoreObserver* observer) override;
      bool removeObserver(ICoreObserver* observer) override;
@@ -78,6 +79,8 @@ namespace CryptoNote {
      virtual bool scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pair<Crypto::Hash, size_t>>& outputReferences) override;
      virtual bool getBlockDifficulty(uint32_t height, difficulty_type& difficulty) override;
      virtual bool getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) override;
+     virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window) override;
+     virtual difficulty_type getAvgDifficulty(uint32_t height) override;
      virtual bool getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) override;
      virtual bool getMultisigOutputReference(const MultisignatureInput& txInMultisig, std::pair<Crypto::Hash, size_t>& output_reference) override;
      virtual bool getGeneratedTransactionsNumber(uint32_t height, uint64_t& generatedTransactions) override;
@@ -166,6 +169,8 @@ namespace CryptoNote {
      uint64_t getTotalGeneratedAmount();
      uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
      virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;
+
+     virtual bool getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) override;
 
      bool is_key_image_spent(const Crypto::KeyImage& key_im);
      bool is_key_image_spent(const Crypto::KeyImage& key_im, uint32_t height);

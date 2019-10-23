@@ -141,6 +141,7 @@ struct TransactionDetails {
 };
 
 struct BlockDetails {
+  uint8_t algo = 0;
   uint8_t majorVersion = 0;
   uint8_t minorVersion = 0;
   uint64_t timestamp = 0;
@@ -153,6 +154,7 @@ struct BlockDetails {
   Crypto::Hash hash;
   uint64_t difficulty = 0;
   uint64_t cumulativeDifficulty = 0;
+  uint64_t algoDifficulty = 0;
   uint64_t reward = 0;
   uint64_t baseReward = 0;
   uint64_t blockSize = 0;

@@ -32,6 +32,7 @@ struct MiningConfig {
   std::string daemonHost;
   uint16_t daemonPort;
   size_t threadCount;
+  int miningAlgo = 2;
   size_t scanPeriod;
   uint8_t logLevel;
   size_t blocksLimit;

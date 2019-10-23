@@ -186,6 +186,7 @@ void serialize(TransactionDetails& transaction, ISerializer& serializer) {
 }
 
 void serialize(BlockDetails& block, ISerializer& serializer) {
+  serializer(block.algo, "algo");
   serializer(block.majorVersion, "majorVersion");
   serializer(block.minorVersion, "minorVersion");
   serializer(block.timestamp, "timestamp");
@@ -198,6 +199,7 @@ void serialize(BlockDetails& block, ISerializer& serializer) {
   serializePod(block.hash, "hash", serializer);
   serializer(block.difficulty, "difficulty");
   serializer(block.cumulativeDifficulty, "cumulativeDifficulty");
+  serializer(block.algoDifficulty, "algoDifficulty");
   serializer(block.reward, "reward");
   serializer(block.baseReward, "baseReward");
   serializer(block.blockSize, "blockSize");
