@@ -91,10 +91,10 @@ void HttpServer::stop() {
   workingContextGroup.interrupt();
   workingContextGroup.wait();
   this->m_server_ssl_do = false;
-  while (this->m_server_ssl_clients > 0) {
+  //if (this->m_server_ssl_is_run) this->m_ssl_server_thread.interrupt();
+  while (this->m_server_ssl_is_run) {
     boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
   }
-  if (this->m_server_ssl_is_run) this->m_ssl_server_thread.interrupt();
 }
 
 void HttpServer::sslServerUnitControl(boost::asio::ssl::stream<tcp::socket&> &stream,
@@ -193,6 +193,11 @@ void HttpServer::sslServerUnit(boost::asio::ip::tcp::socket &socket, boost::asio
   this->m_server_ssl_clients--;
 }
 
+void HttpServer::sslServerControl(tcp::acceptor &accept) {
+  while (this->m_server_ssl_do) boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+  if (accept.is_open()) accept.cancel();
+}
+
 void HttpServer::sslServer() {
   while (this->m_server_ssl_do) {
     this->m_server_ssl_is_run = false;
@@ -200,6 +205,8 @@ void HttpServer::sslServer() {
       boost::asio::io_service io_service;
       tcp::acceptor accept(io_service, tcp::endpoint(boost::asio::ip::address::from_string(this->m_address),
                                                      this->m_server_ssl_port));
+
+      boost::thread control_t(std::bind(&HttpServer::sslServerControl, this, std::ref(accept)));
 
       boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
       ctx.set_options(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2);
@@ -211,15 +218,20 @@ void HttpServer::sslServer() {
         tcp::socket sock(io_service);
         this->m_server_ssl_is_run = true;
         accept.accept(sock);
-        boost::thread t(std::bind(&HttpServer::sslServerUnit, this, std::move(sock), std::ref(ctx)));
-        t.detach();
+        if (this->m_server_ssl_do) {
+          boost::thread t(std::bind(&HttpServer::sslServerUnit, this, std::move(sock), std::ref(ctx)));
+          t.detach();
+        }
       }
-      while (this->m_server_ssl_clients > 0) {
-        boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-      }
+      control_t.join();
     } catch (std::exception& e) {
-      logger(ERROR, BRIGHT_RED) << "SSL server error: " << e.what() << std::endl;
+      if (this->m_server_ssl_do) {
+        logger(ERROR, BRIGHT_RED) << "SSL server error: " << e.what() << std::endl;
+      }
     }
+  }
+  while (this->m_server_ssl_clients > 0) {
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
   }
   this->m_server_ssl_is_run = false;
 }

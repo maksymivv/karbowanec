@@ -76,6 +76,7 @@ private:
                             bool &unit_control_do,
                             size_t &stream_timeout_n);
   void sslServerUnit(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx);
+  void sslServerControl(boost::asio::ip::tcp::acceptor &accept);
   void sslServer();
 
 };
