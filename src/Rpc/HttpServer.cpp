@@ -99,6 +99,7 @@ void HttpServer::stop() {
 
 void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx){
   const size_t request_max_len = 1024 * 32;
+  const char end_req[] = {0x0D, 0x0A, 0x0D, 0x0A, 0x00};
   boost::system::error_code ec;
   boost::asio::ssl::stream<tcp::socket&> stream(socket, ctx);
 
@@ -108,9 +109,18 @@ void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asi
     stream.handshake(boost::asio::ssl::stream_base::server, ec);
     if (!ec) {
       char req_buff[request_max_len];
-      size_t req_len = stream.read_some(boost::asio::buffer(req_buff, request_max_len), ec);
-      if (req_len > 0 && req_len < request_max_len) {
-        System::SocketStreambuf streambuf((char *) req_buff, req_len);
+      size_t size_req = 0;
+      size_t read_req = 0;
+      while (true) {
+        read_req = stream.read_some(boost::asio::buffer((char *) req_buff + size_req, request_max_len - size_req), ec);
+        size_req += read_req;
+        if (read_req == 0) break;
+        if (size_req > 5) {
+          if (strstr(req_buff, end_req) != NULL) break;
+        }
+      }
+      if (size_req > 0 && size_req < request_max_len) {
+        System::SocketStreambuf streambuf((char *) req_buff, size_req);
 
         HttpParser parser;
         HttpRequest req;
@@ -131,7 +141,11 @@ void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asi
 
         std::vector<uint8_t> resp_data;
         streambuf.getRespdata(resp_data);
-        stream.write_some(boost::asio::buffer(resp_data), ec);
+        size_t size_resp = resp_data.size();
+        size_t write_resp = 0;
+        while (write_resp < size_resp) {
+          write_resp += stream.write_some(boost::asio::buffer(resp_data.data() + write_resp, size_resp - write_resp), ec);
+        }
         stream.lowest_layer().close(ec);
       } else {
         logger(WARNING) << "Unable to process request (SSL server)" << std::endl;
