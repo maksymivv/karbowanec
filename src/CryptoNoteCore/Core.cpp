@@ -1,4 +1,6 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Karbowanec developers
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The Unprll Project
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -456,6 +458,12 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
 
   if (m_mempool.have_tx(tx_hash)) {
     logger(TRACE) << "tx " << tx_hash << " is already in transaction pool";
+
+    if (m_mempool.is_dandelion_stem_transaction(tx_hash)) {
+      logger(DEBUGGING) << "tx " << tx_hash " is entering fluff mode";
+      m_mempool.enable_dandelion_fluff(tx_hash);
+    }
+
     return true;
   }
 

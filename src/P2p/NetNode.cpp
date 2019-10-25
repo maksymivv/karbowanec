@@ -1155,7 +1155,6 @@ namespace CryptoNote
 #endif
   
   //-----------------------------------------------------------------------------------
-  
   void NodeServer::relay_notify_to_all(int command, const BinaryArray& data_buff, const net_connection_id* excludeConnection) {
     net_connection_id excludeId = excludeConnection ? *excludeConnection : boost::value_initialized<net_connection_id>();
 
@@ -1166,6 +1165,18 @@ namespace CryptoNote
         conn.pushMessage(P2pMessage(P2pMessage::NOTIFY, command, data_buff));
       }
     });
+  }
+
+  //-----------------------------------------------------------------------------------
+  bool NodeServer::relay_notify_to_peer(int command, const BinaryArray& data_buff, const net_connection_id* connection) {
+    auto it = m_connections.find(*connection);
+    if (it == m_connections.end()) {
+      return false;
+    }
+
+    it->second.pushMessage(P2pMessage(P2pMessage::NOTIFY, command, data_buff));
+
+    return true;
   }
  
   //-----------------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
+// Copyright (c) 2018, The Unprll Project
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -114,6 +116,7 @@ namespace CryptoNote {
     m_core(core),
     m_timeProvider(timeProvider), 
     m_txCheckInterval(60, timeProvider),
+    m_dandelionEmbargoInterval(30, timeProvider),
     m_fee_index(boost::get<1>(m_transactions)),
     logger(log, "txpool"),
     m_paymentIdIndex(blockchainIndexesEnabled),
@@ -198,6 +201,7 @@ namespace CryptoNote {
       txd.tx = tx;
       txd.fee = fee;
       txd.keptByBlock = keptByBlock;
+      txd.dandelionStem = keptByBlock ? false : true;
       txd.receiveTime = m_timeProvider.now();
 
       txd.maxUsedBlock = maxUsedBlock;
@@ -348,7 +352,30 @@ namespace CryptoNote {
   std::unique_lock<std::recursive_mutex> tx_memory_pool::obtainGuard() const {
     return std::unique_lock<std::recursive_mutex>(m_transactions_lock);
   }
+  //---------------------------------------------------------------------------------
+  bool tx_memory_pool::is_dandelion_stem_transaction(const Crypto::Hash &id) const {
+    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
+    auto it = m_transactions.find(id);
+    if (it == m_transactions.end()) {
+      return false;
+    }
 
+    auto& txd = *it;
+    return txd.dandelionStem;
+  }
+  //---------------------------------------------------------------------------------
+  bool tx_memory_pool::enable_dandelion_fluff(const Crypto::Hash &id) {
+    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
+    auto it = m_transactions.find(id);
+    if (it == m_transactions.end()) {
+      return false;
+    }
+
+    auto& txd = *it;
+    txd.dandelionStem = false;
+
+    return true;
+  }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::is_transaction_ready_to_go(const Transaction& tx, TransactionCheckInfo& txd) const {
 
@@ -357,6 +384,9 @@ namespace CryptoNote {
 
     //if we here, transaction seems valid, but, anyway, check for key_images collisions with blockchain, just to be sure
     if (m_validator.haveSpentKeyImages(tx))
+      return false;
+
+    if (txd.dandelionStem)
       return false;
 
     //transaction is ok.
@@ -376,11 +406,12 @@ namespace CryptoNote {
       ss << "blobSize: " << txd.blobSize << std::endl
         << "fee: " << m_currency.formatAmount(txd.fee) << std::endl
         << "keptByBlock: " << (txd.keptByBlock ? 'T' : 'F') << std::endl
+        << "dandelion_stem:" << (txd.dandelionStem ? 'T' : 'F') << std::endl
         << "max_used_block_height: " << txd.maxUsedBlock.height << std::endl
         << "max_used_block_id: " << txd.maxUsedBlock.id << std::endl
         << "last_failed_height: " << txd.lastFailedBlock.height << std::endl
-		<< "last_failed_id: " << txd.lastFailedBlock.id << std::endl
-		<< "amount_out: " << get_outs_money_amount(txd.tx) << std::endl
+        << "last_failed_id: " << txd.lastFailedBlock.id << std::endl
+        << "amount_out: " << get_outs_money_amount(txd.tx) << std::endl
         << "fee_atomic_units: " << txd.fee << std::endl
         << "received_timestamp: " << txd.receiveTime << std::endl
         << "received: " << std::ctime(&txd.receiveTime) << std::endl;
@@ -504,6 +535,7 @@ namespace CryptoNote {
     s(td.lastFailedBlock.height, "lastFailedBlock.height");
     s(td.lastFailedBlock.id, "lastFailedBlock.id");
     s(td.keptByBlock, "keptByBlock");
+    s(td.keptByBlock, "dandelionStem");
     s(reinterpret_cast<uint64_t&>(td.receiveTime), "receiveTime");
   }
 
@@ -535,8 +567,26 @@ namespace CryptoNote {
   //---------------------------------------------------------------------------------
   void tx_memory_pool::on_idle() {
     m_txCheckInterval.call([this](){ return removeExpiredTransactions(); });
+    m_dandelionEmbargoInterval.call([this]() { return clear_dandelion_embargo(); });
   }
+  //---------------------------------------------------------------------------------
+  bool tx_memory_pool::clear_dandelion_embargo() {
+    {
+      uint64_t now = m_timeProvider.now();
+      std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
+      for (auto it = m_transactions.begin(); it != m_transactions.end();) {
+        uint64_t txAge = now - it->receiveTime;
 
+        if (it->dandelionStem && txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD) {
+          logger(DEBUGGING) << "Transaction " << it->id << " is entering fluff mode due to embargo timeout: " << txAge << " seconds";
+          
+          it->dandelionStem = false;
+        }
+      }
+    }
+
+    return true;
+  }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::removeExpiredTransactions() {
     bool somethingRemoved = false;
