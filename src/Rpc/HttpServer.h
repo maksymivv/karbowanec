@@ -70,8 +70,13 @@ private:
   void acceptLoop();
   bool authenticate(const HttpRequest& request) const;
   void connectionHandler(System::TcpConnection&& conn);
-  void do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx);
-  void server_ssl();
+  void sslServerUnitControl(boost::asio::ssl::stream<boost::asio::ip::tcp::socket&> &stream,
+                            boost::system::error_code &ec,
+                            bool &unit_do,
+                            bool &unit_control_do,
+                            size_t &stream_timeout_n);
+  void sslServerUnit(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx);
+  void sslServer();
 
 };
 

@@ -82,7 +82,7 @@ void HttpServer::start(const std::string& address, uint16_t port, uint16_t port_
 
   if (!this->m_chain_file.empty() && !this->m_key_file.empty() && !this->m_dh_file.empty() &&
       this->m_server_ssl_port != 0 && this->m_server_ssl_do) {
-    this->m_ssl_server_thread = boost::thread(&HttpServer::server_ssl, this);
+    this->m_ssl_server_thread = boost::thread(&HttpServer::sslServer, this);
     this->m_ssl_server_thread.detach();
   }
 }
@@ -97,11 +97,44 @@ void HttpServer::stop() {
   if (this->m_server_ssl_is_run) this->m_ssl_server_thread.interrupt();
 }
 
-void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx){
+void HttpServer::sslServerUnitControl(boost::asio::ssl::stream<tcp::socket&> &stream,
+                                      boost::system::error_code &ec,
+                                      bool &unit_do,
+                                      bool &unit_control_do,
+                                      size_t &stream_timeout_n) {
+  const size_t unit_timeout = 200;
+  while (unit_control_do) {
+    if (stream_timeout_n >= unit_timeout || !this->m_server_ssl_do) {
+      unit_do = false;
+      break;
+    } else {
+      stream_timeout_n++;
+    }
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+  }
+  if (unit_control_do && !unit_do) {
+    try {
+      stream.lowest_layer().close(ec);
+    } catch (std::exception& e) {
+      logger(ERROR, BRIGHT_RED) << "SSL server unit control error: " << e.what() << std::endl;
+    }
+  }
+}
+
+void HttpServer::sslServerUnit(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx){
   const size_t request_max_len = 1024 * 32;
   const char end_req[] = {0x0D, 0x0A, 0x0D, 0x0A, 0x00};
+  bool unit_do = true;
+  bool unit_control_do = true;
+  size_t stream_timeout_n = 0;
   boost::system::error_code ec;
   boost::asio::ssl::stream<tcp::socket&> stream(socket, ctx);
+
+  boost::thread control_t(std::bind(&HttpServer::sslServerUnitControl, this, std::ref(stream),
+                                                                             std::ref(ec),
+                                                                             std::ref(unit_do),
+                                                                             std::ref(unit_control_do),
+                                                                             std::ref(stream_timeout_n)));
 
   this->m_server_ssl_clients++;
 
@@ -111,15 +144,15 @@ void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asi
       char req_buff[request_max_len];
       size_t size_req = 0;
       size_t read_req = 0;
-      while (true) {
-        read_req = stream.read_some(boost::asio::buffer((char *) req_buff + size_req, request_max_len - size_req), ec);
+      while (unit_do) {
+        if (unit_do) read_req = stream.read_some(boost::asio::buffer((char *) req_buff + size_req, request_max_len - size_req), ec);
         size_req += read_req;
         if (read_req == 0) break;
         if (size_req > 5) {
           if (strstr(req_buff, end_req) != NULL) break;
         }
       }
-      if (size_req > 0 && size_req < request_max_len) {
+      if (size_req > 0 && size_req < request_max_len && unit_do) {
         System::SocketStreambuf streambuf((char *) req_buff, size_req);
 
         HttpParser parser;
@@ -143,9 +176,10 @@ void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asi
         streambuf.getRespdata(resp_data);
         size_t size_resp = resp_data.size();
         size_t write_resp = 0;
-        while (write_resp < size_resp) {
+        while (write_resp < size_resp && unit_do) {
           write_resp += stream.write_some(boost::asio::buffer(resp_data.data() + write_resp, size_resp - write_resp), ec);
         }
+        stream_timeout_n = 0;
         stream.lowest_layer().close(ec);
       } else {
         logger(WARNING) << "Unable to process request (SSL server)" << std::endl;
@@ -154,10 +188,12 @@ void HttpServer::do_session_ssl(boost::asio::ip::tcp::socket &socket, boost::asi
   } catch (std::exception& e) {
     logger(ERROR, BRIGHT_RED) << "SSL server unit error: " << e.what() << std::endl;
   }
+  unit_control_do = false;
+  control_t.join();
   this->m_server_ssl_clients--;
 }
 
-void HttpServer::server_ssl() {
+void HttpServer::sslServer() {
   while (this->m_server_ssl_do) {
     this->m_server_ssl_is_run = false;
     try {
@@ -175,7 +211,7 @@ void HttpServer::server_ssl() {
         tcp::socket sock(io_service);
         this->m_server_ssl_is_run = true;
         accept.accept(sock);
-        boost::thread t(std::bind(&HttpServer::do_session_ssl, this, std::move(sock), std::ref(ctx)));
+        boost::thread t(std::bind(&HttpServer::sslServerUnit, this, std::move(sock), std::ref(ctx)));
         t.detach();
       }
       while (this->m_server_ssl_clients > 0) {
