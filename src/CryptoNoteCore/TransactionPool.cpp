@@ -540,7 +540,7 @@ namespace CryptoNote {
   //---------------------------------------------------------------------------------
   void tx_memory_pool::on_idle() {
     m_txCheckInterval.call([this](){ return removeExpiredTransactions(); });
-    m_dandelionEmbargoInterval.call([this]() { return clear_dandelion_embargo(); });
+    //m_dandelionEmbargoInterval.call([this]() { return clear_dandelion_embargo(); });
   }
 
   //---------------------------------------------------------------------------------
@@ -552,7 +552,15 @@ namespace CryptoNote {
     }
 
     auto& txd = *it;
-    return txd.dandelionStem;
+    //return txd.dandelionStem;
+
+    bool stem = true;
+    uint64_t now = m_timeProvider.now();
+    uint64_t txAge = now - it->receiveTime; 
+    if (txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD || it->keptByBlock)
+      stem = false;
+
+    return stem;
   }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::enable_dandelion_fluff(const Crypto::Hash &id) {
@@ -563,12 +571,12 @@ namespace CryptoNote {
     }
 
     try {
-      /*TransactionDetails txd = *it;
+      //m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
+      TransactionDetails txd = *it;
       txd.dandelionStem = false;
       m_transactions.modify(it, [&txd](auto& item) {
         item = txd;
-      });*/
-      m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
+      });
     }
     catch (const std::exception& e) {
       logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in enable_dandelion_fluff() due to: " << e.what();
@@ -586,12 +594,12 @@ namespace CryptoNote {
         uint64_t txAge = now - it->receiveTime;
         if (it->dandelionStem && txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD) {
           logger(DEBUGGING) << "Transaction " << it->id << " is entering fluff mode due to embargo timeout: " << txAge << " seconds";
-          /*TransactionDetails txd = *it;
+          //m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
+          TransactionDetails txd = *it;
           txd.dandelionStem = false;
           m_transactions.modify(it, [&txd](auto& item) {
             item = txd;
-          });*/
-          m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
+          });
         }
       }
     }
