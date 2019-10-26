@@ -496,7 +496,7 @@ int CryptoNoteProtocolHandler::processObjects(CryptoNoteConnectionContext& conte
 }
 
 bool CryptoNoteProtocolHandler::select_dandelion_stem() {
-  logger(Logging::TRACE) << "Choosing Dandelion stem...";
+  logger(Logging::DEBUGGING) << "Choosing Dandelion stem...";
 
   std::vector<CryptoNoteConnectionContext> alive_peers;
   m_p2p->for_each_connection([&](const CryptoNoteConnectionContext& cntxt, PeerIdType peer_id) {
@@ -688,13 +688,13 @@ void CryptoNoteProtocolHandler::relay_block(NOTIFY_NEW_BLOCK::request& arg) {
 
 void CryptoNoteProtocolHandler::relay_transactions(NOTIFY_NEW_TRANSACTIONS::request& arg) { 
   // Dandelion broadcast
-  if (arg.dandelion && m_dandelion_peer.state_normal || m_dandelion_peer.state_synchronizing) {
+  if (arg.dandelion && (m_dandelion_peer.m_state == CryptoNoteConnectionContext::state_normal || m_dandelion_peer.m_state == CryptoNoteConnectionContext::state_synchronizing)) {
     std::random_device rd;
     std::mt19937 rng(rd());
     std::uniform_int_distribution<> dis(0, 100);
     auto coin_flip = dis(rng);
     if (coin_flip < CryptoNote::DANDELION_TX_STEM_PROPAGATION_PROBABILITY) {
-      logger(TRACE) << "Relaying tx in dandelion stem mode";
+      logger(Logging::DEBUGGING) << "Relaying tx in dandelion stem mode";
       // Stem propagation
       bool ok = post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, m_dandelion_peer);
       if (!ok) {
@@ -706,7 +706,7 @@ void CryptoNoteProtocolHandler::relay_transactions(NOTIFY_NEW_TRANSACTIONS::requ
       arg.dandelion = false;
     }
   }
-  logger(TRACE) << "Relaying tx in dandelion fluff mode";
+  logger(Logging::DEBUGGING) << "Relaying tx in dandelion fluff mode";
   auto buf = LevinProtocol::encode(arg);
   m_p2p->externalRelayNotifyToAll(NOTIFY_NEW_TRANSACTIONS::ID, buf, nullptr);
 }
