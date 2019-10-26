@@ -522,7 +522,7 @@ bool CryptoNoteProtocolHandler::select_dandelion_stem() {
 }
 
 bool CryptoNoteProtocolHandler::on_idle() {
-  m_dandelionStemSelectInterval.call([this]() { return select_dandelion_stem(); });
+  m_dandelionStemSelectInterval.call([&]() { return select_dandelion_stem(); });
   return m_core.on_idle();
 }
 
