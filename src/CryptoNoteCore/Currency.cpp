@@ -786,7 +786,7 @@ namespace CryptoNote {
 
   difficulty_type Currency::algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& prevAlgos) const {
     difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
-    for (int i = 0; i < prevAlgos.size(); i++) {
+    for (size_t i = 0; i < prevAlgos.size(); i++) {
       if (prevAlgos[i] == currAlgo) {
         adjDiff *= 2;
       }

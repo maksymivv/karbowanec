@@ -527,7 +527,7 @@ bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     }
     int prevBlkAlgo = getAlgo(prevBlk);
     prev_algos.push_back(prevBlkAlgo);
-    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+    for (size_t i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!getBlockByHash(prevHash, prevBlk)) {
         logger(ERROR, BRIGHT_RED) <<
@@ -1336,7 +1336,7 @@ bool core::getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& 
   }
   int prevBlkAlgo = getAlgo(prevBlk);
   prev_algos.push_back(prevBlkAlgo);
-  for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+  for (size_t i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
     Crypto::Hash prevHash = prevBlk.previousBlockHash;
     if (!getBlockByHash(prevHash, prevBlk)) {
       logger(ERROR, BRIGHT_RED) <<
