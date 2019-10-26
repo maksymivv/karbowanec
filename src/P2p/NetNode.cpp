@@ -353,13 +353,6 @@ namespace CryptoNote
     });
   }
 
-  //----------------------------------------------------------------------------------- 
-  void NodeServer::externalForEachConnection(std::function<void(CryptoNote::CryptoNoteConnectionContext&, PeerIdType)> f) {
-    m_dispatcher.remoteSpawn([this, f] {
-      for_each_connection(f);
-    });
-  }
-
   //-----------------------------------------------------------------------------------
   bool NodeServer::make_default_config()
   {

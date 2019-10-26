@@ -188,7 +188,6 @@ namespace CryptoNote
     virtual void drop_connection(CryptoNoteConnectionContext& context, bool add_fail) override;
     virtual void for_each_connection(std::function<void(CryptoNote::CryptoNoteConnectionContext&, PeerIdType)> f) override;
     virtual void externalRelayNotifyToAll(int command, const BinaryArray& data_buff, const net_connection_id* excludeConnection) override;
-    virtual void externalForEachConnection(std::function<void(CryptoNote::CryptoNoteConnectionContext&, PeerIdType)> f) override;
 
     //-----------------------------------------------------------------------------------------------
     bool add_host_fail(const uint32_t address_ip);

@@ -499,9 +499,9 @@ bool CryptoNoteProtocolHandler::select_dandelion_stem() {
   logger(Logging::DEBUGGING) << "Choosing Dandelion stem...";
 
   std::vector<CryptoNoteConnectionContext> alive_peers;
-  m_p2p->externalForEachConnection([&](const CryptoNoteConnectionContext& cntxt, PeerIdType peer_id) {
-    if (cntxt.m_state == CryptoNoteConnectionContext::state_normal || cntxt.m_state == CryptoNoteConnectionContext::state_synchronizing) {
-      alive_peers.push_back(cntxt);
+  m_p2p->for_each_connection([&](const CryptoNoteConnectionContext& ctx, PeerIdType peer_id) {
+    if (ctx.m_state == CryptoNoteConnectionContext::state_normal || ctx.m_state == CryptoNoteConnectionContext::state_synchronizing) {
+      alive_peers.push_back(ctx);
     }
   });
 
@@ -512,6 +512,8 @@ bool CryptoNoteProtocolHandler::select_dandelion_stem() {
     auto it = alive_peers.begin();
     std::advance(it, dis(rng));
     m_dandelion_peer = *it;
+
+    logger(Logging::DEBUGGING) << "Selected dandelion_stem peer " << Common::ipAddressToString(m_dandelion_peer.m_remote_ip) + ":" + std::to_string(m_dandelion_peer.m_remote_port);
 
     return true;
   }
