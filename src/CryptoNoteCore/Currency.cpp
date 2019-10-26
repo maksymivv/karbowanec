@@ -764,7 +764,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && next_D < 100000) {
-			next_D = 100000;
+		//	next_D = 100000;
 		}
 
 		return next_D;
