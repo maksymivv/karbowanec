@@ -499,7 +499,7 @@ bool CryptoNoteProtocolHandler::select_dandelion_stem() {
   logger(Logging::DEBUGGING) << "Choosing Dandelion stem...";
 
   std::vector<CryptoNoteConnectionContext> alive_peers;
-  m_p2p->for_each_connection([&](const CryptoNoteConnectionContext& cntxt, PeerIdType peer_id) {
+  m_p2p->externalForEachConnection([&](const CryptoNoteConnectionContext& cntxt, PeerIdType peer_id) {
     if (cntxt.m_state == CryptoNoteConnectionContext::state_normal || cntxt.m_state == CryptoNoteConnectionContext::state_synchronizing) {
       alive_peers.push_back(cntxt);
     }
