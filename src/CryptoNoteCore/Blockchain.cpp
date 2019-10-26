@@ -1381,7 +1381,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     std::vector<int> prev_algos;
     int prevBlkAlgo = getAlgo(prevBlk);
     prev_algos.push_back(prevBlkAlgo);
-    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+    for (size_t i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!getBlockByHash(prevHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
@@ -2236,7 +2236,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     std::vector<int> algos;
     int prevBlkAlgo = getAlgo(prevBlk);
     algos.push_back(prevBlkAlgo);
-    for (int i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
+    for (size_t i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
       Crypto::Hash prevHash = prevBlk.previousBlockHash;
       if (!getBlockByHash(prevHash, prevBlk)) {
         logger(INFO, BRIGHT_RED) <<
