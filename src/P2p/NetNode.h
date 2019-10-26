@@ -184,7 +184,6 @@ namespace CryptoNote
 
     //----------------- i_p2p_endpoint -------------------------------------------------------------
     virtual void relay_notify_to_all(int command, const BinaryArray& data_buff, const net_connection_id* excludeConnection) override;
-    virtual bool relay_notify_to_peer(int command, const BinaryArray& data_buff, const net_connection_id* connection) override;
     virtual bool invoke_notify_to_peer(int command, const BinaryArray& req_buff, const CryptoNoteConnectionContext& context) override;
     virtual void drop_connection(CryptoNoteConnectionContext& context, bool add_fail) override;
     virtual void for_each_connection(std::function<void(CryptoNote::CryptoNoteConnectionContext&, PeerIdType)> f) override;

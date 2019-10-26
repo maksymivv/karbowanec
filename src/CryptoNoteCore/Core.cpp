@@ -460,7 +460,7 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
     logger(TRACE) << "tx " << tx_hash << " is already in transaction pool";
 
     if (m_mempool.is_dandelion_stem_transaction(tx_hash)) {
-      logger(DEBUGGING) << "tx " << tx_hash " is entering fluff mode";
+      logger(DEBUGGING) << "tx " << tx_hash << " is entering fluff mode";
       m_mempool.enable_dandelion_fluff(tx_hash);
     }
 

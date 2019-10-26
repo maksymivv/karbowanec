@@ -30,7 +30,6 @@ namespace CryptoNote {
 
   struct IP2pEndpoint {
     virtual void relay_notify_to_all(int command, const BinaryArray& data_buff, const net_connection_id* excludeConnection) = 0;
-    virtual bool relay_notify_to_peer(int command, const BinaryArray& data_buff, const net_connection_id* connection) = 0;
     virtual bool invoke_notify_to_peer(int command, const BinaryArray& req_buff, const CryptoNote::CryptoNoteConnectionContext& context) = 0;
     virtual uint64_t get_connections_count()=0;
     virtual bool ban_host(const uint32_t address_ip, time_t seconds = CryptoNote::P2P_IP_BLOCKTIME) = 0;
@@ -44,7 +43,6 @@ namespace CryptoNote {
 
   struct p2p_endpoint_stub: public IP2pEndpoint {
     virtual void relay_notify_to_all(int command, const BinaryArray& data_buff, const net_connection_id* excludeConnection) override {}
-    virtual bool relay_notify_to_peer(int command, const BinaryArray& data_buff, const net_connection_id* connection) override {}
     virtual bool invoke_notify_to_peer(int command, const BinaryArray& req_buff, const CryptoNote::CryptoNoteConnectionContext& context) override { return true; }
     virtual bool ban_host(const uint32_t address_ip, time_t seconds) override { return true; }
     virtual bool unban_host(const uint32_t address_ip) override { return true; }

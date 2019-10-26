@@ -286,17 +286,16 @@ namespace CryptoNote {
   void tx_memory_pool::get_difference(const std::vector<Crypto::Hash>& known_tx_ids, std::vector<Crypto::Hash>& new_tx_ids, std::vector<Crypto::Hash>& deleted_tx_ids) const {
     std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
     std::unordered_set<Crypto::Hash> ready_tx_ids;
-    for (const auto& tx : m_transactions) {
-      TransactionCheckInfo checkInfo(tx);
-	  if (m_validated_transactions.find(tx.id) != m_validated_transactions.end()) {
-		  ready_tx_ids.insert(tx.id);
-		  logger(DEBUGGING) << "MemPool - tx " << tx.id << " loaded from cache";
-	  }
-	  else if (is_transaction_ready_to_go(tx.tx, checkInfo)) {
-		  ready_tx_ids.insert(tx.id);
-		  m_validated_transactions.insert(tx.id);
-		  logger(DEBUGGING) << "MemPool - tx " << tx.id << " added to cache";
-	  }
+    for (auto& tx : m_transactions) {
+      if (m_validated_transactions.find(tx.id) != m_validated_transactions.end()) {
+        ready_tx_ids.insert(tx.id);
+        logger(DEBUGGING) << "MemPool - tx " << tx.id << " loaded from cache";
+      }
+      else if (is_transaction_ready_to_go(tx.tx, tx)) {
+        ready_tx_ids.insert(tx.id);
+        m_validated_transactions.insert(tx.id);
+        logger(DEBUGGING) << "MemPool - tx " << tx.id << " added to cache";
+      }
     }
 
     std::unordered_set<Crypto::Hash> known_set(known_tx_ids.begin(), known_tx_ids.end());
@@ -366,26 +365,32 @@ namespace CryptoNote {
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::enable_dandelion_fluff(const Crypto::Hash &id) {
     std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-    auto it = m_transactions.find(id);
+    tx_container_t::iterator it = m_transactions.find(id);
     if (it == m_transactions.end()) {
       return false;
     }
 
-    auto& txd = *it;
+    TransactionDetails txd = *it;
     txd.dandelionStem = false;
+
+    m_transactions.modify(it, [&txd](TransactionDetails& item) {
+      item = txd;
+    });
 
     return true;
   }
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::is_transaction_ready_to_go(const Transaction& tx, TransactionCheckInfo& txd) const {
+  bool tx_memory_pool::is_transaction_ready_to_go(const Transaction& tx, const TransactionDetails& txd) const {
+    TransactionCheckInfo checkInfo(txd);
 
-    if (!m_validator.checkTransactionInputs(tx, txd.maxUsedBlock, txd.lastFailedBlock))
+    if (!m_validator.checkTransactionInputs(tx, checkInfo.maxUsedBlock, checkInfo.lastFailedBlock))
       return false;
 
     //if we here, transaction seems valid, but, anyway, check for key_images collisions with blockchain, just to be sure
     if (m_validator.haveSpentKeyImages(tx))
       return false;
 
+    // return false if is dandelion stem
     if (txd.dandelionStem)
       return false;
 
@@ -452,7 +457,7 @@ namespace CryptoNote {
         ready = true;
         logger(DEBUGGING) << "Fill block template - tx added from cache: " << txd.id;
       }
-      else if (is_transaction_ready_to_go(txd.tx, checkInfo)) {
+      else if (is_transaction_ready_to_go(txd.tx, txd)) {
         ready = true;
         m_validated_transactions.insert(txd.id);
         logger(DEBUGGING) << "Fill block template - tx added to cache: " << txd.id;
@@ -574,13 +579,15 @@ namespace CryptoNote {
     {
       uint64_t now = m_timeProvider.now();
       std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-      for (auto it = m_transactions.begin(); it != m_transactions.end();) {
+      for (tx_container_t::iterator it = m_transactions.begin(); it != m_transactions.end();) {
         uint64_t txAge = now - it->receiveTime;
-
         if (it->dandelionStem && txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD) {
           logger(DEBUGGING) << "Transaction " << it->id << " is entering fluff mode due to embargo timeout: " << txAge << " seconds";
-          
-          it->dandelionStem = false;
+          TransactionDetails txd = *it;
+          txd.dandelionStem = false;
+          m_transactions.modify(it, [&txd](TransactionDetails& item) {
+            item = txd;
+          });
         }
       }
     }

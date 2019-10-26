@@ -24,6 +24,7 @@
 #include <Common/ObserverManager.h>
 
 #include "CryptoNoteCore/ICore.h"
+#include "CryptoNoteCore/OnceInInterval.h"
 
 #include "CryptoNoteProtocol/CryptoNoteProtocolDefinitions.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
@@ -118,6 +119,6 @@ namespace CryptoNote
     Tools::ObserverManager<ICryptoNoteProtocolObserver> m_observerManager;
 
     OnceInInterval m_dandelionStemSelectInterval;
-    boost::uuids::uuid m_dandelion_peer;
+    CryptoNoteConnectionContext m_dandelion_peer;
   };
 }

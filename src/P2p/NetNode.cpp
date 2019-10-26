@@ -1168,18 +1168,6 @@ namespace CryptoNote
   }
 
   //-----------------------------------------------------------------------------------
-  bool NodeServer::relay_notify_to_peer(int command, const BinaryArray& data_buff, const net_connection_id* connection) {
-    auto it = m_connections.find(*connection);
-    if (it == m_connections.end()) {
-      return false;
-    }
-
-    it->second.pushMessage(P2pMessage(P2pMessage::NOTIFY, command, data_buff));
-
-    return true;
-  }
- 
-  //-----------------------------------------------------------------------------------
   bool NodeServer::invoke_notify_to_peer(int command, const BinaryArray& buffer, const CryptoNoteConnectionContext& context) {
     auto it = m_connections.find(context.m_connection_id);
     if (it == m_connections.end()) {

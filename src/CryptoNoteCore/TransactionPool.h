@@ -160,6 +160,9 @@ namespace CryptoNote {
 	void getMemoryPool(std::list<CryptoNote::tx_memory_pool::TransactionDetails> txs) const;
 	std::list<CryptoNote::tx_memory_pool::TransactionDetails> getMemoryPool() const;
 
+  bool is_dandelion_stem_transaction(const Crypto::Hash &id) const;
+  bool enable_dandelion_fluff(const Crypto::Hash &id);
+
   private:
 
     struct TransactionPriorityComparator {
@@ -202,10 +205,8 @@ namespace CryptoNote {
 
     tx_container_t::iterator removeTransaction(tx_container_t::iterator i);
     bool removeExpiredTransactions();
-    bool is_transaction_ready_to_go(const Transaction& tx, TransactionCheckInfo& txd) const;
+    bool is_transaction_ready_to_go(const Transaction& tx, const TransactionDetails& txd) const;
 
-    bool is_dandelion_stem_transaction(const Crypto::Hash &id) const;
-    bool enable_dandelion_fluff(const Crypto::Hash &id);
     bool clear_dandelion_embargo();
 
     void buildIndices();
