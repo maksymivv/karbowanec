@@ -540,7 +540,7 @@ namespace CryptoNote {
     s(td.lastFailedBlock.height, "lastFailedBlock.height");
     s(td.lastFailedBlock.id, "lastFailedBlock.id");
     s(td.keptByBlock, "keptByBlock");
-    s(td.keptByBlock, "dandelionStem");
+    s(td.dandelionStem, "dandelionStem");
     s(reinterpret_cast<uint64_t&>(td.receiveTime), "receiveTime");
   }
 
