@@ -711,6 +711,7 @@ void CryptoNoteProtocolHandler::relay_transactions(NOTIFY_NEW_TRANSACTIONS::requ
   } else {
     // Fluff broadcast
     logger(Logging::DEBUGGING) << "Relaying tx in dandelion fluff mode";
+    arg.dandelion = false;
     auto buf = LevinProtocol::encode(arg);
     m_p2p->externalRelayNotifyToAll(NOTIFY_NEW_TRANSACTIONS::ID, buf, nullptr);
   }
