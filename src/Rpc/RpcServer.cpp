@@ -772,6 +772,7 @@ bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMM
   }
 
   NOTIFY_NEW_TRANSACTIONS::request r;
+  r.dandelion = true;
   r.txs.push_back(asString(tx_blob));
   m_core.get_protocol()->relay_transactions(r);
   //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes

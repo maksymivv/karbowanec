@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018, The Unprll Project
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -22,6 +24,7 @@
 #include <Common/ObserverManager.h>
 
 #include "CryptoNoteCore/ICore.h"
+#include "CryptoNoteCore/OnceInInterval.h"
 
 #include "CryptoNoteProtocol/CryptoNoteProtocolDefinitions.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
@@ -95,6 +98,7 @@ namespace CryptoNote
     void updateObservedHeight(uint32_t peerHeight, const CryptoNoteConnectionContext& context);
     void recalculateMaxObservedHeight(const CryptoNoteConnectionContext& context);
     int processObjects(CryptoNoteConnectionContext& context, const std::vector<block_complete_entry>& blocks);
+    bool select_dandelion_stem();
     Logging::LoggerRef logger;
 
   private:
@@ -113,5 +117,8 @@ namespace CryptoNote
 
     std::atomic<size_t> m_peersCount;
     Tools::ObserverManager<ICryptoNoteProtocolObserver> m_observerManager;
+
+    OnceInInterval m_dandelionStemSelectInterval;
+    CryptoNoteConnectionContext m_dandelion_peer;
   };
 }

@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero project
 // Copyright (c) 2014-2018, The Forknote developers
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -191,10 +191,10 @@ namespace CryptoNote
 
     //-----------------------------------------------------------------------------------------------
     bool add_host_fail(const uint32_t address_ip);
-	bool block_host(const uint32_t address_ip, time_t seconds = P2P_IP_BLOCKTIME);
-	bool unblock_host(const uint32_t address_ip);
-	bool handle_command_line(const boost::program_options::variables_map& vm);
-	bool is_remote_host_allowed(const uint32_t address_ip);
+    bool block_host(const uint32_t address_ip, time_t seconds = P2P_IP_BLOCKTIME);
+    bool unblock_host(const uint32_t address_ip);
+    bool handle_command_line(const boost::program_options::variables_map& vm);
+    bool is_remote_host_allowed(const uint32_t address_ip);
     bool handleConfig(const NetNodeConfig& config);
     bool append_net_address(std::vector<NetworkAddress>& nodes, const std::string& addr);
     bool idle_worker();
