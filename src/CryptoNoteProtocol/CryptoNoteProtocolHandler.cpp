@@ -35,7 +35,7 @@
 #include "CryptoNoteCore/VerificationContext.h"
 #include "P2p/LevinProtocol.h"
 
-#include "Crypto/random.h"
+#include "crypto/random.h"
 
 using namespace Logging;
 using namespace Common;
@@ -507,8 +507,7 @@ bool CryptoNoteProtocolHandler::select_dandelion_stem() {
 
   if (!alive_peers.empty()) {
     CryptoNoteConnectionContext dandelion_peer;
-    std::random_device rd;
-    std::mt19937 rng(rd());
+    std::mt19937 rng = Random::generator();
     std::uniform_int_distribution<> dis(0, std::distance(alive_peers.begin(), alive_peers.end()) - 1);
     auto it = alive_peers.begin();
     std::advance(it, dis(rng));
