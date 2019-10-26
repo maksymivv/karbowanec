@@ -352,34 +352,6 @@ namespace CryptoNote {
     return std::unique_lock<std::recursive_mutex>(m_transactions_lock);
   }
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::is_dandelion_stem_transaction(const Crypto::Hash &id) const {
-    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-    auto it = m_transactions.find(id);
-    if (it == m_transactions.end()) {
-      return false;
-    }
-
-    auto& txd = *it;
-    return txd.dandelionStem;
-  }
-  //---------------------------------------------------------------------------------
-  bool tx_memory_pool::enable_dandelion_fluff(const Crypto::Hash &id) {
-    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-    tx_container_t::iterator it = m_transactions.find(id);
-    if (it == m_transactions.end()) {
-      return false;
-    }
-
-    TransactionDetails txd = *it;
-    txd.dandelionStem = false;
-
-    m_transactions.modify(it, [&txd](TransactionDetails& item) {
-      item = txd;
-    });
-
-    return true;
-  }
-  //---------------------------------------------------------------------------------
   bool tx_memory_pool::is_transaction_ready_to_go(const Transaction& tx, const TransactionDetails& txd) const {
     TransactionCheckInfo checkInfo(txd);
 
@@ -388,10 +360,6 @@ namespace CryptoNote {
 
     //if we here, transaction seems valid, but, anyway, check for key_images collisions with blockchain, just to be sure
     if (m_validator.haveSpentKeyImages(tx))
-      return false;
-
-    // return false if is dandelion stem
-    if (txd.dandelionStem)
       return false;
 
     //transaction is ok.
@@ -574,22 +542,62 @@ namespace CryptoNote {
     m_txCheckInterval.call([this](){ return removeExpiredTransactions(); });
     m_dandelionEmbargoInterval.call([this]() { return clear_dandelion_embargo(); });
   }
+
+  //---------------------------------------------------------------------------------
+  bool tx_memory_pool::is_dandelion_stem_transaction(const Crypto::Hash &id) const {
+    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
+    auto it = m_transactions.find(id);
+    if (it == m_transactions.end()) {
+      return false;
+    }
+
+    auto& txd = *it;
+    return txd.dandelionStem;
+  }
+  //---------------------------------------------------------------------------------
+  bool tx_memory_pool::enable_dandelion_fluff(const Crypto::Hash &id) {
+    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
+    auto& it = m_transactions.find(id);
+    if (it == m_transactions.end()) {
+      return false;
+    }
+
+    try {
+      /*TransactionDetails txd = *it;
+      txd.dandelionStem = false;
+      m_transactions.modify(it, [&txd](auto& item) {
+        item = txd;
+      });*/
+      m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
+    }
+    catch (const std::exception& e) {
+      logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in enable_dandelion_fluff() due to: " << e.what();
+      return false;
+    }
+
+    return true;
+  }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::clear_dandelion_embargo() {
-    {
+    try {
       uint64_t now = m_timeProvider.now();
       std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-      for (tx_container_t::iterator it = m_transactions.begin(); it != m_transactions.end();) {
+      for (auto& it = m_transactions.begin(); it != m_transactions.end();) {
         uint64_t txAge = now - it->receiveTime;
         if (it->dandelionStem && txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD) {
           logger(DEBUGGING) << "Transaction " << it->id << " is entering fluff mode due to embargo timeout: " << txAge << " seconds";
-          TransactionDetails txd = *it;
+          /*TransactionDetails txd = *it;
           txd.dandelionStem = false;
-          m_transactions.modify(it, [&txd](TransactionDetails& item) {
+          m_transactions.modify(it, [&txd](auto& item) {
             item = txd;
-          });
+          });*/
+          m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
         }
       }
+    }
+    catch (const std::exception& e) {
+      logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in clear_dandelion_embargo() due to: " << e.what();
+      return false;
     }
 
     return true;
