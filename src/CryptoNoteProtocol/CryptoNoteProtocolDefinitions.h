@@ -107,7 +107,7 @@ namespace CryptoNote
   /************************************************************************/
   struct NOTIFY_NEW_TRANSACTIONS_request
   {
-    bool dandelion = false;
+    bool dandelion;
     std::vector<std::string> txs;
 
     void serialize(ISerializer& s) {
