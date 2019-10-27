@@ -321,7 +321,10 @@ int CryptoNoteProtocolHandler::handle_notify_new_transactions(int command, NOTIF
 
   if (arg.txs.size()) {
     //TODO: add announce usage here
-    relay_post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, &context.m_connection_id);
+    if (!arg.dandelion)
+      relay_post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, &context.m_connection_id);
+    else
+      post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, m_dandelion_peer);
   }
 
   return true;
@@ -669,6 +672,7 @@ int CryptoNoteProtocolHandler::handleRequestTxPool(int command, NOTIFY_REQUEST_T
 
   if (!addedTransactions.empty()) {
     NOTIFY_NEW_TRANSACTIONS::request notification;
+    notification.dandelion = false;
     for (auto& tx : addedTransactions) {
       notification.txs.push_back(asString(toBinaryArray(tx)));
     }
@@ -699,12 +703,15 @@ void CryptoNoteProtocolHandler::relay_transactions(NOTIFY_NEW_TRANSACTIONS::requ
       // Stem propagation
       bool ok = post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, m_dandelion_peer);
       if (!ok) {
-        logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Failed to post notification NOTIFY_REQUEST_TX_POOL to Dandelion peer " << m_dandelion_peer.m_connection_id;
+        logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Failed to post notification NOTIFY_NEW_TRANSACTIONS to Dandelion peer " << m_dandelion_peer.m_connection_id << ", relaying in dandelion fluff mode";
+        arg.dandelion = false;
+        auto buf = LevinProtocol::encode(arg);
+        m_p2p->externalRelayNotifyToAll(NOTIFY_NEW_TRANSACTIONS::ID, buf, nullptr);
       }
     } else {
       // Switch to fluff broadcast
-      arg.dandelion = false;
       logger(Logging::DEBUGGING) << "Switch to relaying tx in dandelion fluff mode";
+      arg.dandelion = false;
       auto buf = LevinProtocol::encode(arg);
       m_p2p->externalRelayNotifyToAll(NOTIFY_NEW_TRANSACTIONS::ID, buf, nullptr);
     }
