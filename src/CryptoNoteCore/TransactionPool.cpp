@@ -362,6 +362,9 @@ namespace CryptoNote {
     if (m_validator.haveSpentKeyImages(tx))
       return false;
 
+    if (is_dandelion_stem_transaction(txd.id)
+      return false;
+
     //transaction is ok.
     return true;
   }
