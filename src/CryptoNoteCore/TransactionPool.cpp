@@ -540,7 +540,7 @@ namespace CryptoNote {
   //---------------------------------------------------------------------------------
   void tx_memory_pool::on_idle() {
     m_txCheckInterval.call([this](){ return removeExpiredTransactions(); });
-    //m_dandelionEmbargoInterval.call([this]() { return clear_dandelion_embargo(); });
+    m_dandelionEmbargoInterval.call([this]() { return clear_dandelion_embargo(); });
   }
 
   //---------------------------------------------------------------------------------
@@ -552,60 +552,52 @@ namespace CryptoNote {
     }
 
     auto& txd = *it;
-    //return txd.dandelionStem;
-
+    return txd.dandelionStem;
+    /*
     bool stem = true;
     uint64_t now = m_timeProvider.now();
     uint64_t txAge = now - it->receiveTime; 
     if (txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD || it->keptByBlock)
       stem = false;
 
-    return stem;
+    return stem;*/
   }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::enable_dandelion_fluff(const Crypto::Hash &id) {
     std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-    auto& it = m_transactions.find(id);
+    auto it = m_transactions.find(id);
     if (it == m_transactions.end()) {
       return false;
     }
 
-    try {
-      //m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
-      TransactionDetails txd = *it;
-      txd.dandelionStem = false;
-      m_transactions.modify(it, [&txd](auto& item) {
+    auto& txd = *it;
+    if (!m_transactions.modify(it, [&txd](TransactionDetails& item) {
         item = txd;
-      });
-    }
-    catch (const std::exception& e) {
-      logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in enable_dandelion_fluff() due to: " << e.what();
+        item.dandelionStem = false;
+      })) {
+      logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in enable_dandelion_fluff()";
       return false;
     }
-
+    
     return true;
   }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::clear_dandelion_embargo() {
-    try {
-      uint64_t now = m_timeProvider.now();
-      std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-      for (auto& it = m_transactions.begin(); it != m_transactions.end();) {
-        uint64_t txAge = now - it->receiveTime;
-        if (it->dandelionStem && txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD) {
-          logger(DEBUGGING) << "Transaction " << it->id << " is entering fluff mode due to embargo timeout: " << txAge << " seconds";
-          //m_transactions.modify(it, [](auto& d) {d.dandelionStem = false; });
-          TransactionDetails txd = *it;
-          txd.dandelionStem = false;
-          m_transactions.modify(it, [&txd](auto& item) {
+    uint64_t now = m_timeProvider.now();
+    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
+    for (auto it = m_transactions.begin(); it != m_transactions.end();) {
+      uint64_t txAge = now - it->receiveTime;
+      if (it->dandelionStem && txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD) {
+        logger(DEBUGGING) << "Transaction " << it->id << " is entering fluff mode due to embargo timeout: " << txAge << " seconds";
+        auto txd = *it;
+        if (!m_transactions.modify(it, [&txd](TransactionDetails& item) {
             item = txd;
-          });
+            item.dandelionStem = false;
+          })) {
+          logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in clear_dandelion_embargo()";
+          return false;
         }
       }
-    }
-    catch (const std::exception& e) {
-      logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in clear_dandelion_embargo() due to: " << e.what();
-      return false;
     }
 
     return true;
