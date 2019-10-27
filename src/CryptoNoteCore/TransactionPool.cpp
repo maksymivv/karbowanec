@@ -116,7 +116,6 @@ namespace CryptoNote {
     m_core(core),
     m_timeProvider(timeProvider), 
     m_txCheckInterval(60, timeProvider),
-    m_dandelionEmbargoInterval(30, timeProvider),
     m_fee_index(boost::get<1>(m_transactions)),
     logger(log, "txpool"),
     m_paymentIdIndex(blockchainIndexesEnabled),
@@ -201,7 +200,6 @@ namespace CryptoNote {
       txd.tx = tx;
       txd.fee = fee;
       txd.keptByBlock = keptByBlock;
-      txd.dandelionStem = keptByBlock ? false : true;
       txd.receiveTime = m_timeProvider.now();
 
       txd.maxUsedBlock = maxUsedBlock;
@@ -362,7 +360,7 @@ namespace CryptoNote {
     if (m_validator.haveSpentKeyImages(tx))
       return false;
 
-    if (is_dandelion_stem_transaction(txd.id)
+    if (is_dandelion_stem_transaction(txd.id))
       return false;
 
     //transaction is ok.
@@ -382,7 +380,7 @@ namespace CryptoNote {
       ss << "blobSize: " << txd.blobSize << std::endl
         << "fee: " << m_currency.formatAmount(txd.fee) << std::endl
         << "keptByBlock: " << (txd.keptByBlock ? 'T' : 'F') << std::endl
-        << "dandelion_stem:" << (txd.dandelionStem ? 'T' : 'F') << std::endl
+        << "dandelion_stem:" << (is_dandelion_stem_transaction(txd.id) ? 'T' : 'F') << std::endl
         << "max_used_block_height: " << txd.maxUsedBlock.height << std::endl
         << "max_used_block_id: " << txd.maxUsedBlock.id << std::endl
         << "last_failed_height: " << txd.lastFailedBlock.height << std::endl
@@ -511,7 +509,6 @@ namespace CryptoNote {
     s(td.lastFailedBlock.height, "lastFailedBlock.height");
     s(td.lastFailedBlock.id, "lastFailedBlock.id");
     s(td.keptByBlock, "keptByBlock");
-    s(td.dandelionStem, "dandelionStem");
     s(reinterpret_cast<uint64_t&>(td.receiveTime), "receiveTime");
   }
 
@@ -543,7 +540,6 @@ namespace CryptoNote {
   //---------------------------------------------------------------------------------
   void tx_memory_pool::on_idle() {
     m_txCheckInterval.call([this](){ return removeExpiredTransactions(); });
-    m_dandelionEmbargoInterval.call([this]() { return clear_dandelion_embargo(); });
   }
 
   //---------------------------------------------------------------------------------
@@ -555,56 +551,15 @@ namespace CryptoNote {
     }
 
     auto& txd = *it;
-    return txd.dandelionStem;
-    /*
     bool stem = true;
     uint64_t now = m_timeProvider.now();
     uint64_t txAge = now - it->receiveTime; 
     if (txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD || it->keptByBlock)
       stem = false;
 
-    return stem;*/
+    return stem;
   }
-  //---------------------------------------------------------------------------------
-  bool tx_memory_pool::enable_dandelion_fluff(const Crypto::Hash &id) {
-    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-    auto it = m_transactions.find(id);
-    if (it == m_transactions.end()) {
-      return false;
-    }
 
-    auto& txd = *it;
-    if (!m_transactions.modify(it, [&txd](TransactionDetails& item) {
-        item = txd;
-        item.dandelionStem = false;
-      })) {
-      logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in enable_dandelion_fluff()";
-      return false;
-    }
-    
-    return true;
-  }
-  //---------------------------------------------------------------------------------
-  bool tx_memory_pool::clear_dandelion_embargo() {
-    uint64_t now = m_timeProvider.now();
-    std::lock_guard<std::recursive_mutex> lock(m_transactions_lock);
-    for (auto it = m_transactions.begin(); it != m_transactions.end();) {
-      uint64_t txAge = now - it->receiveTime;
-      if (it->dandelionStem && txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD) {
-        logger(DEBUGGING) << "Transaction " << it->id << " is entering fluff mode due to embargo timeout: " << txAge << " seconds";
-        auto txd = *it;
-        if (!m_transactions.modify(it, [&txd](TransactionDetails& item) {
-            item = txd;
-            item.dandelionStem = false;
-          })) {
-          logger(ERROR, BRIGHT_RED) << "Failed to modify pool transaction in clear_dandelion_embargo()";
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::removeExpiredTransactions() {
     bool somethingRemoved = false;
