@@ -785,7 +785,8 @@ namespace CryptoNote {
   }
 
   difficulty_type Currency::algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& prevAlgos) const {
-    difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
+    difficulty_type algDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
+    difficulty_type adjDiff = algDiff;
     for (size_t i = 0; i < prevAlgos.size(); i++) {
       if (prevAlgos[i] == currAlgo) {
         adjDiff *= 2;
@@ -794,9 +795,7 @@ namespace CryptoNote {
         adjDiff /= sqrt(2);
       }
     }
-    adjDiff = std::max<uint64_t>(adjDiff, currentDiffic);
-   
-    return adjDiff;
+    return std::max<uint64_t>(adjDiff, algDiff);
   }
 
 	bool Currency::checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
