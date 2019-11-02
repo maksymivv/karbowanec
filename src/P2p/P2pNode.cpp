@@ -37,6 +37,8 @@
 #include "P2pContextOwner.h"
 #include "P2pNetworks.h"
 
+#include "crypto/random.h"
+
 using namespace Common;
 using namespace Logging;
 using namespace System;
@@ -75,7 +77,7 @@ private:
       return 0;
     }
 
-    size_t x = Crypto::rand<size_t>() % (maxIndex + 1);
+    size_t x = Random::randomValue<size_t>() % (maxIndex + 1);
     return (x * x * x) / (maxIndex * maxIndex);
   }
 
