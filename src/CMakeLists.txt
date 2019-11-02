@@ -98,6 +98,8 @@ target_link_libraries(Miner ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
 if (WITH_SSL AND SECURE_FOUND)
   target_link_libraries(Daemon ${SECURE_LIBRARIES})
   target_link_libraries(SimpleWallet ${SECURE_LIBRARIES})
+  target_link_libraries(GreenWallet ${SECURE_LIBRARIES})
+  target_link_libraries(Optimizer ${SECURE_LIBRARIES})
   target_link_libraries(PaymentGateService ${SECURE_LIBRARIES})
 endif()
 
