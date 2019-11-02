@@ -104,7 +104,7 @@ if (WITH_SSL AND SECURE_FOUND)
 endif()
 
 if (MSVC)
-  target_link_libraries(System ws2_32)
+  target_link_libraries(System crypt32 ws2_32)
   target_link_libraries(Daemon Rpcrt4)
   target_link_libraries(SimpleWallet Rpcrt4)
   target_link_libraries(PaymentGateService Rpcrt4)
