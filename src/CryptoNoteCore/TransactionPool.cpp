@@ -360,8 +360,8 @@ namespace CryptoNote {
     if (m_validator.haveSpentKeyImages(tx))
       return false;
 
-    if (is_dandelion_stem_transaction(txd.id))
-      return false;
+    //if (is_dandelion_stem_transaction(txd.id))
+    //  return false;
 
     //transaction is ok.
     return true;
@@ -551,13 +551,11 @@ namespace CryptoNote {
     }
 
     auto& txd = *it;
-    bool stem = true;
     uint64_t now = m_timeProvider.now();
     uint64_t txAge = now - it->receiveTime; 
-    if (txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD || it->keptByBlock)
-      stem = false;
+    bool r = txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD || it->keptByBlock;
 
-    return stem;
+    return r;
   }
 
   //---------------------------------------------------------------------------------
