@@ -320,10 +320,10 @@ int CryptoNoteProtocolHandler::handle_notify_new_transactions(int command, NOTIF
 
   if (arg.txs.size()) {
     //TODO: add announce usage here
-    if (!arg.dandelion)
-      relay_post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, &context.m_connection_id);
-    else
+    if (arg.dandelion && (m_dandelion_peer.m_state == CryptoNoteConnectionContext::state_normal || m_dandelion_peer.m_state == CryptoNoteConnectionContext::state_synchronizing))
       post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, m_dandelion_peer);
+    else
+      relay_post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, &context.m_connection_id);
   }
 
   return true;
