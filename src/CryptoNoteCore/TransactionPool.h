@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -157,6 +158,8 @@ namespace CryptoNote {
 	void getMemoryPool(std::list<CryptoNote::tx_memory_pool::TransactionDetails> txs) const;
 	std::list<CryptoNote::tx_memory_pool::TransactionDetails> getMemoryPool() const;
 
+  bool is_dandelion_stem_transaction(const Crypto::Hash &id) const;
+
   private:
 
     struct TransactionPriorityComparator {
@@ -199,13 +202,13 @@ namespace CryptoNote {
 
     tx_container_t::iterator removeTransaction(tx_container_t::iterator i);
     bool removeExpiredTransactions();
-    bool is_transaction_ready_to_go(const Transaction& tx, TransactionCheckInfo& txd) const;
+    bool is_transaction_ready_to_go(const Transaction& tx, const TransactionDetails& txd) const;
 
     void buildIndices();
 
     Tools::ObserverManager<ITxPoolObserver> m_observerManager;
     const CryptoNote::Currency& m_currency;
-	CryptoNote::ICore& m_core;
+    CryptoNote::ICore& m_core;
     OnceInTimeInterval m_txCheckInterval;
     mutable std::recursive_mutex m_transactions_lock;
     key_images_container m_spent_key_images;
