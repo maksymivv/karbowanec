@@ -552,7 +552,7 @@ namespace CryptoNote {
     auto& txd = *it;
     uint64_t now = m_timeProvider.now();
     uint64_t txAge = now - it->receiveTime; 
-    bool r = txAge > CryptoNote::DANDELION_TX_EMBARGO_PERIOD || it->keptByBlock;
+    bool r = txAge > m_currency.dandelionEmbargoPeriod() || it->keptByBlock;
 
     return r;
   }

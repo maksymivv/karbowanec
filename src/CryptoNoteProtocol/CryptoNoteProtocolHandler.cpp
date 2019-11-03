@@ -686,7 +686,6 @@ int CryptoNoteProtocolHandler::handleRequestTxPool(int command, NOTIFY_REQUEST_T
   return 1;
 }
 
-
 void CryptoNoteProtocolHandler::relay_block(NOTIFY_NEW_BLOCK::request& arg) {
   auto buf = LevinProtocol::encode(arg);
   m_p2p->externalRelayNotifyToAll(NOTIFY_NEW_BLOCK::ID, buf, nullptr);
@@ -698,7 +697,7 @@ void CryptoNoteProtocolHandler::relay_transactions(NOTIFY_NEW_TRANSACTIONS::requ
     std::mt19937 rng = Random::generator();
     std::uniform_int_distribution<> dis(0, 100);
     auto coin_flip = dis(rng);
-    if (coin_flip < CryptoNote::DANDELION_TX_STEM_PROPAGATION_PROBABILITY) {
+    if (coin_flip < m_currency.dandelionStemPropagationProbability()) {
       logger(Logging::DEBUGGING) << "Relaying tx in dandelion stem mode";
       // Stem propagation
       bool ok = post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, m_dandelion_peer);

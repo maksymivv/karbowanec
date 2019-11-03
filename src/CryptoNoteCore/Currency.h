@@ -113,6 +113,9 @@ public:
   uint64_t mempoolTxLiveTime() const { return m_mempoolTxLiveTime; }
   uint64_t mempoolTxFromAltBlockLiveTime() const { return m_mempoolTxFromAltBlockLiveTime; }
   uint64_t numberOfPeriodsToForgetTxDeletedFromPool() const { return m_numberOfPeriodsToForgetTxDeletedFromPool; }
+  
+  uint8_t dandelionEmbargoPeriod() const { return m_dandelionEmbargoPeriod; }
+  uint8_t dandelionStemPropagationProbability() const { return m_dandelionStemPropagationProbability; }
 
   size_t fusionTxMaxSize() const { return m_fusionTxMaxSize; }
   size_t fusionTxMinInputCount() const { return m_fusionTxMinInputCount; }
@@ -236,6 +239,9 @@ private:
   size_t m_fusionTxMinInputCount;
   size_t m_fusionTxMinInOutCountRatio;
 
+  uint8_t m_dandelionEmbargoPeriod;
+  uint8_t m_dandelionStemPropagationProbability;
+
   uint32_t m_upgradeHeightV2;
   uint32_t m_upgradeHeightV3;
   uint32_t m_upgradeHeightV4;
@@ -322,6 +328,9 @@ public:
   CurrencyBuilder& fusionTxMaxSize(size_t val) { m_currency.m_fusionTxMaxSize = val; return *this; }
   CurrencyBuilder& fusionTxMinInputCount(size_t val) { m_currency.m_fusionTxMinInputCount = val; return *this; }
   CurrencyBuilder& fusionTxMinInOutCountRatio(size_t val) { m_currency.m_fusionTxMinInOutCountRatio = val; return *this; }
+
+  CurrencyBuilder& dandelionEmbargoPeriod(uint8_t val) { m_currency.m_dandelionEmbargoPeriod = val; return *this; }
+  CurrencyBuilder& dandelionStemPropagationProbability(uint8_t val) { m_currency.m_dandelionStemPropagationProbability = val; return *this; }
 
   CurrencyBuilder& upgradeHeightV2(uint64_t val) { m_currency.m_upgradeHeightV2 = static_cast<uint32_t>(val); return *this; }
   CurrencyBuilder& upgradeHeightV3(uint64_t val) { m_currency.m_upgradeHeightV3 = static_cast<uint32_t>(val); return *this; }

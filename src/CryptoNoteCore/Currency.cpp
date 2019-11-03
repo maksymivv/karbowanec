@@ -847,6 +847,9 @@ namespace CryptoNote {
 		fusionTxMinInputCount(parameters::FUSION_TX_MIN_INPUT_COUNT);
 		fusionTxMinInOutCountRatio(parameters::FUSION_TX_MIN_IN_OUT_COUNT_RATIO);
 
+    dandelionEmbargoPeriod(parameters::DANDELION_TX_EMBARGO_PERIOD);
+    dandelionStemPropagationProbability(parameters::DANDELION_TX_STEM_PROPAGATION_PROBABILITY);
+
 		upgradeHeightV2(parameters::UPGRADE_HEIGHT_V2);
 		upgradeHeightV3(parameters::UPGRADE_HEIGHT_V3);
 		upgradeHeightV4(parameters::UPGRADE_HEIGHT_V4);
