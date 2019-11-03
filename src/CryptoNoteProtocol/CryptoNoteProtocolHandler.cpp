@@ -69,7 +69,6 @@ CryptoNoteProtocolHandler::CryptoNoteProtocolHandler(const Currency& currency, S
   
   if (!m_p2p) {
     m_p2p = &m_p2p_stub;
-    select_dandelion_stem();
   }
 }
 

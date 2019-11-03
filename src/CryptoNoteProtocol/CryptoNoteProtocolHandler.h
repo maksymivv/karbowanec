@@ -76,6 +76,7 @@ namespace CryptoNote
     virtual size_t getPeerCount() const override;
     virtual uint32_t getObservedHeight() const override;
     void requestMissingPoolTransactions(const CryptoNoteConnectionContext& context);
+    bool select_dandelion_stem();
 
   private:
     //----------------- commands handlers ----------------------------------------------
@@ -98,7 +99,6 @@ namespace CryptoNote
     void updateObservedHeight(uint32_t peerHeight, const CryptoNoteConnectionContext& context);
     void recalculateMaxObservedHeight(const CryptoNoteConnectionContext& context);
     int processObjects(CryptoNoteConnectionContext& context, const std::vector<block_complete_entry>& blocks);
-    bool select_dandelion_stem();
     Logging::LoggerRef logger;
 
   private:
