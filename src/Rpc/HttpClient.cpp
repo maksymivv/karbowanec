@@ -56,8 +56,8 @@ void add_windows_root_certs(boost::asio::ssl::context &ctx) {
 
 namespace CryptoNote {
 
-HttpClient::HttpClient(System::Dispatcher& dispatcher, const std::string& address, uint16_t port) :
-  m_dispatcher(dispatcher), m_address(address), m_port(port) {
+HttpClient::HttpClient(System::Dispatcher& dispatcher, const std::string& address, uint16_t port, bool ssl_enable) :
+  m_dispatcher(dispatcher), m_address(address), m_port(port), m_ssl_enable(ssl_enable) {
 }
 
 HttpClient::~HttpClient() {
@@ -66,31 +66,118 @@ HttpClient::~HttpClient() {
   }
 }
 
-void HttpClient::request(const HttpRequest &req, HttpResponse &res) {
+void HttpClient::request(HttpRequest &req, HttpResponse &res) {
   if (!m_connected) {
     connect();
   }
-
-  try {
-    std::iostream stream(m_streamBuf.get());
-    HttpParser parser;
-    stream << req;
-    stream.flush();
-    parser.receiveResponse(stream, res);
-  } catch (const std::exception &) {
-    disconnect();
-    throw;
+  req.setHost(m_address);
+  if (this->m_ssl_enable) {
+    try {
+      char *req_buff = "";
+      System::SocketStreambuf streambuf((char *) req_buff, 1);
+      std::iostream stream(&streambuf);
+      HttpParser parser;
+      stream << req;
+      stream.flush();
+      std::vector<uint8_t> req_data;
+      std::vector<uint8_t> resp_data;
+      streambuf.getRespdata(req_data);
+      size_t req_data_size = (size_t) req_data.size();
+      size_t write_size = 0;
+      size_t write_full_size = 0;
+      while (write_full_size < req_data_size) {
+        write_size = this->m_ssl_sock->write_some(boost::asio::buffer(req_data.data() + write_full_size, req_data_size - write_full_size));
+        if (write_size > 0) {
+          write_full_size += write_size;
+        } else {
+          break;
+        }
+      }
+      size_t resp_size = 0;
+      size_t resp_size_full = 0;
+      const size_t resp_buff_size = 1024;
+      char resp_buff[resp_buff_size];
+      const char *header_end_sep = "\r\n\r\n";
+      const char *content_lenght = "Content-Length";
+      const char *content_lenght_end_sep = "\r\n";
+      bool header_found = false;
+      size_t stream_len = 0;
+      while (true) {
+        resp_size = this->m_ssl_sock->read_some(boost::asio::buffer((char *) resp_buff, resp_buff_size));
+        resp_size_full += resp_size;
+        if (resp_size > 0) {
+          resp_data.resize(resp_size_full);
+          memcpy(resp_data.data() + resp_size_full - resp_size, resp_buff, resp_size);
+          if (!header_found) {
+            std::string data = std::string((char *) resp_data.data());
+            size_t header_end = data.find(header_end_sep);
+            if (header_end != std::string::npos) {
+              header_found = true;
+              data.resize(header_end);
+              data.push_back(0x00);
+              size_t content_lenght_start = data.find(content_lenght);
+              size_t content_lenght_end = data.find(content_lenght_end_sep, content_lenght_start);
+              if (content_lenght_start != std::string::npos && content_lenght_end != std::string::npos) {
+                sscanf(data.substr(content_lenght_start + strlen(content_lenght) + 2,
+                                   content_lenght_end - content_lenght_start - strlen(content_lenght) - 2).c_str(), "%zu", &stream_len);
+                stream_len += header_end + 4;
+              }
+            }
+          }
+          if (resp_size_full >= stream_len - 1 && header_found) break;
+        } else {
+          break;
+        }
+      }
+      streambuf.setRespdata(resp_data);
+      parser.receiveResponse(stream, res);
+    } catch (const std::exception &) {
+      disconnect();
+      throw;
+    }
+  } else {
+    try {
+      std::iostream stream(m_streamBuf.get());
+      HttpParser parser;
+      stream << req;
+      stream.flush();
+      parser.receiveResponse(stream, res);
+    } catch (const std::exception &) {
+      disconnect();
+      throw;
+    }
   }
 }
 
 void HttpClient::connect() {
-  try {
-    auto ipAddr = System::Ipv4Resolver(m_dispatcher).resolve(m_address);
-    m_connection = System::TcpConnector(m_dispatcher).connect(ipAddr, m_port);
-    m_streamBuf.reset(new System::TcpStreambuf(m_connection));
-    m_connected = true;
-  } catch (const std::exception& e) {
-    throw ConnectException(e.what());
+  if (this->m_ssl_enable) {
+    try {
+      boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
+      ctx.set_default_verify_paths();
+#if defined(WIN32)
+      add_windows_root_certs(ctx);
+#endif
+      this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, std::move(ctx)));
+      tcp::resolver resolver(this->m_io_service);
+      tcp::resolver::query query(this->m_address, std::to_string(this->m_port));
+      boost::asio::connect(this->m_ssl_sock->lowest_layer(), resolver.resolve(query));
+      this->m_ssl_sock->lowest_layer().set_option(tcp::no_delay(true));
+      this->m_ssl_sock->set_verify_mode(boost::asio::ssl::verify_peer);
+      this->m_ssl_sock->set_verify_callback(boost::asio::ssl::rfc2818_verification(this->m_address));
+      this->m_ssl_sock->handshake(boost::asio::ssl::stream_base::client);
+      m_connected = true;
+    } catch (const std::exception& e) {
+      throw ConnectException(e.what());
+    }
+  } else {
+    try {
+      auto ipAddr = System::Ipv4Resolver(m_dispatcher).resolve(m_address);
+      m_connection = System::TcpConnector(m_dispatcher).connect(ipAddr, m_port);
+      m_streamBuf.reset(new System::TcpStreambuf(m_connection));
+      m_connected = true;
+    } catch (const std::exception& e) {
+      throw ConnectException(e.what());
+    }
   }
 }
 
@@ -99,19 +186,26 @@ bool HttpClient::isConnected() const {
 }
 
 void HttpClient::disconnect() {
-  m_streamBuf.reset();
-  try {
-    m_connection.write(nullptr, 0); //Socket shutdown.
-  } catch (std::exception&) {
-    //Ignoring possible exception.
+  if (this->m_ssl_enable) {
+    try {
+      this->m_ssl_sock->lowest_layer().close();
+    } catch (std::exception&) {
+      //Ignoring possible exception.
+    }
+    this->m_ssl_sock.reset();
+  } else {
+    m_streamBuf.reset();
+    try {
+      m_connection.write(nullptr, 0); //Socket shutdown.
+    } catch (std::exception&) {
+      //Ignoring possible exception.
+    }
+    try {
+      m_connection = System::TcpConnection();
+    } catch (std::exception&) {
+      //Ignoring possible exception.
+    }
   }
-
-  try {
-    m_connection = System::TcpConnection();
-  } catch (std::exception&) {
-    //Ignoring possible exception.
-  }
-
   m_connected = false;
 }
 
