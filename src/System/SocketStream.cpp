@@ -34,6 +34,10 @@ SocketStreambuf::~SocketStreambuf(){
   this->dumpBuffer(true);
 }
 
+void SocketStreambuf::setRespdata(const std::vector<uint8_t> &data) {
+  this->readBuf = data;
+}
+
 std::streambuf::int_type SocketStreambuf::overflow(std::streambuf::int_type ch) {
   if (ch == traits_type::eof()) {
     return traits_type::eof();
@@ -52,6 +56,7 @@ std::streambuf::int_type SocketStreambuf::underflow() {
   if (gptr() < egptr()) {
     return traits_type::to_int_type(*gptr());
   }
+
   if (read_t){
     read_t = false;
   } else {
@@ -60,6 +65,9 @@ std::streambuf::int_type SocketStreambuf::underflow() {
   if (this->lenght == 0) {
     return traits_type::eof();
   }
+
+  setg((char *) readBuf.data(), (char *) readBuf.data(), (char *) readBuf.data() + readBuf.size());
+
   return traits_type::to_int_type(*gptr());
 }
 

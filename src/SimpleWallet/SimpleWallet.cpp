@@ -1011,7 +1011,7 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
 		return false;
 	}
 
-	this->m_node.reset(new NodeRpcProxy(m_daemon_host, m_daemon_port));
+	this->m_node.reset(new NodeRpcProxy(m_daemon_host, m_daemon_port, m_daemon_path, m_daemon_ssl));
 
 	std::promise<std::error_code> errorPromise;
 	std::future<std::error_code> f_error = errorPromise.get_future();
@@ -1797,7 +1797,7 @@ bool simple_wallet::start_mining(const std::vector<std::string>& args) {
   COMMAND_RPC_START_MINING::response res;
 
   try {
-    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port);
+    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port, m_daemon_ssl);
 
     invokeJsonCommand(httpClient, "/start_mining", req, res);
 
@@ -1822,7 +1822,7 @@ bool simple_wallet::stop_mining(const std::vector<std::string>& args)
   COMMAND_RPC_STOP_MINING::response res;
 
   try {
-    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port);
+    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port, m_daemon_ssl);
 
     invokeJsonCommand(httpClient, "/stop_mining", req, res);
     std::string err = interpret_rpc_response(true, res.status);
@@ -2083,7 +2083,7 @@ std::string simple_wallet::resolveAlias(const std::string& aliasUrl) {
 //----------------------------------------------------------------------------------------------------
 std::string simple_wallet::getFeeAddress() {
   
-  HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port);
+  HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port, m_daemon_ssl);
 
   HttpRequest req;
   HttpResponse res;
@@ -2635,7 +2635,7 @@ int main(int argc, char* argv[]) {
     if (!daemon_port)
       daemon_port = RPC_DEFAULT_PORT;
 
-    std::unique_ptr<INode> node(new NodeRpcProxy(daemon_host, daemon_port));
+    std::unique_ptr<INode> node(new NodeRpcProxy(daemon_host, daemon_port, daemon_path, daemon_ssl));
 
     std::promise<std::error_code> errorPromise;
     std::future<std::error_code> error = errorPromise.get_future();
