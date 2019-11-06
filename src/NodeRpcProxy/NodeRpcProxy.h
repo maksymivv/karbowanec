@@ -48,7 +48,7 @@ public:
 
 class NodeRpcProxy : public CryptoNote::INode {
 public:
-  NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort);
+  NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort, const std::string &daemon_path, const bool &daemon_ssl);
   virtual ~NodeRpcProxy();
 
   virtual bool addObserver(CryptoNote::INodeObserver* observer) override;
@@ -168,6 +168,9 @@ private:
 
   bool m_connected;
   std::string m_fee_address;
+
+  std::string m_daemon_path;
+  bool m_daemon_ssl;
 };
 
 }

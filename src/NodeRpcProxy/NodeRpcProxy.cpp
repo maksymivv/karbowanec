@@ -61,12 +61,14 @@ std::error_code interpretResponseStatus(const std::string& status) {
 
 }
 
-NodeRpcProxy::NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort) :
+NodeRpcProxy::NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort, const std::string &daemon_path, const bool &daemon_ssl) :
     m_rpcTimeout(10000),
     m_pullInterval(5000),
     m_nodeHost(nodeHost),
     m_nodePort(nodePort),
+    m_daemon_path(daemon_path),
     m_connected(true),
+    m_daemon_ssl(daemon_ssl),
     m_peerCount(0),
     m_networkHeight(0),
     m_nodeHeight(0),
@@ -149,7 +151,7 @@ void NodeRpcProxy::workerThread(const INode::Callback& initialized_callback) {
     m_dispatcher = &dispatcher;
     ContextGroup contextGroup(dispatcher);
     m_context_group = &contextGroup;
-    HttpClient httpClient(dispatcher, m_nodeHost, m_nodePort);
+    HttpClient httpClient(dispatcher, m_nodeHost, m_nodePort, m_daemon_ssl);
     m_httpClient = &httpClient;
     Event httpEvent(dispatcher);
     m_httpEvent = &httpEvent;
