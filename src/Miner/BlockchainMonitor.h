@@ -35,6 +35,7 @@ private:
   System::Dispatcher& m_dispatcher;
   std::string m_daemonHost;
   uint16_t m_daemonPort;
+  bool m_isEnableSSL = false;
   size_t m_pollingInterval;
   bool m_stopped;
   System::Event m_httpEvent;

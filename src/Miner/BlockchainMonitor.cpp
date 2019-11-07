@@ -27,6 +27,10 @@
 #include "Rpc/JsonRpc.h"
 #include "Rpc/HttpClient.h"
 
+#undef ERROR
+
+using namespace Logging;
+
 BlockchainMonitor::BlockchainMonitor(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, size_t pollingInterval, Logging::ILogger& logger):
   m_dispatcher(dispatcher),
   m_daemonHost(daemonHost),
@@ -78,7 +82,7 @@ Crypto::Hash BlockchainMonitor::requestLastBlockHash() {
   m_logger(Logging::DEBUGGING) << "Requesting last block hash";
 
   try {
-    CryptoNote::HttpClient client(m_dispatcher, m_daemonHost, m_daemonPort);
+    CryptoNote::HttpClient client(m_dispatcher, m_daemonHost, m_daemonPort, m_isEnableSSL);
 
     CryptoNote::COMMAND_RPC_GET_LAST_BLOCK_HEADER::request request;
     CryptoNote::COMMAND_RPC_GET_LAST_BLOCK_HEADER::response response;
@@ -99,7 +103,7 @@ Crypto::Hash BlockchainMonitor::requestLastBlockHash() {
 
     return blockHash;
   } catch (std::exception& e) {
-    m_logger(Logging::ERROR) << "Failed to request last block hash: " << e.what();
+    m_logger((Logging::Level) ERROR) << "Failed to request last block hash: " << e.what();
     throw;
   }
 }

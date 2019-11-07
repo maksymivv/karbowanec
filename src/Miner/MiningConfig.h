@@ -31,6 +31,7 @@ struct MiningConfig {
   std::string miningAddress;
   std::string daemonHost;
   uint16_t daemonPort;
+  bool isEnableSSL = false;
   size_t threadCount;
   size_t scanPeriod;
   uint8_t logLevel;

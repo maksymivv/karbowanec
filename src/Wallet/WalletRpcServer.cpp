@@ -37,6 +37,8 @@
 
 #include "ITransfersContainer.h"
 
+#undef ERROR
+
 using namespace Logging;
 using namespace CryptoNote;
 

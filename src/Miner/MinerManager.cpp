@@ -30,6 +30,9 @@
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Rpc/JsonRpc.h"
 
+#undef ERROR
+
+using namespace Logging;
 using namespace CryptoNote;
 
 namespace Miner {
@@ -90,7 +93,7 @@ void MinerManager::start() {
     m_logger(Logging::INFO) << "requesting mining parameters";
 
     try {
-      params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+      params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.isEnableSSL, m_config.miningAddress);
     } catch (ConnectException& e) {
       m_logger(Logging::WARNING) << "Couldn't connect to daemon: " << e.what();
       System::Timer timer(m_dispatcher);
@@ -120,7 +123,7 @@ void MinerManager::eventLoop() {
         m_logger(Logging::DEBUGGING) << "got BLOCK_MINED event";
         stopBlockchainMonitoring();
 
-        if (submitBlock(m_minedBlock, m_config.daemonHost, m_config.daemonPort)) {
+        if (submitBlock(m_minedBlock, m_config.daemonHost, m_config.daemonPort, m_config.isEnableSSL)) {
           m_lastBlockTimestamp = m_minedBlock.timestamp;
 
           if (m_config.blocksLimit != 0 && ++blocksMined == m_config.blocksLimit) {
@@ -129,7 +132,7 @@ void MinerManager::eventLoop() {
           }
         }
 
-        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.isEnableSSL, m_config.miningAddress);
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
@@ -141,7 +144,7 @@ void MinerManager::eventLoop() {
         m_logger(Logging::DEBUGGING) << "got BLOCKCHAIN_UPDATED event";
         stopMining();
         stopBlockchainMonitoring();
-        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.miningAddress);
+        BlockMiningParameters params = requestMiningParameters(m_dispatcher, m_config.daemonHost, m_config.daemonPort, m_config.isEnableSSL, m_config.miningAddress);
         adjustBlockTemplate(params.blockTemplate);
 
         startBlockchainMonitoring();
@@ -205,9 +208,9 @@ void MinerManager::stopBlockchainMonitoring() {
   m_blockchainMonitor.stop();
 }
 
-bool MinerManager::submitBlock(const Block& minedBlock, const std::string& daemonHost, uint16_t daemonPort) {
+bool MinerManager::submitBlock(const Block& minedBlock, const std::string& daemonHost, uint16_t daemonPort, bool isEnableSSL) {
   try {
-    HttpClient client(m_dispatcher, daemonHost, daemonPort);
+    HttpClient client(m_dispatcher, daemonHost, daemonPort, isEnableSSL);
 
     COMMAND_RPC_SUBMITBLOCK::request request;
     request.emplace_back(Common::toHex(toBinaryArray(minedBlock)));
@@ -225,9 +228,9 @@ bool MinerManager::submitBlock(const Block& minedBlock, const std::string& daemo
   }
 }
 
-BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress) {
+BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, bool isEnableSSL, const std::string& miningAddress) {
   try {
-    HttpClient client(dispatcher, daemonHost, daemonPort);
+    HttpClient client(dispatcher, daemonHost, daemonPort, isEnableSSL);
 
     COMMAND_RPC_GETBLOCKTEMPLATE::request request;
     request.wallet_address = miningAddress;
