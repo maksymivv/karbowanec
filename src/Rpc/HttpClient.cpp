@@ -83,7 +83,7 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
   req.setHost(m_address);
   if (this->m_ssl_enable) {
     try {
-      char *req_buff = "";
+      char *req_buff = (char *)"";
       System::SocketStreambuf streambuf((char *) req_buff, 1);
       std::iostream stream(&streambuf);
       HttpParser parser;
@@ -167,7 +167,7 @@ void HttpClient::connect() {
 #if defined(WIN32)
       add_windows_root_certs(ctx);
 #endif
-      this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, std::move(ctx)));
+      this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, ctx));
       tcp::resolver resolver(this->m_io_service);
       tcp::resolver::query query(this->m_address, std::to_string(this->m_port));
       boost::asio::connect(this->m_ssl_sock->lowest_layer(), resolver.resolve(query));
