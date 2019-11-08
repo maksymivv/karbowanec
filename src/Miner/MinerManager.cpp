@@ -30,8 +30,7 @@
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Rpc/JsonRpc.h"
 
-#undef ERROR
-
+using namespace Logging;
 using namespace Logging;
 using namespace CryptoNote;
 
@@ -183,7 +182,7 @@ void MinerManager::startMining(const CryptoNote::BlockMiningParameters& params) 
       pushEvent(BlockMinedEvent());
     } catch (System::InterruptedException&) {
     } catch (std::exception& e) {
-      m_logger(Logging::ERROR) << "Miner context unexpectedly finished: " << e.what();
+      m_logger((Logging::Level) ERROR) << "Miner context unexpectedly finished: " << e.what();
     }
   });
 }
@@ -199,7 +198,7 @@ void MinerManager::startBlockchainMonitoring() {
       pushEvent(BlockchainUpdatedEvent());
     } catch (System::InterruptedException&) {
     } catch (std::exception& e) {
-      m_logger(Logging::ERROR) << "BlockchainMonitor context unexpectedly finished: " << e.what();
+      m_logger((Logging::Level) ERROR) << "BlockchainMonitor context unexpectedly finished: " << e.what();
     }
   });
 }

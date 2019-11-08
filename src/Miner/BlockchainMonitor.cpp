@@ -27,8 +27,6 @@
 #include "Rpc/JsonRpc.h"
 #include "Rpc/HttpClient.h"
 
-#undef ERROR
-
 using namespace Logging;
 
 BlockchainMonitor::BlockchainMonitor(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, size_t pollingInterval, Logging::ILogger& logger):
