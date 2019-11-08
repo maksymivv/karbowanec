@@ -13,8 +13,6 @@ string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
 enable_language(C)
 enable_language(CXX)
 
-set(WITH_SSL TRUE)
-
 # ARCH defines the target architecture, either by an explicit identifier or
 # one of the following two keywords. By default, ARCH a value of 'native':
 # target arch = host arch, binary is not portable. When ARCH is set to the
@@ -147,9 +145,9 @@ if(APPLE OR FREEBSD)
 endif()
 
 if(MSVC OR MINGW)
-  set(DEFAULT_STATIC true)
+  set(DEFAULT_STATIC TRUE)
 else()
-  set(DEFAULT_STATIC false)
+  set(DEFAULT_STATIC FALSE)
 endif()
 
 if(MSVC)
@@ -223,7 +221,7 @@ if(STATIC OR IOS)
  endif()
 
 if(MSVC)
-  set (CMAKE_MSVC_FLAGS_BASE "/D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__")
+  set (CMAKE_MSVC_FLAGS_BASE "/D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__ /D_NO_CRT_STDIO_INLINE")
   set (CMAKE_MSVC_FLAGS_EXT "/bigobj /MP /W3 /GS-")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_MSVC_FLAGS_BASE} ${CMAKE_MSVC_FLAGS_EXT}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_MSVC_FLAGS_BASE} ${CMAKE_MSVC_FLAGS_EXT}")
@@ -489,6 +487,45 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT ANDROID)
     set(Boost_USE_STATIC_RUNTIME ON)
 endif()
 
+
+## Let's see if we have any OpenSSL static libraries available
+set(OPENSSL_USE_STATIC_LIBS ON)
+## On MSVC, we need to link the RT/MT libraries
+if(MSVC)
+  set(OPENSSL_MSVC_STATIC_RT ON)
+endif()
+
+# We have to look for Homebrew OpenSSL a bit differently
+# Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
+if (APPLE)
+    find_program(HOMEBREW_EXECUTABLE brew)
+    execute_process(COMMAND ${HOMEBREW_EXECUTABLE} --prefix openssl
+            OUTPUT_VARIABLE HOMEBREW_OPENSSL
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (DEFINED HOMEBREW_OPENSSL)
+        if (NOT DEFINED OPENSSL_ROOT_DIR)
+            message(STATUS "Setting OpenSSL root to ${HOMEBREW_OPENSSL}")
+            set(OPENSSL_ROOT_DIR "${HOMEBREW_OPENSSL}")
+        endif ()
+    endif ()
+endif ()
+
+find_package(OpenSSL)
+
+if (OPENSSL_FOUND)
+    ## On non MSVC build systems, we need to link ldl with the static OpenSSL library
+    if (NOT MSVC)
+        set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
+    endif ()
+
+    include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+    add_definitions(-DCPPHTTPLIB_OPENSSL_SUPPORT)
+    message(STATUS "OpenSSL Found: ${OPENSSL_INCLUDE_DIR}")
+    message(STATUS "OpenSSL Libraries: ${OPENSSL_LIBRARIES}")
+else ()
+    message(STATUS "OpenSSL Found: No... Skipping...")
+endif ()
+
 if (${BOOST_IGNORE_SYSTEM_PATHS} STREQUAL "ON")
   set(Boost_NO_SYSTEM_PATHS TRUE)
 endif()
@@ -509,10 +546,6 @@ if(NOT Boost_FOUND)
   die("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev (1.58) or the equivalent")
 elseif(Boost_FOUND)
   message(STATUS "Found Boost Version: ${Boost_VERSION}")
-endif()
-
-if (WITH_SSL)
-  find_package(Secure)
 endif()
 
 if(MINGW)
