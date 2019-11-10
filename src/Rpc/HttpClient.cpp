@@ -33,16 +33,6 @@ using boost::asio::ip::tcp;
 
 
 #if defined(WIN32)
-
-// Fix LNK2001: unresolved external symbol ___iob_func in VS2017
-#define stdin  (__acrt_iob_func(0))
-#define stdout (__acrt_iob_func(1))
-#define stderr (__acrt_iob_func(2))
-
-FILE _iob[] = { *stdin, *stdout, *stderr };
-extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
-
-
 void add_windows_root_certs(boost::asio::ssl::context &ctx) {
   HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
   if (hStore != NULL) {
@@ -83,7 +73,7 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
   req.setHost(m_address);
   if (this->m_ssl_enable) {
     try {
-      char *req_buff = (char *)"";
+      char *req_buff = "";
       System::SocketStreambuf streambuf((char *) req_buff, 1);
       std::iostream stream(&streambuf);
       HttpParser parser;
@@ -167,7 +157,7 @@ void HttpClient::connect() {
 #if defined(WIN32)
       add_windows_root_certs(ctx);
 #endif
-      this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, ctx));
+      this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, std::ref(ctx)));
       tcp::resolver resolver(this->m_io_service);
       tcp::resolver::query query(this->m_address, std::to_string(this->m_port));
       boost::asio::connect(this->m_ssl_sock->lowest_layer(), resolver.resolve(query));
