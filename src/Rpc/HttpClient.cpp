@@ -73,7 +73,7 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
   req.setHost(m_address);
   if (this->m_ssl_enable) {
     try {
-      char *req_buff = "";
+      char *req_buff = (char *)"";
       System::SocketStreambuf streambuf((char *) req_buff, 1);
       std::iostream stream(&streambuf);
       HttpParser parser;
