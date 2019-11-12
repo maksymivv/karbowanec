@@ -91,10 +91,7 @@ void HttpServer::stop() {
   workingContextGroup.interrupt();
   workingContextGroup.wait();
   this->m_server_ssl_do = false;
-  //if (this->m_server_ssl_is_run) this->m_ssl_server_thread.interrupt();
-  while (this->m_server_ssl_is_run) {
-    boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
-  }
+  if (this->m_server_ssl_is_run) this->m_ssl_server_thread.interrupt();
 }
 
 void HttpServer::sslServerUnitControl(boost::asio::ssl::stream<tcp::socket&> &stream,
