@@ -834,49 +834,13 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
     ++offset;
   }
 
-  uint32_t epochDuration = 0;
-  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-    epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-    if (epochDuration == 0)
-      epochDuration = 1;
-  }
-
   // calculate average difficulty for ~last month
-  uint64_t avgDifficultyCurrent = 0;
-  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-    avgDifficultyCurrent = getAvgDifficulty(height, m_currency.averageDifficultyWindow());
-  }
-  else {
-    // At the beginning of the post-ASICs epoch exclude difficulties before it
-    avgDifficultyCurrent = getAvgDifficulty(height, std::min<uint32_t>(m_currency.averageDifficultyWindow(), epochDuration));
-  }
-
-  // historical reference moving average difficulty
-  uint64_t avgDifficultyHistorical = getAvgDifficulty(height);
-  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-    // Calculate average historic difficulty for current, post-ASICs epoch,
-    // to eliminate their influence.
-    avgDifficultyHistorical = getAvgDifficulty(height, epochDuration);
-  }
-
-  // calculate average reward for ~last day
-  uint64_t avgRewardCurrent = 0;
-
-  if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-    std::vector<uint64_t> rewards;
-    rewards.reserve(window);
-    for (; offset < height; offset++) {
-      rewards.push_back(get_outs_money_amount(m_blocks[offset].bl.baseTransaction));
-    }
-    avgRewardCurrent = std::accumulate(rewards.begin(), rewards.end(), 0ULL) / rewards.size();
-    rewards.clear();
-    rewards.shrink_to_fit();
-  }
-  else {
-    avgRewardCurrent = (m_blocks[height].already_generated_coins - m_blocks[offset].already_generated_coins) / window;
-  }
-
-  // historical reference moving average reward
+  uint64_t avgDifficultyCurrent = getAvgDifficulty(height, window * 7 * 4);
+  // historical reference trailing average difficulty
+  uint64_t avgDifficultyHistorical = m_blocks[height].cumulative_difficulty / height;
+  // calculate average reward for ~last day (base, excluding fees)
+  uint64_t avgRewardCurrent = (m_blocks[height].already_generated_coins - m_blocks[offset].already_generated_coins) / window;
+  // historical reference trailing average reward
   uint64_t avgRewardHistorical = m_blocks[height].already_generated_coins / height;
 
   return m_currency.getMinimalFee(avgDifficultyCurrent, avgRewardCurrent, avgDifficultyHistorical, avgRewardHistorical, height);
@@ -1936,6 +1900,16 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height)
   return false;
 }
 
+bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
+  if (unlock_time < m_currency.maxBlockHeight()) {
+    //interpret as block index
+    if (height - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
+      return true;
+  }
+  
+  return false;
+}
+
 bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
@@ -2440,7 +2414,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
           "Double spending transaction was pushed to blockchain.";
         for (size_t j = 0; j < i; ++j) {
           auto& imagesIndex = spentKeyImages.get<KeyImageTag>();
-          auto& it = imagesIndex.find(::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage);
+          auto it = imagesIndex.find(::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage);
           imagesIndex.erase(it);
         }
         
