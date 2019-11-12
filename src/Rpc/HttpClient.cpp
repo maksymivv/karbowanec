@@ -25,14 +25,14 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/ssl/stream.hpp>
-#if defined(WIN32)
+#ifdef _WIN32
 #include <wincrypt.h>
 #endif
 
 using boost::asio::ip::tcp;
 
 
-#if defined(WIN32)
+#ifdef _WIN32
 void add_windows_root_certs(boost::asio::ssl::context &ctx) {
   HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
   if (hStore != NULL) {
@@ -52,6 +52,15 @@ void add_windows_root_certs(boost::asio::ssl::context &ctx) {
     SSL_CTX_set_cert_store(ctx.native_handle(), store);
   }
 }
+
+// Fix LNK2001: unresolved external symbol ___iob_func in VS2017
+#define stdin  (__acrt_iob_func(0))
+#define stdout (__acrt_iob_func(1))
+#define stderr (__acrt_iob_func(2))
+
+FILE _iob[] = { *stdin, *stdout, *stderr };
+extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
+
 #endif
 
 namespace CryptoNote {
