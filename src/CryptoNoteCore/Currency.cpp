@@ -791,12 +791,13 @@ namespace CryptoNote {
 		// See commented link below for required config file changes. Fix FTL and MTP.
 		// https://github.com/zawy12/difficulty-algorithms/issues/3
 
-		assert(timestamps.size() == cumulativeDifficulties.size());
-
-		// reset difficulty for pos-ASICs epoch
-		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height <= upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-			return !isTestnet() ? 100000 : 10000;
+		// reset difficulty for new epoch
+		if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
+			//return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR ??;
+			return 10000;
 		}
+
+		assert(timestamps.size() == cumulativeDifficulties.size());
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
 		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
@@ -828,7 +829,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && next_D < 1000000) {
-			next_D = 1000000;
+			//next_D = 1000000;
 		}
 
 		return next_D;
