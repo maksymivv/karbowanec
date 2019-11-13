@@ -311,7 +311,6 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(difficulty)
       KV_MEMBER(cumulative_difficulty)
       KV_MEMBER(avg_difficulty)
-      KV_MEMBER(multi_algo_difficulties)
       KV_MEMBER(next_reward)
       KV_MEMBER(next_stake)
       KV_MEMBER(min_tx_fee)
@@ -1216,11 +1215,13 @@ struct COMMAND_RPC_CHECK_RESERVE_PROOF {
 		std::string address;
 		std::string message;
 		std::string signature;
+		uint32_t height = 0;
 		
 		void serialize(ISerializer &s) {
 			KV_MEMBER(address)
 			KV_MEMBER(message)
 			KV_MEMBER(signature)
+			KV_MEMBER(height)
 		}
 	};
 
