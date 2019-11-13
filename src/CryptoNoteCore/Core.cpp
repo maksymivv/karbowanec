@@ -589,10 +589,9 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
   return true;
 }
 
-bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher) {
-  size_t median_size;
-  uint64_t already_generated_coins;
-
+// used to get block template in wallet without coinbase stake tx, which is added separately there
+bool core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce,
+  size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) {
   {
     LockedBlockchainStorage blockchainLock(m_blockchain);
     height = m_blockchain.getCurrentBlockchainHeight();
@@ -655,14 +654,23 @@ bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddres
     already_generated_coins = m_blockchain.getCoinsInCirculation();
   }
 
-  size_t txs_size;
   if (!m_mempool.fill_block_template(b, median_size, m_currency.maxBlockCumulativeSize(height), already_generated_coins, txs_size, fee)) {
+    return false;
+  }
+}
+
+bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher) {
+  size_t median_size;
+  size_t txs_size;
+  uint64_t already_generated_coins;
+
+  if (!prepareBlockTemplate(b, fee, adr, diffic, height, ex_nonce, median_size, txs_size, already_generated_coins)) {
+    logger(ERROR, BRIGHT_RED) << "Failed to prepare block template";
     return false;
   }
 
   // After block v 5 don't penalize reward and simplify miner tx generation
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    //bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, ex_nonce, 14);
     bool r = requestStakeTransaction(b.majorVersion, fee, height, diffic, median_size, already_generated_coins, txs_size, adr, ex_nonce, local_dispatcher, b.baseTransaction);
     if (!r) {
       logger(ERROR, BRIGHT_RED) << "Failed to construct miner's stake deposit tx";
