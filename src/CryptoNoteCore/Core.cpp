@@ -1447,7 +1447,7 @@ bool core::is_key_image_spent(const Crypto::KeyImage& key_im, uint32_t height) {
 }
 
 bool core::is_tx_spendtime_unlocked(uint64_t unlock_time) {
-  return m_blockchain.is_tx_spendtime_unlocked(unlock_time);
+  return m_blockchain.is_tx_spendtime_unlocked(unlock_time, m_blockchain.getCurrentBlockchainHeight());
 }
 
 bool core::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {

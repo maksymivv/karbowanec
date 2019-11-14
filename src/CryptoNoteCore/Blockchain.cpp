@@ -1879,10 +1879,10 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
   return true;
 }
 
-bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
+bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
   if (unlock_time < m_currency.maxBlockHeight()) {
     //interpret as block index
-    if (getCurrentBlockchainHeight() - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
+    if (height - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
       return true;
     else
       return false;
@@ -1890,23 +1890,13 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
     //interpret as time
 
     // compare with last block timestamp + delta seconds
-    const uint64_t lastBlockTimestamp = getBlockTimestamp(getCurrentBlockchainHeight() - 1);
+    const uint64_t lastBlockTimestamp = getBlockTimestamp(height - 1);
     if (lastBlockTimestamp + m_currency.lockedTxAllowedDeltaSeconds() >= unlock_time)
       return true;
     else
       return false;
   }
 
-  return false;
-}
-
-bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
-  if (unlock_time < m_currency.maxBlockHeight()) {
-    //interpret as block index
-    if (height - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
-      return true;
-  }
-  
   return false;
 }
 
