@@ -109,7 +109,7 @@ const uint32_t UPGRADE_HEIGHT_V2                             = 60000;
 const uint32_t UPGRADE_HEIGHT_V3                             = 216000;
 const uint32_t UPGRADE_HEIGHT_V4                             = 266000;
 const uint32_t UPGRADE_HEIGHT_LWMA3                          = 300000;
-const uint32_t UPGRADE_HEIGHT_V5                             = 4294967294;
+const uint32_t UPGRADE_HEIGHT_V5                             = 420000;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90; // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -147,8 +147,8 @@ const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by def
 const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  128;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
-const int      P2P_DEFAULT_PORT                              =  32347;
-const int      RPC_DEFAULT_PORT                              =  32348;
+const int      P2P_DEFAULT_PORT                              =  12347;
+const int      RPC_DEFAULT_PORT                              =  12348;
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
@@ -171,15 +171,15 @@ const uint32_t P2P_IDLE_CONNECTION_KILL_INTERVAL             = (5 * 60);      //
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
 
 const char* const SEED_NODES[] = { 
-  "seed1.karbowanec.com:32347",
+  /*"seed1.karbowanec.com:32347",
   "seed2.karbowanec.com:32347",
   "seed.karbo.cloud:32347",
   "seed.karbo.org:32347",
   "seed.karbo.io:32347",
   "185.86.78.40:32347",
   "108.61.198.115:32347",
-  "45.32.232.11:32347",
-  "46.149.182.151:32347"
+  "45.32.232.11:32347",*/
+  "46.149.182.151:22347"
 };
 
 } // CryptoNote
