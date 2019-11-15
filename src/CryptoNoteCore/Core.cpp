@@ -673,6 +673,8 @@ bool core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddr
   if (!m_mempool.fill_block_template(b, median_size, m_currency.maxBlockCumulativeSize(height), already_generated_coins, txs_size, fee)) {
     return false;
   }
+
+  return true;
 }
 
 bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher) {
