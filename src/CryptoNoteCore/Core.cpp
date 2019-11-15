@@ -527,13 +527,14 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
                                    const CryptoNote::BinaryArray& extra_nonce,
                                    bool local_dispatcher,
                                    Transaction& transaction) {
-  logger(INFO) << "[core] Requesting stake deposit transaction at height " << height << " and difficulty " << next_diff;
+  logger(INFO) << "Requesting stake deposit transaction at height " << height << " and difficulty " << next_diff;
 
   Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
   Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
   // Calculate stake
   if (!getStake(blockMajorVersion, fee, height, next_diff, medianSize, alreadyGeneratedCoins, currentBlockSize, req.stake, req.reward)) {
+    logger(ERROR) << "Failed to calculate stake";
     return false;
   }
   
