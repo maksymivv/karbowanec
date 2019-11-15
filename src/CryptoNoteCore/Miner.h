@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, The Karbo developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -29,15 +29,14 @@
 #include "CryptoNoteCore/IMinerHandler.h"
 #include "CryptoNoteCore/MinerConfig.h"
 #include "CryptoNoteCore/OnceInInterval.h"
-
-#include <Logging/LoggerRef.h>
-
+#include "Logging/LoggerRef.h"
+#include <System/Dispatcher.h>
 #include "Serialization/ISerializer.h"
 
 namespace CryptoNote {
   class miner {
   public:
-    miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log);
+    miner(const Currency& currency, IMinerHandler& handler, Logging::ILogger& log, System::Dispatcher& dispatcher);
     ~miner();
 
     bool init(const MinerConfig& config);
@@ -69,6 +68,7 @@ namespace CryptoNote {
 
     const Currency& m_currency;
     Logging::LoggerRef logger;
+    System::Dispatcher& m_dispatcher;
 
     std::atomic<bool> m_stop;
     std::mutex m_template_lock;
