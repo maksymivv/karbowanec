@@ -72,8 +72,7 @@ public:
   virtual void on_synchronized() = 0;
   virtual size_t addChain(const std::vector<const IBlock*>& chain) = 0;
 
-  virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce,
-    size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
+  virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
 
   virtual void get_blockchain_top(uint32_t& height, Crypto::Hash& top_id) = 0;
   virtual std::vector<Crypto::Hash> findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds, size_t maxCount,
