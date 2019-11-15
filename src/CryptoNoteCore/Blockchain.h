@@ -107,7 +107,7 @@ namespace CryptoNote {
     uint64_t getCoinsInCirculation();
     uint64_t getCoinsInCirculation(uint32_t height);
     uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
-    bool addNewBlock(const Block& bl_, block_verification_context& bvc);
+    bool addNewBlock(const Block& bl, block_verification_context& bvc);
     bool resetAndSetGenesisBlock(const Block& b);
     bool haveBlock(const Crypto::Hash& id);
     size_t getTotalTransactions();
