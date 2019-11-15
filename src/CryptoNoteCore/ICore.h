@@ -73,7 +73,7 @@ public:
   virtual size_t addChain(const std::vector<const IBlock*>& chain) = 0;
 
   virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
-  virtual bool getStake(uint8_t blockMajorVersion, uint64_t& fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t& currentBlockSize, uint64_t& stake, uint64_t& blockReward) = 0;
+  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) = 0;
 
   virtual void get_blockchain_top(uint32_t& height, Crypto::Hash& top_id) = 0;
   virtual std::vector<Crypto::Hash> findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds, size_t maxCount,

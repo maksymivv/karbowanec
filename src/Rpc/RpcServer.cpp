@@ -680,18 +680,56 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
     return false;
   }
   uint64_t sizeMedian = Common::medianValue(blocksSizes);
-  uint64_t nextReward = 0;
+  
   int64_t emissionChange = 0;
-  if (!m_core.getBlockReward(res.block_major_version, sizeMedian, 0, alreadyGeneratedCoins, 0, nextReward, emissionChange)) {
+  if (!m_core.getBlockReward(res.block_major_version, sizeMedian, 0, alreadyGeneratedCoins, 0, res.next_reward, emissionChange)) {
     throw JsonRpc::JsonRpcError{
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins for prev. block." };
   }
-  res.next_reward = nextReward;
-  
-  if (!m_core.getBlockCumulativeDifficulty(res.height - 1, res.cumulative_difficulty)) {
+
+  uint32_t index = res.height - 1;
+
+  if (!m_core.getBlockCumulativeDifficulty(index, res.cumulative_difficulty)) {
     throw JsonRpc::JsonRpcError{
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
   }
+
+  res.avg_difficulty = m_core.getAvgDifficulty(index);
+
+  // calculate next stake
+  uint64_t fee = 0;
+  if (!m_core.getStake(res.block_major_version, fee, index, res.difficulty, sizeMedian, alreadyGeneratedCoins, 0, res.next_stake, res.next_reward)) {
+    throw JsonRpc::JsonRpcError{
+     CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get stake." };
+  }
+
+  uint64_t totalStake = 0;
+  if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+
+    // calculate stake stats
+    uint32_t blocks_count = parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
+    uint32_t last_height = index - blocks_count;
+    if (index <= blocks_count) {
+      last_height = 0;
+    }
+    for (uint32_t i = index; i >= last_height; i--) {
+      Hash block_hash = m_core.getBlockIdByHeight(i);
+      Block blk;
+      if (!m_core.getBlockByHash(block_hash, blk)) {
+        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+          "Internal error: can't get block by height. Height = " + std::to_string(i) + '.' };
+      }
+      uint64_t stake = 0;
+      if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+        if (!get_inputs_money_amount(blk.baseTransaction, stake)) {
+          throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
+            "Internal error: can't get stake for block at height " + std::to_string(i) + '.' };
+        }
+      }
+      totalStake += stake;
+    }
+  }
+  res.total_coins_locked = totalStake;
 
   res.status = CORE_RPC_STATUS_OK;
   return true;

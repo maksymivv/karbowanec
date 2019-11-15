@@ -493,18 +493,18 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
 
 
 bool core::getStake(uint8_t blockMajorVersion,
-              uint64_t& fee,
-              uint32_t& height,
+              uint64_t fee,
+              uint32_t height,
               difficulty_type& next_diff,
               size_t& medianSize,
               uint64_t& alreadyGeneratedCoins,
-              size_t& currentBlockSize,
+              size_t currentBlockSize,
               uint64_t& stake,
               uint64_t& blockReward) {
   uint64_t emission = m_blockchain.getCoinsInCirculation(height);
   int64_t emissionChange;
   if (!getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
-    logger(INFO) << "Block is too big";
+    logger(DEBUGGING) << "Block is too big";
     return false;
   }
   uint64_t cumulDiffTotal = m_blockchain.blockCumulativeDifficulty(height - 1);
