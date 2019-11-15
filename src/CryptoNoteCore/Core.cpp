@@ -491,20 +491,19 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
   return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block);
 }
 
-
 bool core::getStake(uint8_t blockMajorVersion,
               uint64_t fee,
-              uint32_t height,
+              uint32_t& height,
               difficulty_type& next_diff,
               size_t& medianSize,
               uint64_t& alreadyGeneratedCoins,
               size_t currentBlockSize,
               uint64_t& stake,
               uint64_t& blockReward) {
-  uint64_t emission = m_blockchain.getCoinsInCirculation(height);
+  uint64_t emission = m_blockchain.getCoinsInCirculation(height - 1);
   int64_t emissionChange;
   if (!getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
-    logger(DEBUGGING) << "Block is too big";
+    logger(ERROR) << "Error getting block reward for stake calculation";
     return false;
   }
   uint64_t cumulDiffTotal = m_blockchain.blockCumulativeDifficulty(height - 1);
@@ -537,7 +536,7 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
     logger(ERROR) << "Failed to calculate stake";
     return false;
   }
-  
+
   req.address = m_currency.accountAddressAsString(minerAddress);
   req.mixin = m_mixin;
   req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;

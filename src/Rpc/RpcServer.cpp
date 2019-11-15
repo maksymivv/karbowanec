@@ -699,7 +699,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
 
   // calculate next stake
   uint64_t fee = 0;
-  if (!m_core.getStake(res.block_major_version, fee, index, res.difficulty, sizeMedian, alreadyGeneratedCoins, 0, res.next_stake, res.next_reward)) {
+  if (!m_core.getStake(res.block_major_version, fee, res.height, res.difficulty, sizeMedian, alreadyGeneratedCoins, 0, res.next_stake, res.next_reward)) {
     throw JsonRpc::JsonRpcError{
      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get stake." };
   }
