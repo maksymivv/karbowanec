@@ -71,6 +71,8 @@ namespace CryptoNote {
      bool set_genesis_block(const Block& b);
      bool deinit();
 
+     virtual bool getStake(uint8_t blockMajorVersion, uint64_t& fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t& currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
+
      // ICore
      virtual size_t addChain(const std::vector<const IBlock*>& chain) override;
      virtual bool handle_get_objects(NOTIFY_REQUEST_GET_OBJECTS_request& arg, NOTIFY_RESPONSE_GET_OBJECTS_request& rsp) override; //Deprecated. Should be removed with CryptoNoteProtocolHandler.

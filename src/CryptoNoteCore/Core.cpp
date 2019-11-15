@@ -491,6 +491,31 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
   return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block);
 }
 
+
+bool core::getStake(uint8_t blockMajorVersion,
+              uint64_t& fee,
+              uint32_t& height,
+              difficulty_type& next_diff,
+              size_t& medianSize,
+              uint64_t& alreadyGeneratedCoins,
+              size_t& currentBlockSize,
+              uint64_t& stake,
+              uint64_t& blockReward) {
+  uint64_t emission = m_blockchain.getCoinsInCirculation(height);
+  int64_t emissionChange;
+  if (!getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
+    logger(INFO) << "Block is too big";
+    return false;
+  }
+  uint64_t cumulDiffTotal = m_blockchain.blockCumulativeDifficulty(height - 1);
+  uint64_t cumulDiffBeforeStake = m_blockchain.blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
+  uint64_t emissionBeforeStake = m_blockchain.getCoinsInCirculation(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
+
+  stake = m_currency.nextStake(height, blockReward, fee, emission, emissionBeforeStake, cumulDiffTotal, cumulDiffBeforeStake, next_diff);
+
+  return true;
+}
+
 bool core::requestStakeTransaction(uint8_t blockMajorVersion,
                                    uint64_t& fee,
                                    uint32_t& height,
@@ -508,22 +533,13 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
   Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
   // Calculate stake
-  uint64_t emission = getTotalGeneratedAmount();
-  uint64_t blockReward;
-  int64_t emissionChange;
-  if (!getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
-    logger(INFO) << "Block is too big";
+  if (!getStake(blockMajorVersion, fee, height, next_diff, medianSize, alreadyGeneratedCoins, currentBlockSize, req.stake, req.reward)) {
     return false;
   }
-  uint64_t cumulDiffTotal = m_blockchain.blockCumulativeDifficulty(height - 1);
-  uint64_t cumulDiffBeforeStake = m_blockchain.blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-  uint64_t emissionBeforeStake = m_blockchain.getCoinsInCirculation(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-  req.stake = m_currency.nextStake(height, blockReward, fee, emission, emissionBeforeStake, cumulDiffTotal, cumulDiffBeforeStake, next_diff);
-
+  
   req.address = m_currency.accountAddressAsString(minerAddress);
   req.mixin = m_mixin;
   req.unlock_time = m_currency.isTestnet() ? height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW : height + CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
-  req.reward = blockReward;
   req.extra_nonce = Common::toHex(extra_nonce);
 
   try {
