@@ -117,7 +117,7 @@ bool wallet_rpc_server::handle_command_line(const boost::program_options::variab
   if (command_line::has_arg(vm, arg_rpc_password)) {
     m_rpcPassword   = command_line::get_arg(vm, arg_rpc_password);
   }
-  if (command_line::has_arg(vm, arg_rpc_user) && !command_line::has_arg(vm, arg_rpc_password)) {
+  if (!m_rpcUser.empty() && !command_line::has_arg(vm, arg_rpc_password)) {
     std::cout << "Wallet RPC password is not set." << std::endl;
     if (pwd_container.read_password()) {
       m_rpcPassword = pwd_container.password();
