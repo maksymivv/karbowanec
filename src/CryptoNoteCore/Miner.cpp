@@ -331,7 +331,7 @@ namespace CryptoNote
     uint32_t nonce = m_starter_nonce + th_local_index;
     difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
-	cn_pow_hash_v2 hash_ctx;
+    cn_pow_hash_v2 hash_ctx;
     Block b;
 
     while(!m_stop)
