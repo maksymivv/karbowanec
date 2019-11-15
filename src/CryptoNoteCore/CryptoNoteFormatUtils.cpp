@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -30,7 +30,8 @@
 #include "CryptoNoteSerialization.h"
 #include "TransactionExtra.h"
 #include "CryptoNoteTools.h"
-#include "Currency.h"
+
+#include "CryptoNoteConfig.h"
 
 using namespace Logging;
 using namespace Crypto;
@@ -532,8 +533,13 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   } else {
     return false;
   }
-
-  cn_slow_hash(context, bd.data(), bd.size(), res);
+  if (b.majorVersion < BLOCK_MAJOR_VERSION_4) {
+	  cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+	  ctx_v1.hash(bd.data(), bd.size(), res.data);
+  }
+  else {
+	  ctx.hash(bd.data(), bd.size(), res.data);
+  }
 
   return true;
 }

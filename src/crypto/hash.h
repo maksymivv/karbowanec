@@ -59,15 +59,6 @@ namespace Crypto {
     friend inline void cn_slow_hash(cn_context &, const void *, size_t, Hash &);
   };
 
-  inline void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash) {
-    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
-  }
-
-  void(*const extra_hashes[4])(const void *, size_t, char *) =
-  {
-    hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein
-  };
-
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
     tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
   }

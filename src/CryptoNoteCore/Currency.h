@@ -24,6 +24,7 @@
 #include <boost/utility.hpp>
 #include "../CryptoNoteConfig.h"
 #include "../crypto/hash.h"
+#include "../crypto/cn_slow_hash.hpp"
 #include "../Logging/LoggerRef.h"
 #include "CryptoNoteBasic.h"
 #include "Difficulty.h"
@@ -175,9 +176,9 @@ public:
 
   uint64_t nextStake(uint32_t height, uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins, uint64_t& alreadyGeneratedCoinsBeforeStake, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const;
 
-  bool checkProofOfWorkV1(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
-  bool checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
-  bool checkProofOfWork(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
 
   size_t getApproximateMaximumInputCount(size_t transactionSize, size_t outputCount, size_t mixinCount) const;
 

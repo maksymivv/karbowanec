@@ -294,6 +294,7 @@ namespace CryptoNote
     logger(INFO) << "Mining has been stopped, " << m_threads.size() << " finished" ;
     return true;
   }
+
   //-----------------------------------------------------------------------------------------------------
   void miner::on_synchronized()
   {
@@ -329,7 +330,7 @@ namespace CryptoNote
     uint32_t nonce = m_starter_nonce + th_local_index;
     difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
-    Crypto::cn_context context;
+	cn_pow_hash_v2 hash_ctx;
     Block b;
 
     while(!m_stop)
@@ -359,7 +360,7 @@ namespace CryptoNote
 
       b.nonce = nonce;
       Crypto::Hash h;
-      if (!m_stop && !get_block_longhash(context, b, h)) {
+	  if (!m_stop && !get_block_longhash(hash_ctx, b, h)) {
         logger(ERROR) << "Failed to get block long hash";
         m_stop = true;
       }
