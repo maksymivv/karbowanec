@@ -896,7 +896,7 @@ bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& h
   return true;
 };
 
-bool NodeRpcProxy::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) {
+bool NodeRpcProxy::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const CryptoNote::BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) {
   CryptoNote::COMMAND_RPC_PREPARE_BLOCKTEMPLATE::request req = AUTO_VAL_INIT(req);
   CryptoNote::COMMAND_RPC_PREPARE_BLOCKTEMPLATE::response rsp = AUTO_VAL_INIT(rsp);
 
@@ -916,6 +916,25 @@ bool NodeRpcProxy::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPu
   }
 
   return true;
+}
+
+bool NodeRpcProxy::handleBlockFound(Block& b) {
+  try {
+    COMMAND_RPC_SUBMITBLOCK::request request;
+    request.emplace_back(Common::toHex(toBinaryArray(b)));
+
+    COMMAND_RPC_SUBMITBLOCK::response response;
+
+    std::error_code ec = jsonRpcCommand("submitblock", request, response);
+
+    if (!ec) {
+      return true;
+    }
+  }
+  catch (std::exception& e) {
+    return false;
+  }
+  return false;
 }
 
 }
