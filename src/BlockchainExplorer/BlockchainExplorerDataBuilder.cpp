@@ -100,7 +100,6 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   blockDetails.prevBlockHash = block.previousBlockHash;
   blockDetails.nonce = block.nonce;
   blockDetails.hash = hash;
-
   blockDetails.reward = 0;
   blockDetails.stake = 0;
   for (const TransactionOutput& out : block.baseTransaction.outputs) {
@@ -113,7 +112,7 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
 
     blockDetails.reward -= blockDetails.stake;
   }
-  if (block.baseTransaction.inputs.front().type() != typeid(BaseInput))
+  if (block.baseTransaction.inputs.front().type() != typeid(BaseInput) && blockDetails.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5)
     return false;
   blockDetails.height = block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? block.blockIndex : boost::get<BaseInput>(block.baseTransaction.inputs.front()).blockIndex;
   blockDetails.depth = core.get_current_blockchain_height() - blockDetails.height - 1;
