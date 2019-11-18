@@ -655,7 +655,7 @@ bool core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddr
     // Fix by Jagerman
     // https://github.com/graft-project/GraftNetwork/pull/118/commits
 
-    if(height >= m_currency.timestampCheckWindow(b.majorVersion)) {
+    if (height >= m_currency.timestampCheckWindow(b.majorVersion)) {
       std::vector<uint64_t> timestamps;
       for(uint32_t offset = height - static_cast<uint32_t>(m_currency.timestampCheckWindow(b.majorVersion)); offset < height; ++offset) {
         timestamps.push_back(m_blockchain.getBlockTimestamp(offset));

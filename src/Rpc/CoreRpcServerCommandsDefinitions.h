@@ -299,7 +299,7 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t start_time;
     std::string fee_address;
     uint8_t block_major_version;
-    std::string already_generated_coins;
+    uint64_t already_generated_coins;
     uint64_t total_coins_locked;
     std::string contact;   
 
@@ -411,7 +411,7 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
     uint32_t height;
     uint64_t reserved_offset;
     std::string blocktemplate_blob;
-	std::string blockhashing_blob;
+    std::string blockhashing_blob;
     std::string status;
 
     void serialize(ISerializer &s) {
@@ -419,7 +419,41 @@ struct COMMAND_RPC_GETBLOCKTEMPLATE {
       KV_MEMBER(height)
       KV_MEMBER(reserved_offset)
       KV_MEMBER(blocktemplate_blob)
-	  KV_MEMBER(blockhashing_blob)
+      KV_MEMBER(blockhashing_blob)
+      KV_MEMBER(status)
+    }
+  };
+};
+
+struct COMMAND_RPC_PREPARE_BLOCKTEMPLATE {
+  struct request {
+    uint64_t reserve_size; //max 255 bytes
+    std::string wallet_address;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(reserve_size)
+      KV_MEMBER(wallet_address)
+    }
+  };
+
+  struct response {
+    uint64_t difficulty;
+    uint32_t height;
+    uint64_t reserved_offset;
+    uint64_t median_size;
+    uint64_t txs_size;
+    uint64_t already_generated_coins;
+    std::string blocktemplate_blob;
+    std::string status;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(difficulty)
+      KV_MEMBER(height)
+      KV_MEMBER(reserved_offset)
+      KV_MEMBER(median_size)
+      KV_MEMBER(txs_size)
+      KV_MEMBER(already_generated_coins)
+      KV_MEMBER(blocktemplate_blob)
       KV_MEMBER(status)
     }
   };

@@ -85,6 +85,9 @@ public:
   virtual void getPoolTransactions(uint64_t timestampBegin, uint64_t timestampEnd, uint32_t transactionsNumberLimit, std::vector<TransactionDetails>& transactions, uint64_t& transactionsNumberWithinTimestamps, const Callback& callback) override;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override;
 
+  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
+  virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) override;
+
 private:
   virtual void peerCountUpdated(size_t count) override;
   virtual void lastKnownBlockHeightUpdated(uint32_t height) override;
