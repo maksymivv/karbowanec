@@ -1090,4 +1090,8 @@ bool InProcessNode::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountP
   return core.prepareBlockTemplate(b, fee, adr, diffic, height, ex_nonce, median_size, txs_size, already_generated_coins);
 }
 
+bool InProcessNode::handleBlockFound(Block& b) {
+  return core.handle_block_found(b);
+}
+
 } //namespace CryptoNote

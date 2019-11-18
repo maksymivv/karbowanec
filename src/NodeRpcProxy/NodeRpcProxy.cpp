@@ -918,4 +918,23 @@ bool NodeRpcProxy::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPu
   return true;
 }
 
+bool NodeRpcProxy::handleBlockFound(Block& b) {
+  try {
+    COMMAND_RPC_SUBMITBLOCK::request request;
+    request.emplace_back(Common::toHex(toBinaryArray(b)));
+
+    COMMAND_RPC_SUBMITBLOCK::response response;
+
+    std::error_code ec = jsonRpcCommand("submitblock", request, response);
+
+    if (!ec) {
+      return true;
+    }
+  }
+  catch (std::exception& e) {
+    return false;
+  }
+  return false;
+}
+
 }
