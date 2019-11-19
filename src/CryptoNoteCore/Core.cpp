@@ -515,6 +515,24 @@ bool core::getStake(uint8_t blockMajorVersion,
   return true;
 }
 
+bool core::getStake(uint64_t& stake) {
+  uint32_t height = m_blockchain.getCurrentBlockchainHeight();
+  uint8_t blockMajorVersion = m_blockchain.getBlockMajorVersionForHeight(height);
+  difficulty_type next_diff = m_blockchain.getDifficultyForNextBlock();
+  size_t medianSize = m_blockchain.getCurrentCumulativeBlocksizeLimit() / 2;
+  uint64_t alreadyGeneratedCoins = m_blockchain.getCoinsInCirculation();
+  size_t currentBlockSize = 0;
+  uint64_t fee = 0;
+  uint64_t blockReward;
+
+  if (!(next_diff)) {
+    logger(ERROR, BRIGHT_RED) << "difficulty overhead.";
+    return false;
+  }
+
+  return getStake(blockMajorVersion, fee, height, next_diff, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
+}
+
 bool core::requestStakeTransaction(uint8_t blockMajorVersion,
                                    uint64_t& fee,
                                    uint32_t& height,

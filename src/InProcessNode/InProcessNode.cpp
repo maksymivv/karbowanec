@@ -1086,6 +1086,10 @@ bool InProcessNode::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& 
   return core.getStake(blockMajorVersion, fee, height, next_diff, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
 };
 
+bool InProcessNode::getStake(uint64_t& stake) {
+  return core.getStake(stake);
+}
+
 bool InProcessNode::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) {
   return core.prepareBlockTemplate(b, fee, adr, diffic, height, ex_nonce, median_size, txs_size, already_generated_coins);
 }

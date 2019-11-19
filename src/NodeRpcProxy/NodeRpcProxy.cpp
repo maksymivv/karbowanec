@@ -866,7 +866,8 @@ std::error_code NodeRpcProxy::jsonRpcCommand(const std::string& method, const Re
   return ec;
 }
 
-bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
+
+bool NodeRpcProxy::getStake(uint64_t& stake) {
   CryptoNote::COMMAND_RPC_GET_INFO::request getInfoReq = AUTO_VAL_INIT(getInfoReq);
   CryptoNote::COMMAND_RPC_GET_INFO::response getInfoResp = AUTO_VAL_INIT(getInfoResp);
   std::error_code ec = jsonCommand("/getinfo", getInfoReq, getInfoResp);
@@ -889,10 +890,21 @@ bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& h
     m_nextStake.store(getInfoResp.next_stake, std::memory_order_relaxed);
     m_nextReward.store(getInfoResp.next_reward, std::memory_order_relaxed);
     m_alreadyGeneratedCoins.store(getInfoResp.already_generated_coins, std::memory_order_relaxed);
+
+    stake = m_nextStake;
+
+    return true;
   }
-  
-  stake = m_nextStake;
+
+  return false;
+}
+
+bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
+  if (!getStake(stake)) {
+    return false;
+  }
   blockReward = m_nextReward;
+
   return true;
 };
 
