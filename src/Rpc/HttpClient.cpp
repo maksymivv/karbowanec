@@ -32,7 +32,7 @@
 using boost::asio::ip::tcp;
 
 
-#if defined(WIN32)
+#if defined(_WIN32)
 void add_windows_root_certs(boost::asio::ssl::context &ctx) {
   HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
   if (hStore != NULL) {
@@ -51,6 +51,16 @@ void add_windows_root_certs(boost::asio::ssl::context &ctx) {
     CertCloseStore(hStore, 0);
     SSL_CTX_set_cert_store(ctx.native_handle(), store);
   }
+}
+#endif
+
+#if defined(_WIN32)
+void sockSetup(SOCKET &sock) {
+  const int32_t rw_timeout = 60000;
+  const unsigned long enable_keep_alive = 1;
+  setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, (const char *) &enable_keep_alive, sizeof(enable_keep_alive));
+  setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *) &rw_timeout, sizeof(rw_timeout));
+  setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char *) &rw_timeout, sizeof(rw_timeout));
 }
 #endif
 
@@ -86,7 +96,8 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
       size_t write_size = 0;
       size_t write_full_size = 0;
       while (write_full_size < req_data_size) {
-        write_size = this->m_ssl_sock->write_some(boost::asio::buffer(req_data.data() + write_full_size, req_data_size - write_full_size));
+        write_size = this->m_ssl_sock->write_some(boost::asio::buffer(req_data.data() + write_full_size,
+                                                  req_data_size - write_full_size));
         if (write_size > 0) {
           write_full_size += write_size;
         } else {
@@ -98,33 +109,45 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
       const size_t resp_buff_size = 1024;
       char resp_buff[resp_buff_size];
       const char *header_end_sep = "\r\n\r\n";
-      const char *content_lenght = "Content-Length";
+      const char *content_lenght_name = "Content-Length";
       const char *content_lenght_end_sep = "\r\n";
-      bool header_found = false;
+      size_t header_end = 0;
       size_t stream_len = 0;
+      bool header_found = false;
       while (true) {
-        resp_size = this->m_ssl_sock->read_some(boost::asio::buffer((char *) resp_buff, resp_buff_size));
+        memset(resp_buff, 0x00, sizeof(char) * resp_buff_size);
+        resp_size = this->m_ssl_sock->read_some(boost::asio::buffer((char *) resp_buff,
+                                                resp_buff_size));
         resp_size_full += resp_size;
         if (resp_size > 0) {
           resp_data.resize(resp_size_full);
           memcpy(resp_data.data() + resp_size_full - resp_size, resp_buff, resp_size);
           if (!header_found) {
             std::string data = std::string((char *) resp_data.data());
+            data.push_back(0x00);
             size_t header_end = data.find(header_end_sep);
             if (header_end != std::string::npos) {
               header_found = true;
-              data.resize(header_end);
+              data.resize(header_end + 2);
               data.push_back(0x00);
-              size_t content_lenght_start = data.find(content_lenght);
+              size_t content_lenght_start = data.find(content_lenght_name);
               size_t content_lenght_end = data.find(content_lenght_end_sep, content_lenght_start);
               if (content_lenght_start != std::string::npos && content_lenght_end != std::string::npos) {
-                sscanf(data.substr(content_lenght_start + strlen(content_lenght) + 2,
-                                   content_lenght_end - content_lenght_start - strlen(content_lenght) - 2).c_str(), "%zu", &stream_len);
+                sscanf(data.substr(content_lenght_start + strlen(content_lenght_name) + 2,
+                                   content_lenght_end - content_lenght_start - strlen(content_lenght_name) - 2).c_str(),
+                       "%zu",
+                       &stream_len);
                 stream_len += header_end + 4;
               }
             }
           }
-          if (resp_size_full >= stream_len - 1 && header_found) break;
+          if (header_found) {
+            if (stream_len > 0) {
+              if (resp_size_full >= stream_len) break;
+            } else {
+              if (resp_size_full == header_end + 4) break;
+            }
+          }
         } else {
           break;
         }
@@ -153,15 +176,20 @@ void HttpClient::connect() {
   if (this->m_ssl_enable) {
     try {
       boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
-      ctx.set_default_verify_paths();
-#if defined(WIN32)
+#if defined(_WIN32)
       add_windows_root_certs(ctx);
+#else
+      ctx.set_default_verify_paths();
 #endif
       this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, std::ref(ctx)));
       tcp::resolver resolver(this->m_io_service);
       tcp::resolver::query query(this->m_address, std::to_string(this->m_port));
       boost::asio::connect(this->m_ssl_sock->lowest_layer(), resolver.resolve(query));
+#if defined(_WIN32)
+      sockSetup((SOCKET &) this->m_ssl_sock->lowest_layer().native_handle());
+#endif
       this->m_ssl_sock->lowest_layer().set_option(tcp::no_delay(true));
+      this->m_ssl_sock->lowest_layer().set_option(boost::asio::socket_base::keep_alive(true));
       this->m_ssl_sock->set_verify_mode(boost::asio::ssl::verify_peer);
       this->m_ssl_sock->set_verify_callback(boost::asio::ssl::rfc2818_verification(this->m_address));
       this->m_ssl_sock->handshake(boost::asio::ssl::stream_base::client);
