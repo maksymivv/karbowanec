@@ -255,9 +255,9 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
     transactionDetails.fee = 0;
     transactionDetails.mixin = 0;
   } else {
-    uint64_t fee;
+    uint64_t fee = 0;
     if (!get_tx_fee(transaction, fee)) {
-      if (blockHeight > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+      if (blockHeight >= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
         //It's gen transaction with stake
         transactionDetails.fee = 0;
       } else {
