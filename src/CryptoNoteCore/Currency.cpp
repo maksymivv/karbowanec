@@ -797,6 +797,14 @@ namespace CryptoNote {
 			return 10000;
 		}
 
+		// skip to reset difficulty for hardfork block 5
+		size_t count = difficultyBlocksCountByBlockVersion(blockMajorVersion);
+		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 + count) {
+			uint32_t offset = count - (height - upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5));
+			timestamps.erase(timestamps.begin(), timestamps.begin() + offset);
+			cumulativeDifficulties.erase(cumulativeDifficulties.begin(), cumulativeDifficulties.begin() + offset);
+		}
+
 		assert(timestamps.size() == cumulativeDifficulties.size());
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);

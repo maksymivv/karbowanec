@@ -745,13 +745,8 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
     ++offset;
   }
   for (; offset < m_blocks.size(); offset++) {
-    if (m_blocks.size() > CryptoNote::parameters::UPGRADE_HEIGHT_V5 && offset < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-      // skip to reset difficulty for hardfork block 5
-    }
-    else {
-      timestamps.push_back(m_blocks[offset].bl.timestamp);
-      cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
-    }
+    timestamps.push_back(m_blocks[offset].bl.timestamp);
+    cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
   }
 
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
