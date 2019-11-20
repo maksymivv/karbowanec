@@ -388,12 +388,25 @@ std::vector<TransactionId> WalletUserTransactionsCache::deleteOutdatedTransactio
   return deletedTransactions;
 }
 
-bool WalletUserTransactionsCache::deleteUnconfirmedTransaction(const Crypto::Hash& transactionHash) {
-  TransactionId id = CryptoNote::WALLET_LEGACY_INVALID_TRANSACTION_ID;
-  if (!m_unconfirmedTransactions.findTransactionId(transactionHash, id))
-    return false;
+bool WalletUserTransactionsCache::deleteTransaction(TransactionId transactionId) {
+  Crypto::Hash transactionHash = m_transactions[transactionId].hash;
+  TransferId firstTransferId = m_transactions[transactionId].firstTransferId;
+  size_t transferCount = m_transactions[transactionId].transferCount;
+ 
+  try {
+    m_transactions.erase(m_transactions.begin() + transactionId);
 
-  m_unconfirmedTransactions.erase(transactionHash);
+    TransactionId id;
+    if (m_unconfirmedTransactions.findTransactionId(transactionHash, id))
+      m_unconfirmedTransactions.erase(transactionHash);
+
+    for (auto id = firstTransferId; id < firstTransferId + transferCount; ++id) {
+      m_transfers.erase(m_transfers.begin() + id);
+    }
+  }
+  catch (...) {
+    return false;
+  }
   return true;
 }
 

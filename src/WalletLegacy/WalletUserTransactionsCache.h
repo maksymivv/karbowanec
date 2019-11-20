@@ -65,7 +65,7 @@ public:
 
   std::vector<Payments> getTransactionsByPaymentIds(const std::vector<PaymentId>& paymentIds) const;
 
-  bool deleteUnconfirmedTransaction(const Crypto::Hash& transactionHash);
+  bool deleteTransaction(TransactionId transactionId);
 
 private:
 
