@@ -1090,12 +1090,4 @@ bool InProcessNode::getStake(uint64_t& stake) {
   return core.getStake(stake);
 }
 
-bool InProcessNode::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) {
-  return core.prepareBlockTemplate(b, fee, adr, diffic, height, ex_nonce, median_size, txs_size, already_generated_coins);
-}
-
-bool InProcessNode::handleBlockFound(Block& b) {
-  return core.handle_block_found(b);
-}
-
 } //namespace CryptoNote

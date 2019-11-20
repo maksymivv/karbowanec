@@ -558,87 +558,17 @@ void NodeRpcProxy::isSynchronized(bool& syncStatus, const Callback& callback) {
 }
 
 bool NodeRpcProxy::getStake(uint64_t& stake) {
-  CryptoNote::COMMAND_RPC_GET_INFO::request getInfoReq = AUTO_VAL_INIT(getInfoReq);
-  CryptoNote::COMMAND_RPC_GET_INFO::response getInfoResp = AUTO_VAL_INIT(getInfoResp);
-  std::error_code ec = jsonCommand("/getinfo", getInfoReq, getInfoResp);
-  if (!ec) {
-    //a quirk to let wallets work with previous versions daemons.
-    //Previous daemons didn't have the 'last_known_block_index' parameter in RPC so it may have zero value.
-    std::unique_lock<std::mutex> lock(m_mutex);
-    auto lastKnownBlockIndex = std::max(getInfoResp.last_known_block_index, lastLocalBlockHeaderInfo.index);
-    lock.unlock();
-    if (m_networkHeight.load(std::memory_order_relaxed) != lastKnownBlockIndex) {
-      m_networkHeight.store(lastKnownBlockIndex, std::memory_order_relaxed);
-      m_observerManager.notify(&INodeObserver::lastKnownBlockHeightUpdated, m_networkHeight.load(std::memory_order_relaxed));
-    }
+  stake = m_nextStake;
 
-    updatePeerCount(getInfoResp.incoming_connections_count + getInfoResp.outgoing_connections_count);
-
-    m_minimalFee.store(getInfoResp.min_tx_fee, std::memory_order_relaxed);
-    m_nodeHeight.store(getInfoResp.height, std::memory_order_relaxed);
-    m_nextDifficulty.store(getInfoResp.difficulty, std::memory_order_relaxed);
-    m_nextStake.store(getInfoResp.next_stake, std::memory_order_relaxed);
-    m_nextReward.store(getInfoResp.next_reward, std::memory_order_relaxed);
-    m_alreadyGeneratedCoins.store(getInfoResp.already_generated_coins, std::memory_order_relaxed);
-
-    stake = m_nextStake;
-
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
-  if (!getStake(stake)) {
-    return false;
-  }
   stake = m_nextStake;
   blockReward = m_nextReward;
 
   return true;
 };
-
-bool NodeRpcProxy::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const CryptoNote::BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) {
-  CryptoNote::COMMAND_RPC_PREPARE_BLOCKTEMPLATE::request req = AUTO_VAL_INIT(req);
-  CryptoNote::COMMAND_RPC_PREPARE_BLOCKTEMPLATE::response rsp = AUTO_VAL_INIT(rsp);
-
-  req.wallet_address = getAccountAddressAsStr(CryptoNote::parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX, adr);
-
-  std::error_code ec = jsonRpcCommand("prepareblocktemplate", req, rsp);
-
-  if (!ec) {
-    if (!fromBinaryArray(b, asBinaryArray(rsp.blocktemplate_blob))) {
-      return false;
-    }
-    diffic = rsp.difficulty;
-    height = rsp.height;
-    already_generated_coins = rsp.already_generated_coins;
-    txs_size = rsp.txs_size;
-    median_size = rsp.median_size;
-  }
-
-  return true;
-}
-
-bool NodeRpcProxy::handleBlockFound(Block& b) {
-  try {
-    COMMAND_RPC_SUBMITBLOCK::request request;
-    request.emplace_back(Common::toHex(toBinaryArray(b)));
-
-    COMMAND_RPC_SUBMITBLOCK::response response;
-
-    std::error_code ec = jsonRpcCommand("submitblock", request, response);
-
-    if (!ec) {
-      return true;
-    }
-  }
-  catch (std::exception& e) {
-    return false;
-  }
-  return false;
-}
 
 
 std::error_code NodeRpcProxy::doRelayTransaction(const CryptoNote::Transaction& transaction) {
