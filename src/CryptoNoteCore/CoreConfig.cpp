@@ -35,9 +35,9 @@ CoreConfig::CoreConfig() {
 }
 
 namespace {
-  const command_line::arg_descriptor<std::string> arg_wallet_host = { "wallet-host", "Specify wallet RPC host", "127.0.0.1", true };
+  const command_line::arg_descriptor<std::string> arg_wallet_host = { "wallet-host", "Specify wallet RPC host", "127.0.0.1", false };
   const command_line::arg_descriptor<uint16_t>    arg_wallet_port = { "wallet-port", "Specify wallet RPC port", 32349, true };
-  const command_line::arg_descriptor<size_t>      arg_stake_mixin = { "stake-mixin", "Specify stake transaction mixin", 0, true };
+  const command_line::arg_descriptor<size_t>      arg_stake_mixin = { "stake-mixin", "Specify stake transaction mixin", 0, false };
   const command_line::arg_descriptor<std::string> arg_wallet_user = { "wallet-user", "Wallet RPC user. Default: none", "", true };
   const command_line::arg_descriptor<std::string> arg_wallet_pass = { "wallet-password", "Wallet RPC password. Default: none", "", true };
 }
