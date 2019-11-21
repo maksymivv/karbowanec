@@ -486,8 +486,8 @@ namespace CryptoNote {
     return ret;
   }
 
-  uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins,  uint64_t& alreadyGeneratedCoinsBeforeStake, uint64_t& cumulativeDifficulty, uint64_t& cumulativeDifficultyBeforeStake, uint64_t& nextDifficulty) const {
-    // ~25% of coins in circulation involved in POWS around the clock.
+  uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins,  uint64_t& alreadyGeneratedCoinsBeforeStake) const {
+    // ~25% of coins in circulation involved in POWS around the clock. This is P, a STAKE_EMISSION_FRACTION
     
     // Tweak this value to get desired percent after stake is adjusted by the
     // average reward in the next step.
@@ -510,23 +510,10 @@ namespace CryptoNote {
 
     // Calculate reward/profitability-adjusted stake
     // using doubles and first divide then multiply to avoid overflow.
-    uint64_t rewardStake = static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(epochAvgReward) * static_cast<double>(baseReward));
-
-    // Normally here should be used average historic difficulty for the entire
-    // history but because of POWS hardfork calculation is changed.
-    // Calculate average historic difficulty for new, post-ASICs POWS epoch
-    // to eliminate their influence.
-    uint64_t epochAvgDifficulty = (cumulativeDifficulty - cumulativeDifficultyBeforeStake) / epochDuration;
-         if (epochAvgDifficulty == 0)
-             epochAvgDifficulty = nextDifficulty;
-
-    // Calculate difficulty-adjusted stake
-    // using doubles and first divide then multiply to avoid overflow.
-    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(rewardStake) * (static_cast<double>(nextDifficulty) / static_cast<double>(epochAvgDifficulty)));
+    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(epochAvgReward) * static_cast<double>(baseReward));
 
     // Output info for debugging and checkout
-    logger(TRACE) << "Base Stake: "  << formatAmount(baseStake) << ENDL
-                  << "Rew. Stake: "  << formatAmount(rewardStake) << ENDL
+    logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
                   << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL;
 
     // Make all insignificant digits zero for easy reading

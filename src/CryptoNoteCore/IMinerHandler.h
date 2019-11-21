@@ -26,7 +26,6 @@ namespace CryptoNote {
     virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher) = 0;
     virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
     virtual bool requestStakeTransaction(uint8_t blockMajorVersion, uint64_t& fee, uint32_t& height, difficulty_type& next_diff, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize, const AccountPublicAddress& minerAddress, const CryptoNote::BinaryArray& extra_nonce, bool local_dispatcher, Transaction& transaction) = 0;
-    virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) = 0;
     virtual bool getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) = 0;
     virtual uint64_t getNextBlockDifficulty() = 0;
     virtual uint64_t getTotalGeneratedAmount() = 0;

@@ -1222,12 +1222,8 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     }
 
     // calculate stake
-    uint64_t cumulDiffBeforeStake = blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-    uint64_t cumulDiffTotal = blockCumulativeDifficulty(height - 1);
-    uint64_t nextDifficulty = getDifficultyForNextBlock();
     uint64_t alreadyGeneratedCoinsBeforeStake = m_blocks[CryptoNote::parameters::UPGRADE_HEIGHT_V5].already_generated_coins;
-
-    uint64_t stake = m_currency.nextStake(height, reward, fee, alreadyGeneratedCoins, alreadyGeneratedCoinsBeforeStake, cumulDiffTotal, cumulDiffBeforeStake, nextDifficulty);
+    uint64_t stake = m_currency.nextStake(height, reward, fee, alreadyGeneratedCoins, alreadyGeneratedCoinsBeforeStake);
 
     // check stake, we don't care what's actually stake and what's change as both will be locked
     if (inputsAmount < stake) {

@@ -563,7 +563,7 @@ bool NodeRpcProxy::getStake(uint64_t& stake) {
   return true;
 }
 
-bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, difficulty_type& next_diff, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
+bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
   stake = m_nextStake;
   blockReward = m_nextReward;
 

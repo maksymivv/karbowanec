@@ -674,38 +674,24 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.start_time = (uint64_t)m_core.getStartTime();
   res.already_generated_coins = m_core.getTotalGeneratedAmount();
   res.block_major_version = m_core.getCurrentBlockMajorVersion();
-  std::vector<size_t> blocksSizes;
-  if (!m_core.getBackwardBlocksSizes(res.height - 1, blocksSizes, parameters::CRYPTONOTE_REWARD_BLOCKS_WINDOW)) {
-    return false;
-  }
-  uint64_t sizeMedian = Common::medianValue(blocksSizes);
-  
-  int64_t emissionChange = 0;
-  if (!m_core.getBlockReward(res.block_major_version, sizeMedian, 0, res.already_generated_coins, 0, res.next_reward, emissionChange)) {
-    throw JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins for prev. block." };
-  }
 
   uint32_t index = res.height - 1;
 
-  if (!m_core.getBlockCumulativeDifficulty(index, res.cumulative_difficulty)) {
-    throw JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
-  }
-
-  res.avg_difficulty = m_core.getAvgDifficulty(index);
-
-  // calculate next stake
+  // calculate next stake and next reward (to avoid calc. reward twice)
   uint64_t fee = 0;
-  if (!m_core.getStake(res.block_major_version, fee, res.height, res.difficulty, sizeMedian, res.already_generated_coins, 0, res.next_stake, res.next_reward)) {
+  std::vector<size_t> blocksSizes;
+  if (!m_core.getBackwardBlocksSizes(index, blocksSizes, parameters::CRYPTONOTE_REWARD_BLOCKS_WINDOW)) {
+    return false;
+  }
+  uint64_t sizeMedian = Common::medianValue(blocksSizes);
+  if (!m_core.getStake(res.block_major_version, fee, res.height, sizeMedian, res.already_generated_coins, 0, res.next_stake, res.next_reward)) {
     throw JsonRpc::JsonRpcError{
      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get stake." };
   }
 
+  // calculate stake stats (only when stake hardfork is active)
   uint64_t totalStake = 0;
-  if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-
-    // calculate stake stats
+  if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {  
     uint32_t blocks_count = parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
     uint32_t last_height = index - blocks_count;
     if (index <= blocks_count) {
@@ -729,7 +715,6 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
     }
   }
   res.total_coins_locked = totalStake;
-
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }

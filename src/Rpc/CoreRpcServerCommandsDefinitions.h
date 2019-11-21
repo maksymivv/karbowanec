@@ -281,8 +281,6 @@ struct COMMAND_RPC_GET_INFO {
     uint32_t height;
     std::string top_block_hash;
     uint64_t difficulty;
-    uint64_t cumulative_difficulty;
-    uint64_t avg_difficulty;
     uint64_t next_reward;
     uint64_t next_stake;
     uint64_t min_tx_fee;
@@ -309,8 +307,6 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(height)
       KV_MEMBER(top_block_hash)
       KV_MEMBER(difficulty)
-      KV_MEMBER(cumulative_difficulty)
-      KV_MEMBER(avg_difficulty)
       KV_MEMBER(next_reward)
       KV_MEMBER(next_stake)
       KV_MEMBER(min_tx_fee)

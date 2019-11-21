@@ -494,7 +494,6 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
 bool core::getStake(uint8_t blockMajorVersion,
               uint64_t fee,
               uint32_t& height,
-              difficulty_type& next_diff,
               size_t& medianSize,
               uint64_t& alreadyGeneratedCoins,
               size_t currentBlockSize,
@@ -506,11 +505,8 @@ bool core::getStake(uint8_t blockMajorVersion,
     logger(ERROR) << "Error getting block reward for stake calculation";
     return false;
   }
-  uint64_t cumulDiffTotal = m_blockchain.blockCumulativeDifficulty(height - 1);
-  uint64_t cumulDiffBeforeStake = m_blockchain.blockCumulativeDifficulty(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-  uint64_t emissionBeforeStake = m_blockchain.getCoinsInCirculation(CryptoNote::parameters::UPGRADE_HEIGHT_V5);
-
-  stake = m_currency.nextStake(height, blockReward, fee, emission, emissionBeforeStake, cumulDiffTotal, cumulDiffBeforeStake, next_diff);
+  uint64_t emissionBeforeStake = m_blockchain.getCoinsInCirculation(std::min<uint32_t>(CryptoNote::parameters::UPGRADE_HEIGHT_V5, height - 1));
+  stake = m_currency.nextStake(height, blockReward, fee, emission, emissionBeforeStake);
 
   return true;
 }
@@ -518,19 +514,13 @@ bool core::getStake(uint8_t blockMajorVersion,
 bool core::getStake(uint64_t& stake) {
   uint32_t height = m_blockchain.getCurrentBlockchainHeight();
   uint8_t blockMajorVersion = m_blockchain.getBlockMajorVersionForHeight(height);
-  difficulty_type next_diff = m_blockchain.getDifficultyForNextBlock();
   size_t medianSize = m_blockchain.getCurrentCumulativeBlocksizeLimit() / 2;
   uint64_t alreadyGeneratedCoins = m_blockchain.getCoinsInCirculation();
   size_t currentBlockSize = 0;
   uint64_t fee = 0;
   uint64_t blockReward;
 
-  if (!(next_diff)) {
-    logger(ERROR, BRIGHT_RED) << "difficulty overhead.";
-    return false;
-  }
-
-  return getStake(blockMajorVersion, fee, height, next_diff, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
+  return getStake(blockMajorVersion, fee, height, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
 }
 
 bool core::requestStakeTransaction(uint8_t blockMajorVersion,
@@ -550,7 +540,7 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
   Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
   // Calculate stake
-  if (!getStake(blockMajorVersion, fee, height, next_diff, medianSize, alreadyGeneratedCoins, currentBlockSize, req.stake, req.reward)) {
+  if (!getStake(blockMajorVersion, fee, height, medianSize, alreadyGeneratedCoins, currentBlockSize, req.stake, req.reward)) {
     logger(ERROR) << "Failed to calculate stake";
     return false;
   }
