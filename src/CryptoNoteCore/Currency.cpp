@@ -492,7 +492,7 @@ namespace CryptoNote {
     // Tweak this value to get desired percent after stake is adjusted by the
     // average reward in the next step.
     const uint64_t emissionFraction = CryptoNote::parameters::STAKE_EMISSION_FRACTION;
-    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / emissionFraction;
+    uint64_t baseStake = alreadyGeneratedCoins / /*CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 TESTNET */ 360 / emissionFraction;
     uint64_t baseReward = reward - fee; // exclude fees
 
     uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
