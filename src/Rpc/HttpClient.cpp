@@ -28,6 +28,9 @@
 #if defined(WIN32)
 #include <wincrypt.h>
 #endif
+#if defined(__ANDROID__)
+#include "HttpRootCerts.h"
+#endif
 
 using boost::asio::ip::tcp;
 
@@ -57,6 +60,23 @@ void add_windows_root_certs(boost::asio::ssl::context &ctx) {
     CertFreeCertificateContext(pContext);
     CertCloseStore(hStore, 0);
     SSL_CTX_set_cert_store(ctx.native_handle(), store);
+  }
+}
+#endif
+
+#if defined(__ANDROID__)
+void add_emb_root_certs(boost::asio::ssl::context &ctx) {
+  std::string emb_certs = (char *) root_crts;
+  size_t cert_start = 0;
+  size_t cert_end = 0;
+  while (true) {
+    cert_end = emb_certs.find("\n\n", cert_start + 2);
+    if (cert_end != std::string::npos) {
+      ctx.add_certificate_authority(boost::asio::buffer(emb_certs.data() + cert_start, cert_end - cert_start));
+      cert_start = cert_end;
+    } else {
+      break;
+    }
   }
 }
 #endif
@@ -187,6 +207,8 @@ void HttpClient::connect() {
       boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
 #if defined(_WIN32)
       add_windows_root_certs(ctx);
+#elif defined(__ANDROID__)
+      add_emb_root_certs(ctx);
 #else
       ctx.set_default_verify_paths();
 #endif
