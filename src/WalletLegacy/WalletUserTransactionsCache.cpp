@@ -165,7 +165,7 @@ std::shared_ptr<WalletLegacyEvent> WalletUserTransactionsCache::onTransactionUpd
     m_unconfirmedTransactions.erase(txInfo.transactionHash);
   }
 
-  bool isCoinbase = txInfo.totalAmountIn == 0;
+  bool isCoinbase = txInfo.totalAmountIn == 0 || txInfo.totalAmountOut > txInfo.totalAmountIn; // TODO improve this check
 
   if (id == CryptoNote::WALLET_LEGACY_INVALID_TRANSACTION_ID) {
     WalletLegacyTransaction transaction;
