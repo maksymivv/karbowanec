@@ -226,6 +226,10 @@ bool MinerManager::submitBlock(const Block& minedBlock, const std::string& daemo
 }
 
 BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& dispatcher, const std::string& daemonHost, uint16_t daemonPort, const std::string& miningAddress) {
+
+  m_logger(Logging::INFO) << "Give wallet some time to refresh...";
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
   try {
     HttpClient client(dispatcher, daemonHost, daemonPort);
 

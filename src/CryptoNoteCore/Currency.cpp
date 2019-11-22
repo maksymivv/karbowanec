@@ -513,7 +513,7 @@ namespace CryptoNote {
     uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(epochAvgReward) * static_cast<double>(baseReward));
 
     // Output info for debugging and checkout
-    logger(INFO) << "Base Stake: "  << formatAmount(baseStake) << ENDL
+    logger(TRACE) << "Base Stake: "  << formatAmount(baseStake) << ENDL
                   << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL;
 
     // Make all insignificant digits zero for easy reading
