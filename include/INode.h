@@ -120,7 +120,7 @@ public:
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) = 0;
   virtual std::string feeAddress() const = 0;
   virtual bool getStake(uint64_t& stake) = 0;
-  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) = 0;
+  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) = 0;
 };
 
 }

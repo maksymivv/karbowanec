@@ -174,7 +174,7 @@ public:
   difficulty_type nextDifficultyV4(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
 
-  uint64_t nextStake(uint32_t height, uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins, uint64_t& alreadyGeneratedCoinsBeforeStake) const;
+  uint64_t nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const;
 
   bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
   bool checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;

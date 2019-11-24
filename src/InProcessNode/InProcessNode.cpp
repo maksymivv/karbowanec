@@ -1082,8 +1082,8 @@ void InProcessNode::isSynchronizedAsync(bool& syncStatus, const Callback& callba
   callback(std::error_code());
 }
 
-bool InProcessNode::getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
-  return core.getStake(blockMajorVersion, fee, height, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
+bool InProcessNode::getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
+  return core.getStake(blockMajorVersion, fee, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
 };
 
 bool InProcessNode::getStake(uint64_t& stake) {

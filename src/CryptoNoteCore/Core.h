@@ -71,7 +71,8 @@ namespace CryptoNote {
      bool set_genesis_block(const Block& b);
      bool deinit();
 
-     virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
+     virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
+     virtual bool getStake(const uint32_t height, uint64_t& stake) override;
      virtual bool getStake(uint64_t& stake) override;
 
      // ICore

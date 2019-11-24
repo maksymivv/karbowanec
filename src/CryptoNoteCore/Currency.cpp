@@ -169,6 +169,7 @@ namespace CryptoNote {
 
 			// Friedman's k-percent rule
 			// inflation 2% of total coins in circulation
+			// estimated tail reward ~1.52 KRB
 			const uint64_t blocksInOneYear = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365;
 			uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
 			baseReward = twoPercentOfEmission / blocksInOneYear;
@@ -486,37 +487,30 @@ namespace CryptoNote {
     return ret;
   }
 
-  uint64_t Currency::nextStake(uint32_t height, uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins,  uint64_t& alreadyGeneratedCoinsBeforeStake) const {
-    // ~25% of coins in circulation involved in POWS around the clock. This is P, a STAKE_EMISSION_FRACTION
-    
-    // Tweak this value to get desired percent after stake is adjusted by the
-    // average reward in the next step.
+  uint64_t Currency::nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const {
+    // ~25% of coins in circulation involved in POWS around the clock.
+    // This is P, a STAKE_EMISSION_FRACTION.
+
     const uint64_t emissionFraction = CryptoNote::parameters::STAKE_EMISSION_FRACTION;
-    uint64_t baseStake = alreadyGeneratedCoins / /*CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 TESTNET */ 360 / emissionFraction;
+    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / emissionFraction;
     uint64_t baseReward = reward - fee; // exclude fees
 
-    uint32_t epochDuration = height - 1 - CryptoNote::parameters::UPGRADE_HEIGHT_V5;
-         if (epochDuration == 0)
-             epochDuration = 1;
+    // caclulate profitable stake based on reward
+    uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward;
 
-    // Normally the average reward for the entire history should be used here
-    // but due to POWS hardfork is made at specific point we have to either
-    // initially adjust the percent of engaged coins P to satisfy chosen 
-    // interest after stake is modified by the average reward or calculate 
-    // the average reward only starting from the Epoch beginning.
-    uint64_t epochAvgReward = (alreadyGeneratedCoins - alreadyGeneratedCoinsBeforeStake) / epochDuration;
-         if (epochAvgReward == 0)
-             epochAvgReward = baseReward;
-
-    // Calculate reward/profitability-adjusted stake
-    // using doubles and first divide then multiply to avoid overflow.
-    uint64_t adjustedStake = static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(epochAvgReward) * static_cast<double>(baseReward));
+    // calculate final stake as aurea mediocritas between emission based stake
+    // and reward/profitability based stake
+    std::vector<uint64_t> stakes;
+    stakes.push_back(baseStake);
+    stakes.push_back(interStake);
+    uint64_t adjustedStake = Common::medianValue(stakes);
 
     // Output info for debugging and checkout
-    logger(TRACE) << "Base Stake: "  << formatAmount(baseStake) << ENDL
-                  << "Adj. Stake: "  << formatAmount(adjustedStake) << ENDL;
+    logger(TRACE) << "Base Stake: " << formatAmount(baseStake) << ENDL
+                  << "Int. Stake: " << formatAmount(interStake) << ENDL
+                  << "Adj. Stake: " << formatAmount(adjustedStake) << ENDL;
 
-    // Make all insignificant digits zero for easy reading
+    // Make all insignificant digits zero
     uint64_t i = 1000000000;
     while (i > 1) {
       if (adjustedStake > i * 100) { adjustedStake = ((adjustedStake + i / 2) / i) * i; break; }

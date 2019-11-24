@@ -91,7 +91,7 @@ public:
   virtual std::string feeAddress() const override;
 
   virtual bool getStake(uint64_t& stake) override;
-  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, uint32_t& height, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
+  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
 
   unsigned int rpcTimeout() const { return m_rpcTimeout; }
   void rpcTimeout(unsigned int val) { m_rpcTimeout = val; }
