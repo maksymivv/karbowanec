@@ -492,11 +492,12 @@ namespace CryptoNote {
     // This is P, a STAKE_EMISSION_FRACTION.
 
     const uint64_t emissionFraction = CryptoNote::parameters::STAKE_EMISSION_FRACTION;
-    uint64_t baseStake = alreadyGeneratedCoins / CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1 / emissionFraction;
+    uint64_t baseStake = alreadyGeneratedCoins / /*CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1*/ 360 / emissionFraction;
     uint64_t baseReward = reward - fee; // exclude fees
 
     // caclulate profitable stake based on reward
-    uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward;
+    //uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward;
+    uint64_t interStake = 128;
 
     // calculate final stake as aurea mediocritas between emission based stake
     // and reward/profitability based stake
