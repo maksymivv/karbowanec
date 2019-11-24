@@ -127,9 +127,9 @@ private:
 
   void scheduleRequest(std::function<std::error_code()>&& procedure, const Callback& callback);
   template <typename Request, typename Response>
-  std::error_code binaryCommand(const std::string& url, const Request& req, Response& res);
+  std::error_code binaryCommand(const std::string& comm, const Request& req, Response& res);
   template <typename Request, typename Response>
-  std::error_code jsonCommand(const std::string& url, const Request& req, Response& res);
+  std::error_code jsonCommand(const std::string& comm, const Request& req, Response& res);
   template <typename Request, typename Response>
   std::error_code jsonRpcCommand(const std::string& method, const Request& req, Response& res);
 

@@ -2088,7 +2088,9 @@ std::string simple_wallet::getFeeAddress() {
   HttpRequest req;
   HttpResponse res;
 
-  req.setUrl("/feeaddress");
+  std::string rpc_url = this->m_daemon_path + "feeaddress";
+
+  req.setUrl(rpc_url);
   try {
 	  httpClient.request(req, res);
   }
