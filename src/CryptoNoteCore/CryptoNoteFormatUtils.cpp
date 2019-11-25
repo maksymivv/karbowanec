@@ -580,4 +580,66 @@ bool is_valid_decomposed_amount(uint64_t amount) {
   return true;
 }
 
+bool parse_and_validate_tx_from_blob(const CryptoNote::blobdata& tx_blob, CryptoNote::Transaction& tx, Crypto::Hash& tx_hash, Crypto::Hash& tx_prefix_hash)
+{
+  std::stringstream ss;
+  ss << tx_blob;
+  BinaryArray ba = fromHex(ss.str().c_str());
+  ba.pop_back();
+  bool r = parseAndValidateTransactionFromBinaryArray(ba, tx, tx_hash, tx_prefix_hash);
+  return r;
+}
+//---------------------------------------------------------------
+bool parse_and_validate_tx_from_blob(const CryptoNote::blobdata& tx_blob, CryptoNote::Transaction& tx)
+{
+  BinaryArray ba = asBinaryArray(tx_blob.c_str());
+  ba.pop_back();
+  Crypto::Hash tx_hash, tx_prefix_hash;
+  bool r = parseAndValidateTransactionFromBinaryArray(ba, tx, tx_hash, tx_prefix_hash);
+  return r;
+}
+//---------------------------------------------------------------
+bool parse_and_validate_block_from_blob(const blobdata& b_blob, Block& b)
+{
+  std::stringstream ss;
+  ss << b_blob;
+  binary_archive<true> ba(ss);
+  bool r = serial::serialize(ba, b);
+  if (!r) return false;
+  return true;
+}
+/* bool parse_and_validate_block_from_blob(const blobdata& b_blob, Block& b)
+{
+  std::stringstream ss;
+  ss << b_blob;
+  BinaryArray ba = fromHex(ss.str().c_str());
+  ba.pop_back();
+  block_verification_context bvc = boost::value_initialized<block_verification_context>();
+  bool r = fromBinaryArray(b, ba);
+  return r;
+}*/
+//---------------------------------------------------------------
+CryptoNote::blobdata block_to_blob(const CryptoNote::Block& b)
+{
+  blobdata bd;
+  BinaryArray ba = storeToBinary(b);
+  bd = Common::asString(ba);
+  return bd;
+}
+//---------------------------------------------------------------
+CryptoNote::blobdata tx_to_blob(const CryptoNote::Transaction& tx)
+{
+  blobdata bd;
+  BinaryArray ba = storeToBinary(tx);
+  bd = Common::asString(ba);
+  return bd;
+}
+//---------------------------------------------------------------
+bool tx_to_blob(const CryptoNote::Transaction& tx, CryptoNote::blobdata& tx_blob)
+{
+  BinaryArray ba = storeToBinary(tx);
+  tx_blob = Common::asString(ba);
+  return !tx_blob.empty();
+}
+
 }

@@ -368,5 +368,4 @@ std::string timeIntervalToString(uint64_t intervalInSeconds) {
 
   return ss.str();
 }
-
 }

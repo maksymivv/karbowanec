@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 //
 // This file is part of Karbo.
 //
@@ -186,4 +187,6 @@ namespace command_line
   extern const arg_descriptor<bool> arg_help;
   extern const arg_descriptor<bool> arg_version;
   extern const arg_descriptor<std::string> arg_data_dir;
+  extern const arg_descriptor<std::string> arg_db_type;
+  extern const arg_descriptor<std::string> arg_db_sync_mode;
 }

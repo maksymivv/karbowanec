@@ -31,7 +31,7 @@
 #include "crypto/hash.h"
 
 #include "Serialization/SerializationTools.h"
-#include "Serialization/BinarySerializationTools.h"
+//#include "Serialization/BinarySerializationTools.h"
 
 #include "CryptoNoteFormatUtils.h"
 #include "CryptoNoteTools.h"

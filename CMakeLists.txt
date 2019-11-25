@@ -1,7 +1,4 @@
 cmake_minimum_required(VERSION 2.8.6)
-if (WIN32)
- option(CMAKE_USE_WIN32_THREADS_INIT "using WIN32 threads" ON)
-endif()
 set(VERSION "0.1")
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -104,6 +101,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake ${CMAKE_CURRENT_BIN
 project(Karbowanec)
 
 include_directories(include src external "${CMAKE_CURRENT_BINARY_DIR}/version")  
+include(ExternalProject)
 
 # Check whether we're on a 32-bit or 64-bit system
 if(CMAKE_SIZEOF_VOID_P EQUAL "8")
@@ -201,6 +199,15 @@ if(STATIC)
   else()
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
   endif()
+endif()
+
+if (WIN32)
+ option(CMAKE_USE_WIN32_THREADS_INIT "using WIN32 threads" ON)
+endif()
+
+if(UNIX AND NOT ANDROID)
+    set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+    set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 endif()
 
 if (UNIX AND NOT APPLE)

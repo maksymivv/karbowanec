@@ -2,7 +2,10 @@
 add_definitions(-DSTATICLIB)
 
 include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
+include_directories(${SPARSEHASH_INCLUDE_DIRS})
+include_directories(${LMDB_INCLUDE})
 
+file(GLOB_RECURSE BlockchainDB BlockchainDB/*)
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
 file(GLOB_RECURSE Common Common/*)
 file(GLOB_RECURSE Crypto crypto/*)
@@ -42,8 +45,11 @@ endif()
 
 source_group("" FILES $${Common} ${Crypto} ${CryptoNoteCore} ${CryptoNoteProtocol} ${Daemon} ${GreenWallet} ${Http} ${JsonRpcServer} ${Logging} ${Mnemonics} ${NodeRpcProxy} ${Optimizer} ${P2p} ${Rpc} ${Serialization} ${SimpleWallet} ${System} ${Transfers} ${Wallet} ${WalletLegacy})
 
+add_library(BlockchainDB STATIC ${BlockchainDB})
+add_dependencies(BlockchainDB sparsehash::sparsehash)
 add_library(BlockchainExplorer ${BlockchainExplorer})
 add_library(CryptoNoteProtocol ${CryptoNoteProtocol})
+add_dependencies(CryptoNoteProtocol sparsehash::sparsehash)
 add_library(Common ${Common})
 add_library(Crypto ${Crypto})
 add_library(CryptoNoteCore ${CryptoNoteCore})
@@ -62,7 +68,7 @@ add_library(PaymentGate ${PaymentGate})
 add_library(JsonRpcServer ${JsonRpcServer})
 
 list(APPEND KarboCommon Common)
-list(APPEND KarboCore Rpc Http CryptoNoteCore Logging Serialization Crypto System)
+list(APPEND KarboCore BlockchainDB Crypto CryptoNoteCore Http Logging Rpc Serialization System)
 list(APPEND KarboWallet Wallet Transfers NodeRpcProxy)
 list(APPEND KarboLink CryptoNoteProtocol P2P BlockchainExplorer)
 list(APPEND KarboPaymentGate PaymentGate JsonRpcServer InProcessNode)
@@ -83,11 +89,12 @@ else()
   add_executable(Miner ${Miner})
 endif()
 
-target_link_libraries(Daemon ${KarboCore} ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
+target_link_libraries(BlockchainDB PRIVATE ${LMDB_LIBRARY})
+target_link_libraries(Daemon ${KarboCore} ${LMDB_LIBRARY} ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
 target_link_libraries(SimpleWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} ${Boost_LIBRARIES})
 target_link_libraries(GreenWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} ${Boost_LIBRARIES})
 target_link_libraries(Optimizer PaymentGate ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
-target_link_libraries(PaymentGateService ${KarboPaymentGate} ${KarboWallet} ${KarboCore}
+target_link_libraries(PaymentGateService ${KarboPaymentGate} ${KarboWallet} ${KarboCore} ${LMDB_LIBRARY}
                       ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
 target_link_libraries(Miner ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
 

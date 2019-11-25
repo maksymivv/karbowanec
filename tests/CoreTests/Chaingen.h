@@ -1,25 +1,27 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 //
-// This file is part of Karbo.
+// This file is part of Qwertycoin.
 //
-// Karbo is free software: you can redistribute it and/or modify
+// Qwertycoin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Karbo is distributed in the hope that it will be useful,
+// Qwertycoin is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
+// along with Qwertycoin.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
 #include <boost/program_options.hpp>
 #include <boost/serialization/variant.hpp>
 #include "CryptoNoteCore/CoreConfig.h"
+#include "BlockchainDB/BlockchainDB.h"
 
 #include "Common/CommandLine.h"
 #include "Common/ConsoleTools.h"
@@ -37,6 +39,7 @@
 #include <Logging/LoggerGroup.h>
 #include <Logging/ConsoleLogger.h>
 
+#include <memory>
 
 namespace concolor
 {
@@ -298,7 +301,7 @@ public:
 
     CryptoNote::tx_verification_context tvc = boost::value_initialized<decltype(tvc)>();
     size_t pool_size = m_c.get_pool_transactions_count();
-    m_c.handle_incoming_tx(toBinaryArray(tx), tvc, m_txs_keeped_by_block);
+    m_c.handle_incoming_tx(toBinaryArray(tx), tvc, m_txs_keeped_by_block, false);
     bool tx_added = pool_size + 1 == m_c.get_pool_transactions_count();
     bool r = check_tx_verification_context(tvc, tx_added, m_ev_index, tx, m_validator);
     CHECK_AND_NO_ASSERT_MES(r, false, "tx verification context check failed");
@@ -351,7 +354,7 @@ public:
 
     CryptoNote::tx_verification_context tvc = boost::value_initialized<decltype(tvc)>();;
     size_t pool_size = m_c.get_pool_transactions_count();
-    m_c.handle_incoming_tx(sr_tx.data, tvc, m_txs_keeped_by_block);
+    m_c.handle_incoming_tx(sr_tx.data, tvc, m_txs_keeped_by_block, false);
     bool tx_added = pool_size + 1 == m_c.get_pool_transactions_count();
 
     CryptoNote::Transaction tx;
@@ -413,9 +416,11 @@ inline bool do_replay_events(std::vector<test_event_entry>& events, t_test_class
   Logging::ConsoleLogger logger;
   CryptoNote::CoreConfig coreConfig;
   coreConfig.init(vm);
+  std::unique_ptr<CryptoNote::BlockchainDB> db;
+  CryptoNote::HardFork* hf(NULL);
   CryptoNote::MinerConfig emptyMinerConfig;
   CryptoNote::cryptonote_protocol_stub pr; //TODO: stub only for this kind of test, make real validation of relayed objects
-  CryptoNote::core c(validator.currency(), &pr, logger, false);
+  CryptoNote::core c(db, hf, validator.currency(), &pr, logger, false);
   if (!c.init(coreConfig, emptyMinerConfig, false))
   {
     std::cout << concolor::magenta << "Failed to init core" << concolor::normal << std::endl;

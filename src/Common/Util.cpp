@@ -1,4 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
+// Copyright (c) 2016-2019, Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -27,7 +29,7 @@
 #include <windows.h>
 #include <shlobj.h>
 #include <strsafe.h>
-#else 
+#else
 #include <sys/utsname.h>
 #endif
 
@@ -60,13 +62,13 @@ namespace Tools
     // Call GetNativeSystemInfo if supported or GetSystemInfo otherwise.
 
     pGNSI = (PGNSI) GetProcAddress(
-      GetModuleHandle(TEXT("kernel32.dll")), 
+      GetModuleHandle(TEXT("kernel32.dll")),
       "GetNativeSystemInfo");
     if(NULL != pGNSI)
       pGNSI(&si);
     else GetSystemInfo(&si);
 
-    if ( VER_PLATFORM_WIN32_NT==osvi.dwPlatformId && 
+    if ( VER_PLATFORM_WIN32_NT==osvi.dwPlatformId &&
       osvi.dwMajorVersion > 4 )
     {
       StringCchCopy(pszOS, BUFSIZE, TEXT("Microsoft "));
@@ -90,7 +92,7 @@ namespace Tools
         }
 
         pGPI = (PGPI) GetProcAddress(
-          GetModuleHandle(TEXT("kernel32.dll")), 
+          GetModuleHandle(TEXT("kernel32.dll")),
           "GetProductInfo");
 
         pGPI( osvi.dwMajorVersion, osvi.dwMinorVersion, 0, 0, &dwType);
@@ -220,7 +222,7 @@ namespace Tools
         {
           StringCchCat(pszOS, BUFSIZE, TEXT( "Professional" ));
         }
-        else 
+        else
         {
           if( osvi.wSuiteMask & VER_SUITE_DATACENTER )
             StringCchCat(pszOS, BUFSIZE, TEXT( "Datacenter Server" ));
@@ -251,10 +253,10 @@ namespace Tools
           StringCchCat(pszOS, BUFSIZE, TEXT(", 32-bit"));
       }
 
-      return pszOS; 
+      return pszOS;
     }
     else
-    {  
+    {
       printf( "This sample does not support this version of Windows.\n");
       return pszOS;
     }
@@ -345,6 +347,18 @@ std::string get_nix_version_display_string()
     return config_folder;
   }
 
+  std::string getDefaultDbType()
+  {
+    std::string ret = "lmdb";
+    return ret;
+  }
+
+  std::string getDefaultDbSyncMode()
+  {
+    std::string ret = "fastest:async:1000";
+    return ret;
+  }
+  
   bool create_directories_if_necessary(const std::string& path)
   {
     namespace fs = boost::filesystem;
@@ -381,5 +395,7 @@ std::string get_nix_version_display_string()
     boost::system::error_code ec;
     return boost::filesystem::is_directory(path, ec);
   }
+  
+  
 
 }

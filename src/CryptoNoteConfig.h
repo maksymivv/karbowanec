@@ -113,6 +113,8 @@ const char     CRYPTONOTE_BLOCKS_FILENAME[]                  = "blocks.dat";
 const char     CRYPTONOTE_BLOCKINDEXES_FILENAME[]            = "blockindexes.dat";
 const char     CRYPTONOTE_BLOCKSCACHE_FILENAME[]             = "blockscache.dat";
 const char     CRYPTONOTE_POOLDATA_FILENAME[]                = "poolstate.bin";
+const char     CRYPTONOTE_BLOCKCHAINDATA_LOCK_FILENAME[]     = "mdb.lock";
+const char     CRYPTONOTE_BLOCKCHAINDATA_FILENAME[]          = "data.mdb";
 const char     P2P_NET_DATA_FILENAME[]                       = "p2pstate.bin";
 const char     CRYPTONOTE_BLOCKCHAIN_INDICES_FILENAME[]      = "blockchainindices.dat";
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
@@ -131,8 +133,8 @@ const uint8_t  BLOCK_MAJOR_VERSION_5                         =  5;
 const uint8_t  BLOCK_MINOR_VERSION_0                         =  0;
 const uint8_t  BLOCK_MINOR_VERSION_1                         =  1;
 
-const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by default, blocks ids count in synchronizing
-const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  128;    //by default, blocks count in blocks downloading
+const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  1000;   //by default, blocks ids count in synchronizing
+const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  500;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
 const int      P2P_DEFAULT_PORT                              =  32347;

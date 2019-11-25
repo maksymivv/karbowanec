@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 // Copyright (c) 2018, Karbo developers
 //
 // This file is part of Karbo.
@@ -25,6 +26,7 @@
 
 #include "Serialization/BinaryOutputStreamSerializer.h"
 #include "Serialization/BinaryInputStreamSerializer.h"
+#include "BlockchainDB/BlobDataType.h"
 
 namespace Logging {
 class ILogger;
@@ -126,5 +128,12 @@ void get_tx_tree_hash(const std::vector<Crypto::Hash>& tx_hashes, Crypto::Hash& 
 Crypto::Hash get_tx_tree_hash(const std::vector<Crypto::Hash>& tx_hashes);
 Crypto::Hash get_tx_tree_hash(const Block& b);
 bool is_valid_decomposed_amount(uint64_t amount);
+bool parse_and_validate_tx_from_blob(const CryptoNote::blobdata& tx_blob, CryptoNote::Transaction& tx, Crypto::Hash& tx_hash, Crypto::Hash& tx_prefix_hash);
+bool parse_and_validate_tx_from_blob(const CryptoNote::blobdata& tx_blob, CryptoNote::Transaction& tx);
+bool parse_and_validate_block_from_blob(const CryptoNote::blobdata& b_blob, CryptoNote::Block& tx);
+CryptoNote::blobdata block_to_blob(const CryptoNote::Block& b);
+bool block_to_blob(const CryptoNote::Block& b, CryptoNote::blobdata& b_blob);
+CryptoNote::blobdata tx_to_blob(const CryptoNote::Transaction& tx);
+bool tx_to_blob(const CryptoNote::Transaction& tx, CryptoNote::blobdata& tx_blob);
 
 }
