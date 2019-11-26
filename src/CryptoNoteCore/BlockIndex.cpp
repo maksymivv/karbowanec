@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018-2019, The Qwertycoin developers
+// Copyright (c) 2016-2019, Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -26,9 +27,13 @@
 
 namespace CryptoNote {
   Crypto::Hash BlockIndex::getBlockId(uint32_t height) const {
-//    assert(height < m_container.size());
+    assert(height < m_container.size());
 
     return m_container[static_cast<size_t>(height)];
+  }
+
+  Crypto::Hash BlockIndex::getBlockId(uint32_t height, BlockchainDB& db) const {
+    return db.get_block_hash_from_height(height);
   }
 
   std::vector<Crypto::Hash> BlockIndex::getBlockIds(uint32_t startBlockIndex, uint32_t maxCount) const {
@@ -88,7 +93,7 @@ namespace CryptoNote {
   }
 
   std::vector<Crypto::Hash> BlockIndex::buildSparseChain(const Crypto::Hash& startBlockId) const {
-//    assert(m_index.count(startBlockId) > 0);
+    assert(m_index.count(startBlockId) > 0);
 
     uint32_t startBlockHeight;
     getBlockHeight(startBlockId, startBlockHeight);

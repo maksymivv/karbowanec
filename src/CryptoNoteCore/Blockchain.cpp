@@ -677,25 +677,26 @@ bool Blockchain::init(const std::string& config_folder, const std::string& db_ty
     {
       logger(ERROR,BRIGHT_RED) << "Attempted to init Blockchain with unopened DB";
     }
-      m_hardfork = new HardFork(*m_db, 1, 0);
+    m_hardfork = new HardFork(*m_db, 1, 0);
 
-      for (size_t n = 0; n < sizeof(mainnet_hard_forks) / sizeof(mainnet_hard_forks[0]); ++n)
-        m_hardfork->add_fork(mainnet_hard_forks[n].version, mainnet_hard_forks[n].height, mainnet_hard_forks[n].threshold);
-      m_hardfork->init();
+    for (size_t n = 0; n < sizeof(mainnet_hard_forks) / sizeof(mainnet_hard_forks[0]); ++n)
+      m_hardfork->add_fork(mainnet_hard_forks[n].version, mainnet_hard_forks[n].height, mainnet_hard_forks[n].threshold);
+	
+    m_hardfork->init();
 
-        m_db->set_hard_fork(m_hardfork);
-        logger(INFO, BRIGHT_WHITE) << "Loading blockchain...";
-        BlockCacheSerializer loader(*this, get_block_hash(m_db->get_top_block()), logger.getLogger());
-        loader.load(appendPath(config_folder, m_currency.blocksCacheFileName()));
+    m_db->set_hard_fork(m_hardfork);
+    logger(INFO, BRIGHT_WHITE) << "Loading blockchain...";
+    BlockCacheSerializer loader(*this, get_block_hash(m_db->get_top_block()), logger.getLogger());
+    loader.load(appendPath(config_folder, m_currency.blocksCacheFileName()));
 
-      if (m_blockchainIndexesEnabled) {
-        loadBlockchainIndices();
-      }
+    if (m_blockchainIndexesEnabled) {
+      loadBlockchainIndices();
+    }
 
-      if (!loader.loaded()) {
-        logger(WARNING, BRIGHT_YELLOW) << "Couldn't load from existing, rebuilding internal structures...";
-        rebuildCache();
-      }
+    if (!loader.loaded()) {
+      logger(WARNING, BRIGHT_YELLOW) << "Couldn't load from existing, rebuilding internal structures...";
+      rebuildCache();
+    }
 
     if(m_db->height() < 1)
     {
@@ -1620,7 +1621,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     logger(INFO, BRIGHT_WHITE) << "block size " << cumulativeBlockSize << " is bigger than allowed for this blockchain";
     return false;
   }
-
+/*
   if (minerReward > reward) {
     logger(ERROR, BRIGHT_RED) << "Coinbase transaction spend too much money: " << m_currency.formatAmount(minerReward) <<
       ", block reward is " << m_currency.formatAmount(reward);
@@ -1630,7 +1631,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
       m_currency.formatAmount(minerReward) << ", block reward is " << m_currency.formatAmount(reward);
     return false;
   }
-
+*/
   return true;
 }
 
@@ -2853,9 +2854,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   TransactionEntry entry;
   block.transactions.push_back(entry);
   TransactionIndex transactionIndex = { static_cast<uint32_t>(HEIGHT_COND - 1), static_cast<uint16_t>(0) };
-
   pushTransaction(block, minerTransactionHash, transactionIndex);
-
   size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
   size_t cumulative_block_size = coinbase_blob_size;
   uint64_t fee_summary = 0;
