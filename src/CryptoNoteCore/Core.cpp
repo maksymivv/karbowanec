@@ -202,7 +202,7 @@ bool core::init(const CoreConfig& config, const MinerConfig& minerConfig, bool l
       if (boost::filesystem::exists(old_files / "blockindexes.bin"))
       {
         logger(ERROR, BRIGHT_RED) << "Found old-style blockchain.bin in " << old_files.string();
-        logger(ERROR, BRIGHT_RED) << "Qwertycoin now uses a new format. Remove blockchain.bin to start syncing";
+        logger(ERROR, BRIGHT_RED) << "Karbo now uses a new format. Remove blockchain.bin to start syncing";
         return false;
       }
       else

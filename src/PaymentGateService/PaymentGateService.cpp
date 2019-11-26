@@ -167,7 +167,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
     }
   }
 
-  std::unique_ptr<BlockchainDB> db(new_db(Tools::getDefaultDbType()));
+  std::unique_ptr<CryptoNote::BlockchainDB> db(CryptoNote::new_db(Tools::getDefaultDbType()));
   
   log(Logging::INFO) << "Starting Payment Gate with local node";
 
