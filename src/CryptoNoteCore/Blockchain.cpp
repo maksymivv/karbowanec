@@ -1072,7 +1072,7 @@ std::vector<Crypto::Hash> Blockchain::doBuildSparseChain(const Crypto::Hash& sta
       }
     } else {
       if (m_db->block_exists(startBlockId)) {
-        sparseChain = m_blockIndex.buildSparseChain(R ? hash : startBlockId);
+        sparseChain = m_blockIndex.buildSparseChain(R ? hash : startBlockId, *m_db);
       }
     }
 
@@ -4243,7 +4243,7 @@ bool Blockchain::handle_block_to_main_chain(const Block& bl, const Crypto::Hash&
     DB_TX_STOP
     return false;
   }
-std::vector<uint64_t> timestamps;
+  std::vector<uint64_t> timestamps;
   if (!check_block_timestamp(timestamps, bl)) {
     logger(ERROR, BRIGHT_RED) << "Block with id: " << id << std::endl << "has invalid timestamp: " << bl.timestamp;
     bvc.m_verification_failed = true;

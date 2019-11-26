@@ -304,7 +304,7 @@ public:
 
     BlockchainDB& get_db()
     {
-      return *m_db ;
+      return *m_db;
     }
 
 private:
