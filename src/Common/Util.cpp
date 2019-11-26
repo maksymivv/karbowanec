@@ -395,7 +395,4 @@ std::string get_nix_version_display_string()
     boost::system::error_code ec;
     return boost::filesystem::is_directory(path, ec);
   }
-  
-  
-
 }
