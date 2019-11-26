@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 //
 // This file is part of Karbo.
 //
@@ -22,15 +23,36 @@
 
 namespace CryptoNote {
 
-CoreConfig::CoreConfig() {
-  configFolder = Tools::getDefaultDataDirectory();
+CoreConfig::CoreConfig()
+{
+    configFolder = Tools::getDefaultDataDirectory();
+    dbType = Tools::getDefaultDbType();
+    dbSyncMode = Tools::getDefaultDbSyncMode();
 }
 
-void CoreConfig::init(const boost::program_options::variables_map& options) {
-  if (options.count(command_line::arg_data_dir.name) != 0 && (!options[command_line::arg_data_dir.name].defaulted() || configFolder == Tools::getDefaultDataDirectory())) {
-    configFolder = command_line::get_arg(options, command_line::arg_data_dir);
-    configFolderDefaulted = options[command_line::arg_data_dir.name].defaulted();
-  }
+void CoreConfig::init(const boost::program_options::variables_map &options)
+{
+    if (options.count(command_line::arg_data_dir.name) != 0
+        && (!options[command_line::arg_data_dir.name].defaulted()
+            || configFolder == Tools::getDefaultDataDirectory())
+        ) {
+        configFolder = command_line::get_arg(options, command_line::arg_data_dir);
+        configFolderDefaulted = options[command_line::arg_data_dir.name].defaulted();
+    }
+    if (options.count(command_line::arg_db_type.name) != 0
+        && (!options[command_line::arg_db_type.name].defaulted()
+            || dbType == Tools::getDefaultDbType())
+        ) {
+        dbType = command_line::get_arg(options, command_line::arg_db_type);
+        dbTypeDefaulted = options[command_line::arg_db_type.name].defaulted();
+    }
+    if (options.count(command_line::arg_db_sync_mode.name) != 0
+        && (!options[command_line::arg_db_sync_mode.name].defaulted()
+            || dbSyncMode == Tools::getDefaultDbSyncMode())
+        ) {
+        dbSyncMode = command_line::get_arg(options, command_line::arg_db_sync_mode);
+        dbSyncModeDefaulted = options[command_line::arg_db_sync_mode.name].defaulted();
+    }
 }
 
 void CoreConfig::initOptions(boost::program_options::options_description& desc) {

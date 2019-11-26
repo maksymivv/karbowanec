@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 //
 // This file is part of Karbo.
 //
@@ -32,6 +33,11 @@ public:
 
   std::string configFolder;
   bool configFolderDefaulted = true;
+
+  std::string dbType;
+  bool dbTypeDefaulted = true;
+  std::string dbSyncMode;
+  bool dbSyncModeDefaulted = true;
 };
 
 } //namespace CryptoNote

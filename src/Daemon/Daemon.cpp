@@ -24,7 +24,7 @@
 #include <boost/program_options.hpp>
 
 #include "DaemonCommandsHandler.h"
-
+#include "BlockchainDB/DBTypes.h"
 #include "Common/SignalHandler.h"
 #include "Common/StringTools.h"
 #include "Common/PathTools.h"
@@ -57,6 +57,7 @@ namespace po = boost::program_options;
 
 namespace
 {
+  const command_line::arg_descriptor<std::string> arg_db_type     = { "db-type", "Specify database type", Tools::getDefaultDbType() };
   const command_line::arg_descriptor<std::string> arg_config_file = {"config-file", "Specify configuration file", std::string(CryptoNote::CRYPTONOTE_NAME) + ".conf"};
   const command_line::arg_descriptor<bool>        arg_os_version  = {"os-version", ""};
   const command_line::arg_descriptor<std::string> arg_log_file    = {"log-file", "", ""};
@@ -126,7 +127,7 @@ int main(int argc, char* argv[])
     // tools::get_default_data_dir() can't be called during static initialization
     command_line::add_arg(desc_cmd_only, command_line::arg_data_dir, Tools::getDefaultDataDirectory());
     command_line::add_arg(desc_cmd_only, arg_config_file);
-
+    command_line::add_arg(desc_cmd_only, command_line::arg_db_type, Tools::getDefaultDbType());
     command_line::add_arg(desc_cmd_sett, arg_log_file);
     command_line::add_arg(desc_cmd_sett, arg_log_level);
     command_line::add_arg(desc_cmd_sett, arg_console);
@@ -164,7 +165,7 @@ int main(int argc, char* argv[])
 
       std::string data_dir = command_line::get_arg(vm, command_line::arg_data_dir);
       std::string config = command_line::get_arg(vm, arg_config_file);
-
+      std::string db_type = command_line::get_arg(vm, arg_db_type);
       boost::filesystem::path data_dir_path(data_dir);
       boost::filesystem::path config_path(config);
       if (!config_path.has_parent_path()) {
@@ -239,8 +240,9 @@ int main(int argc, char* argv[])
       std::cout << "GENESIS_COINBASE_TX_HEX constant has an incorrect value. Please launch: " << CryptoNote::CRYPTONOTE_NAME << "d --" << arg_print_genesis_tx.name;
       return 1;
     }
+    std::unique_ptr<BlockchainDB> db(new_db(Tools::getDefaultDbType()));
     CryptoNote::Currency currency = currencyBuilder.currency();
-    CryptoNote::core ccore(currency, nullptr, logManager, command_line::get_arg(vm, arg_enable_blockchain_indexes));
+    CryptoNote::core ccore(db, nullptr, currency, nullptr, logManager, command_line::get_arg(vm, arg_enable_blockchain_indexes));
 
 	bool disable_checkpoints = command_line::get_arg(vm, arg_disable_checkpoints);
 	if (!disable_checkpoints) {
@@ -326,6 +328,16 @@ int main(int argc, char* argv[])
           return 1;
         }
         ccore.rollbackBlockchain(_index);
+      }
+    }
+
+    if (command_line::has_arg(vm, arg_db_type)) {
+      std::string db_str = command_line::get_arg(vm, arg_db_type);
+      if (!db_str.empty()) {
+        if (db_str != "lmdb") {
+          std::cout << "Invalid database type (" << db_str << "), available types are: lmdb " << std::endl;
+          return 1;
+        }
       }
     }
 

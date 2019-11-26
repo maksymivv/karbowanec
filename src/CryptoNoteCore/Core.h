@@ -45,8 +45,14 @@ namespace CryptoNote {
 
   class core : public ICore, public IMinerHandler, public IBlockchainStorageObserver, public ITxPoolObserver {
    public:
-     core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, bool blockchainIndexesEnabled);
-     ~core();
+     core(
+       std::unique_ptr<BlockchainDB>& db,
+       HardFork* hf,
+       const Currency &currency,
+       i_cryptonote_protocol *pprotocol,
+       Logging::ILogger &logger,
+       bool blockchainIndexesEnabled);
+     ~core() override;
 
      bool on_idle() override;
      virtual bool handle_incoming_tx(const BinaryArray& tx_blob, tx_verification_context& tvc, bool keeped_by_block) override; //Deprecated. Should be removed with CryptoNoteProtocolHandler.
@@ -66,6 +72,8 @@ namespace CryptoNote {
      static void init_options(boost::program_options::options_description& desc);
      bool init(const CoreConfig& config, const MinerConfig& minerConfig, bool load_existing);
      bool set_genesis_block(const Block& b);
+     bool set_genesis_block(const Block& b, BlockchainDB& db);
+     void safesyncmode(const bool onoff);
      bool deinit();
 
      // ICore
@@ -118,16 +126,40 @@ namespace CryptoNote {
      {
        return m_blockchain.getBlocks(block_ids, blocks, missed_bs);
      }
-     virtual bool queryBlocks(const std::vector<Crypto::Hash>& block_ids, uint64_t timestamp,
-       uint32_t& start_height, uint32_t& current_height, uint32_t& full_offset, std::vector<BlockFullInfo>& entries) override;
-     virtual bool queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockIds, uint64_t timestamp,
-       uint32_t& resStartHeight, uint32_t& resCurrentHeight, uint32_t& resFullOffset, std::vector<BlockShortInfo>& entries) override;
+     virtual bool queryBlocks(
+       const std::vector<Crypto::Hash>& block_ids,
+       uint64_t timestamp,
+       uint32_t& start_height,
+       uint32_t& current_height,
+       uint32_t& full_offset,
+       std::vector<BlockFullInfo>& entries
+     ) override;
+
+     virtual bool queryBlocksLite(
+       const std::vector<Crypto::Hash>& knownBlockIds,
+       uint64_t timestamp,
+       uint32_t& resStartHeight,
+       uint32_t& resCurrentHeight,
+       uint32_t& resFullOffset,
+       std::vector<BlockShortInfo>& entries
+     ) override;
+
+     virtual bool queryBlocksDetailed(
+       const std::vector<Crypto::Hash>& knownBlockHashes,
+       uint64_t timestamp,
+       uint32_t& startIndex,
+       uint32_t& currentIndex,
+       uint32_t& fullOffset,
+       std::vector<BlockFullInfo>& entries
+     ) override;
+
      virtual Crypto::Hash getBlockIdByHeight(uint32_t height) override;
      void getTransactions(const std::vector<Crypto::Hash>& txs_ids, std::list<Transaction>& txs, std::list<Crypto::Hash>& missed_txs, bool checkTxPool = false) override;
      virtual bool getBlockByHash(const Crypto::Hash &h, Block &blk) override;
      virtual bool getBlockHeight(const Crypto::Hash& blockId, uint32_t& blockHeight) override;
      //void get_all_known_block_ids(std::list<Crypto::Hash> &main, std::list<Crypto::Hash> &alt, std::list<Crypto::Hash> &invalid);
 
+     bool store_blockchain();
      bool get_alternative_blocks(std::list<Block>& blocks);
      size_t get_alternative_blocks_count();
 
@@ -147,7 +179,7 @@ namespace CryptoNote {
      virtual bool get_random_outs_for_amounts(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_response& res) override;
      void pause_mining() override;
      void update_block_template_and_resume_mining() override;
-     Blockchain& get_blockchain_storage(){return m_blockchain;}
+
      //debug functions
      void print_blockchain(uint32_t start_index, uint32_t end_index);
      void print_blockchain_index();
@@ -163,6 +195,7 @@ namespace CryptoNote {
 
      virtual void rollbackBlockchain(const uint32_t height) override;
 
+     uint64_t getBlockTimestamp(uint32_t height);
      uint64_t getNextBlockDifficulty();
      uint64_t getTotalGeneratedAmount();
      uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
@@ -173,10 +206,16 @@ namespace CryptoNote {
      bool is_tx_spendtime_unlocked(uint64_t unlock_time);
      bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height);
 
+     Blockchain& get_blockchain_storage(){return m_blockchain;}
    private:
+     size_t addChain(const std::vector<const IBlock*>& chain, BlockchainDB& db);
+     bool handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& txHash, size_t blobSize, tx_verification_context& tvc, bool keptByBlock, uint32_t height, BlockchainDB& db);
+     bool handle_incoming_tx(const BinaryArray& tx_blob, tx_verification_context& tvc, bool keeped_by_block, BlockchainDB& db); //Deprecated. Should be removed with CryptoNoteProtocolHandler.
      bool add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block);
+     bool add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block, BlockchainDB& db);
      bool load_state_data();
      bool parse_tx_from_blob(Transaction& tx, Crypto::Hash& tx_hash, Crypto::Hash& tx_prefix_hash, const BinaryArray& blob);
+     bool handle_incoming_block(const Block& b, block_verification_context& bvc, BlockchainDB& db, bool control_miner, bool relay_block);
 
      bool check_tx_syntax(const Transaction& tx);
      //check correct values, amounts and all lightweight checks not related with database
@@ -189,6 +228,7 @@ namespace CryptoNote {
      bool check_tx_unmixable(const Transaction& tx, uint32_t height);
 
      bool check_tx_ring_signature(const KeyInput& tx, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig);
+     bool handleBlockFound(Block& b);
      bool update_miner_block_template();
      bool handle_command_line(const boost::program_options::variables_map& vm);
      bool on_update_blocktemplate_interval();
@@ -200,6 +240,7 @@ namespace CryptoNote {
      bool findStartAndFullOffsets(const std::vector<Crypto::Hash>& knownBlockIds, uint64_t timestamp, uint32_t& startOffset, uint32_t& startFullOffset);
      std::vector<Crypto::Hash> findIdsForShortBlocks(uint32_t startOffset, uint32_t startFullOffset);
 
+     const BlockchainDB* m_db;
      const Currency& m_currency;
      Checkpoints m_checkpoints;
      Logging::LoggerRef logger;

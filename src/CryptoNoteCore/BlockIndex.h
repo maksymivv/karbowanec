@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 //
 // This file is part of Karbo.
 //
@@ -21,6 +22,7 @@
 
 #include "crypto/hash.h"
 #include <vector>
+#include "BlockchainDB/BlockchainDB.h"
 
 namespace CryptoNote
 {
@@ -30,7 +32,7 @@ namespace CryptoNote
 
   public:
 
-    BlockIndex() : 
+    BlockIndex() :
       m_index(m_container.get<1>()) {}
 
     void pop() {
@@ -65,8 +67,12 @@ namespace CryptoNote
     }
 
     Crypto::Hash getBlockId(uint32_t height) const;
+    Crypto::Hash getBlockId(uint32_t height, BlockchainDB& db) const;
     std::vector<Crypto::Hash> getBlockIds(uint32_t startBlockIndex, uint32_t maxCount) const;
+    std::vector<Crypto::Hash> getBlockIds(uint32_t startBlockIndex, uint32_t maxCount, BlockchainDB& db) const;
     bool findSupplement(const std::vector<Crypto::Hash>& ids, uint32_t& offset) const;
+    bool findSupplement(const std::vector<Crypto::Hash>& ids, uint32_t& offset, BlockchainDB& db) const;
+    std::vector<Crypto::Hash> buildSparseChain(const Crypto::Hash& startBlockId, BlockchainDB& db) const;
     std::vector<Crypto::Hash> buildSparseChain(const Crypto::Hash& startBlockId) const;
     Crypto::Hash getTailId() const;
 

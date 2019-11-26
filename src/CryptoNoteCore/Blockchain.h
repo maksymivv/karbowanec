@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 // Copyright (c) 2016, The Karbowanec developers
 //
 // This file is part of Karbo.
@@ -19,15 +20,17 @@
 #pragma once
 
 #include <atomic>
-
 #include "google/sparse_hash_set"
 #include "google/sparse_hash_map"
-
+#include <boost/asio/io_service.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/version.hpp>
+#include <boost/serialization/list.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
-#include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/random_access_index.hpp>
 
@@ -43,6 +46,7 @@
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/TransactionPool.h"
 #include "CryptoNoteCore/BlockchainIndices.h"
+#include "BlockchainDB/BlockchainDB.h"
 
 #include "CryptoNoteCore/MessageQueue.h"
 #include "CryptoNoteCore/BlockchainMessages.h"
@@ -53,17 +57,46 @@
 #undef ERROR
 
 namespace CryptoNote {
+using CryptoNote::BlockInfo;
 
-  struct NOTIFY_REQUEST_GET_OBJECTS_request;
-  struct NOTIFY_RESPONSE_GET_OBJECTS_request;
-  struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_request;
-  struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_response;
-  struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_outs_for_amount;
+struct NOTIFY_REQUEST_GET_OBJECTS_request;
+struct NOTIFY_RESPONSE_GET_OBJECTS_request;
+struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_request;
+struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_response;
+struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_outs_for_amount;
 
-  using CryptoNote::BlockInfo;
-  class Blockchain : public CryptoNote::ITransactionValidator {
-  public:
-    Blockchain(const Currency& currency, tx_memory_pool& tx_pool, Logging::ILogger& logger, bool blockchainIndexesEnabled);
+enum blockchain_db_sync_mode
+{
+  db_default_sync,
+  db_sync,
+  db_async,
+  db_nosync
+};
+
+struct block_extended_info
+{
+  Block bl; //!< the block
+  uint64_t height; //!< the height of the block in the blockchain
+  size_t block_cumulative_size; //!< the size (in bytes) of the block
+  difficulty_type cumulative_difficulty; //!< the accumulated difficulty after that block
+  uint64_t already_generated_coins; //!< the total coins minted after that block
+};
+
+class Blockchain : public CryptoNote::ITransactionValidator
+{
+public:
+    Blockchain(
+        std::unique_ptr<BlockchainDB>& db,
+        HardFork*& hf,
+        const Currency &currency,
+        tx_memory_pool &tx_pool,
+        Logging::ILogger &logger,
+        bool blockchainIndexesEnabled
+    );
+    bool pushBlock(const Block& blockData, block_verification_context& bvc);
+    bool pushBlock(const Block& blockData, const std::vector<Transaction>& transactions, block_verification_context& bvc);
+
+    void set_user_options(uint64_t maxthreads, uint64_t blocks_per_sync, blockchain_db_sync_mode sync_mode, bool fast_sync);
 
     bool addObserver(IBlockchainStorageObserver* observer);
     bool removeObserver(IBlockchainStorageObserver* observer);
@@ -74,13 +107,15 @@ namespace CryptoNote {
     virtual bool haveSpentKeyImages(const CryptoNote::Transaction& tx) override;
     virtual bool checkTransactionSize(size_t blobSize) override;
 
-    bool init() { return init(Tools::getDefaultDataDirectory(), true); }
-    bool init(const std::string& config_folder, bool load_existing);
+    bool init() { return init(Tools::getDefaultDataDirectory(), Tools::getDefaultDbType(), 0, true); }
+    bool init(const std::string& config_folder, const std::string& db_type, const int& db_flags, bool load_existing);
     bool deinit();
 
     bool getLowerBound(uint64_t timestamp, uint64_t startOffset, uint32_t& height);
     std::vector<Crypto::Hash> getBlockIds(uint32_t startHeight, uint32_t maxCount);
-
+    bool have_tx(const Crypto::Hash &id) const;
+    bool have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im) const;
+    Crypto::PublicKey get_output_key(uint64_t amount, uint64_t global_index) const;
     void setCheckpoints(Checkpoints&& chk_pts) { m_checkpoints = chk_pts; }
     bool getBlocks(uint32_t start_offset, uint32_t count, std::list<Block>& blocks, std::list<Transaction>& txs);
     bool getBlocks(uint32_t start_offset, uint32_t count, std::list<Block>& blocks);
@@ -89,9 +124,10 @@ namespace CryptoNote {
     Crypto::Hash getBlockIdByHeight(uint32_t height);
     bool getBlockByHash(const Crypto::Hash &h, Block &blk);
     bool getBlockHeight(const Crypto::Hash& blockId, uint32_t& blockHeight);
+    bool store_blockchain();
 
     template<class archive_t> void serialize(archive_t & ar, const unsigned int version);
-    
+
     bool haveTransaction(const Crypto::Hash &id);
     bool haveTransactionKeyImagesAsSpent(const Transaction &tx);
 
@@ -104,6 +140,9 @@ namespace CryptoNote {
     uint64_t getCoinsInCirculation();
     uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
     bool addNewBlock(const Block& bl, block_verification_context& bvc);
+    bool add_new_block(const Block& b, block_verification_context& bvc);
+    bool cleanup_handle_incoming_blocks(bool force_sync);
+    bool prepare_handle_incoming_blocks(const std::vector<block_complete_entry> &blocks_entry);
     bool resetAndSetGenesisBlock(const Block& b);
     bool haveBlock(const Crypto::Hash& id);
     size_t getTotalTransactions();
@@ -118,6 +157,9 @@ namespace CryptoNote {
     bool getTransactionOutputGlobalIndexes(const Crypto::Hash& tx_id, std::vector<uint32_t>& indexs);
     bool get_out_by_msig_gindex(uint64_t amount, uint64_t gindex, MultisignatureOutput& out);
     bool checkTransactionInputs(const Transaction& tx, uint32_t& pmax_used_block_height, Crypto::Hash& max_used_block_id, BlockInfo* tail = 0);
+    template<class visitor_t>
+    inline bool scan_outputkeys_for_indexes(const KeyInput& tx_in_to_key, visitor_t &vis, const Crypto::Hash &tx_prefix_hash, uint32_t* pmax_related_block_height) const;
+
     uint64_t getCurrentCumulativeBlocksizeLimit();
     uint64_t blockDifficulty(size_t i);
     uint64_t blockCumulativeDifficulty(size_t i);
@@ -137,6 +179,23 @@ namespace CryptoNote {
 
     bool addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue);
     bool removeMessageQueue(MessageQueue<BlockchainMessage>& messageQueue);
+    bool find_blockchain_supplement(const std::vector<Crypto::Hash>& qblock_ids, size_t& starter_offset);
+    bool find_blockchain_supplement(const std::vector<Crypto::Hash>& qblock_ids, std::vector<Crypto::Hash>& hashes, size_t& start_height, size_t& current_height);
+    bool find_blockchain_supplement(const std::vector<Crypto::Hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp);
+    bool find_blockchain_supplement(const uint64_t req_start_block, const std::vector<Crypto::Hash>& qblock_ids, std::vector<std::pair<CryptoNote::blobdata, std::vector<CryptoNote::blobdata> > >& blocks, size_t& total_height, size_t& start_height, size_t max_count);
+    bool add_block_as_invalid(const Block& bl, const Crypto::Hash& h);
+    bool add_block_as_invalid(block_extended_info& bei, const Crypto::Hash& h);
+    void add_txpool_tx(Transaction &tx, const txpool_tx_meta_t &meta);
+    void update_txpool_tx(const Crypto::Hash &txid, const txpool_tx_meta_t &meta);
+    void remove_txpool_tx(const Crypto::Hash &txid);
+    uint64_t get_txpool_tx_count() const;
+    bool get_txpool_tx_meta(const Crypto::Hash& txid, txpool_tx_meta_t &meta) const;
+    bool get_txpool_tx_blob(const Crypto::Hash& txid, CryptoNote::blobdata &bd) const;
+    void get_txpool_tx_blobs(std::list<Crypto::Hash> hashes, std::list<blobdata>& txs);
+    CryptoNote::blobdata get_txpool_tx_blob(const Crypto::Hash& txid) const;
+    bool for_all_txpool_txes(std::function<bool(const Crypto::Hash&, const txpool_tx_meta_t&, const CryptoNote::blobdata*)>, bool include_blob = false) const;
+    bool for_all_outputs(std::function<bool(uint64_t amount, const Crypto::Hash &tx_hash, uint64_t height, size_t tx_idx)> f) const;
+
 
     template<class t_ids_container, class t_blocks_container, class t_missed_container>
     bool getBlocks(const t_ids_container& block_ids, t_blocks_container& blocks, t_missed_container& missed_bs) {
@@ -148,9 +207,15 @@ namespace CryptoNote {
           if (!m_blockIndex.getBlockHeight(bl_id, height)) {
             missed_bs.push_back(bl_id);
           } else {
-            if (!(height < m_blocks.size())) { logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: bl_id=" << Common::podToHex(bl_id)
-            << " have index record with offset=" << height << ", bigger then m_blocks.size()=" << m_blocks.size(); return false; }
-            blocks.push_back(m_blocks[height].bl);
+            if (Tools::getDefaultDbType() != "lmdb") {
+              if (!(height < m_blocks.size())) { logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: bl_id=" << Common::podToHex(bl_id)
+              << " have index record with offset=" << height << ", bigger then m_blocks.size()=" << m_blocks.size(); return false; }
+              blocks.push_back(m_blocks[height].bl);
+            } else {
+              if (!(height < m_db->height())) { logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: bl_id=" << Common::podToHex(bl_id)
+              << " have index record with offset=" << height << ", larger then m_db->height()=" << m_db->height(); return false; }
+              blocks.push_back(m_db->get_block_from_height(height));
+            }
           }
         } catch (const std::exception& e) {
           logger(Logging::ERROR, Logging::BRIGHT_RED) << "Exception in Core getBlocks: " << e.what();
@@ -159,6 +224,10 @@ namespace CryptoNote {
       }
       return true;
     }
+    template<class t_ids_container, class t_tx_container, class t_missed_container>
+    void get_transactions_blobs(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs);
+    template<class t_ids_container, class t_tx_container, class t_missed_container>
+    void get_transactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs);
 
     template<class t_ids_container, class t_tx_container, class t_missed_container>
     void getBlockchainTransactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs) {
@@ -176,6 +245,7 @@ namespace CryptoNote {
 
     template<class t_ids_container, class t_tx_container, class t_missed_container>
     void getTransactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs, bool checkTxPool = false) {
+      Tools::getDefaultDbType() != "lmdb";
       if (checkTxPool){
         std::lock_guard<decltype(m_tx_pool)> txLock(m_tx_pool);
 
@@ -217,16 +287,27 @@ namespace CryptoNote {
 
     void rollbackBlockchainTo(uint32_t height);
     bool have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im);
-
     bool checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIndex);
     bool checkIfSpent(const Crypto::KeyImage& keyImage);
     bool is_tx_spendtime_unlocked(uint64_t unlock_time);
     bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height);
+    void safesyncmode(const bool onoff);
 
-    //bool checkIfSpentMultisignature(uint64_t amount, uint32_t globalIndex) const override;
-    //bool checkIfSpentMultisignature(uint64_t amount, uint32_t globalIndex, uint32_t blockIndex) const override;
+    BlockchainDB* m_db;
+    uint64_t m_sync_counter;
+    uint64_t m_db_blocks_per_sync;
 
-  private:
+    const BlockchainDB& get_db() const
+    {
+      return *m_db;
+    }
+
+    BlockchainDB& get_db()
+    {
+      return *m_db ;
+    }
+
+private:
 
     struct MultisignatureOutputUsage {
       TransactionIndex transactionIndex;
@@ -284,9 +365,14 @@ namespace CryptoNote {
       >
       >
     > SpentKeyImagesContainer;
+    union _bex { block_extended_info* info; BlockEntry* entry; };
+    typedef union _bex bex;
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
+    typedef std::unordered_map<Crypto::Hash, bex> bex_by_hash;
+    bex_by_hash m_invalid_blocks;
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
     typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
+    blockchain_db_sync_mode m_db_sync_mode;
 
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
@@ -304,27 +390,37 @@ namespace CryptoNote {
     std::atomic<bool> m_is_in_checkpoint_zone;
 
     typedef SwappedVector<BlockEntry> Blocks;
+    typedef SwappedVector<block_extended_info> blocks;
     typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
     typedef std::unordered_map<Crypto::Hash, TransactionIndex> TransactionMap;
     typedef BasicUpgradeDetector<Blocks> UpgradeDetector;
-
-    friend class BlockCacheSerializer;
-    friend class BlockchainIndicesSerializer;
-
-    Blocks m_blocks;
-    CryptoNote::BlockIndex m_blockIndex;
-    TransactionMap m_transactionMap;
-    MultisignatureOutputsContainer m_multisignatureOutputs;
     UpgradeDetector m_upgradeDetectorV2;
     UpgradeDetector m_upgradeDetectorV3;
     UpgradeDetector m_upgradeDetectorV4;
     UpgradeDetector m_upgradeDetectorV5;
+    friend class BlockCacheSerializer;
+    friend class BlockchainIndicesSerializer;
+    HardFork *m_hardfork;
+    std::atomic<bool> m_cancel;
+
+    boost::asio::io_service m_async_service;
+    boost::thread_group m_async_pool;
+    std::unique_ptr<boost::asio::io_service::work> m_async_work_idle;
+    Blocks m_blocks;
+    CryptoNote::BlockIndex m_blockIndex;
+    TransactionMap m_transactionMap;
+    MultisignatureOutputsContainer m_multisignatureOutputs;
+
 
     PaymentIdIndex m_paymentIdIndex;
     TimestampBlocksIndex m_timestampIndex;
     GeneratedTransactionsIndex m_generatedTransactionsIndex;
     OrphanBlocksIndex m_orphanBlocksIndex;
     bool m_blockchainIndexesEnabled;
+    void cancel();
+    std::unordered_map<Crypto::Hash, std::unordered_map<Crypto::KeyImage, std::vector<output_data_t>>> m_scan_table;
+    std::unordered_map<Crypto::Hash, Crypto::Hash> m_blocks_longhash_table;
+    std::unordered_map<Crypto::Hash, std::unordered_map<Crypto::KeyImage, bool>> m_check_txin_table;
 
     IntrusiveLinkedList<MessageQueue<BlockchainMessage>> m_messageQueueList;
 
@@ -355,23 +451,36 @@ namespace CryptoNote {
     bool checkTransactionInputs(const Transaction& tx, const Crypto::Hash& tx_prefix_hash, uint32_t* pmax_used_block_height = NULL);
     bool checkTransactionInputs(const Transaction& tx, uint32_t* pmax_used_block_height = NULL);
     const TransactionEntry& transactionByIndex(TransactionIndex index);
-    bool pushBlock(const Block& blockData, block_verification_context& bvc);
-    bool pushBlock(const Block& blockData, const std::vector<Transaction>& transactions, block_verification_context& bvc);
     bool pushBlock(BlockEntry& block);
     void popBlock();
     bool pushTransaction(BlockEntry& block, const Crypto::Hash& transactionHash, TransactionIndex transactionIndex);
     void popTransaction(const Transaction& transaction, const Crypto::Hash& transactionHash);
     void popTransactions(const BlockEntry& block, const Crypto::Hash& minerTransactionHash);
+    void popTransactions(const Block& block, const Crypto::Hash& minerTransactionHash);
     bool validateInput(const MultisignatureInput& input, const Crypto::Hash& transactionHash, const Crypto::Hash& transactionPrefixHash, const std::vector<Crypto::Signature>& transactionSignatures);
     bool checkCheckpoints(uint32_t& lastValidCheckpointHeight);
     void removeLastBlock();
     bool checkUpgradeHeight(const UpgradeDetector& upgradeDetector);
+    bool m_db_default_sync;
+    void get_txpool_txs(std::list<Transaction>& txs);
+    std::string filename_mdb;
+    int flags_mdb;
+    bool handle_block_to_main_chain(const Block& bl, const Crypto::Hash& id, block_verification_context& bvc);
+    HardFork::State get_hard_fork_state() const;
+    void output_scan_worker(const uint64_t amount,const std::vector<uint32_t> &offsets,
+        std::vector<output_data_t> &outputs, std::unordered_map<Crypto::Hash,
+        CryptoNote::Transaction> &txs) const;
+    void block_longhash_worker(uint64_t height, const std::vector<CryptoNote::Block> &blocks,
+        std::unordered_map<Crypto::Hash, Crypto::Hash> &map) const;
+    std::vector<Crypto::Hash> m_blocks_hash_check;
+    std::vector<Crypto::Hash> m_blocks_txs_check;
 
     bool storeBlockchainIndices();
     bool loadBlockchainIndices();
 
     bool loadTransactions(const Block& block, std::vector<Transaction>& transactions);
     void saveTransactions(const std::vector<Transaction>& transactions);
+    //bool check_for_double_spend(const Transaction& tx, key_images_container& keys_this_block) const;
 
     void sendMessage(const BlockchainMessage& message);
 

@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2018-2019, The Qwertycoin developers
 //
 // This file is part of Karbo.
 //
@@ -43,7 +44,7 @@
 #include "CryptoNoteCore/VerificationContext.h"
 #include "CryptoNoteCore/BlockchainIndices.h"
 #include "CryptoNoteCore/ICore.h"
-
+#include "BlockchainDB/BlockchainDB.h"
 #include <Logging/LoggerRef.h>
 
 namespace CryptoNote {
@@ -85,6 +86,7 @@ namespace CryptoNote {
   class tx_memory_pool: boost::noncopyable {
   public:
     tx_memory_pool(
+      std::unique_ptr<BlockchainDB>& m_db,
       const CryptoNote::Currency& currency,
       CryptoNote::ITransactionValidator& validator,
       CryptoNote::ICore& core,
@@ -100,8 +102,8 @@ namespace CryptoNote {
     bool deinit();
 
     bool have_tx(const Crypto::Hash &id) const;
-    bool add_tx(const Transaction &tx, const Crypto::Hash &id, size_t blobSize, tx_verification_context& tvc, bool keeped_by_block);
-    bool add_tx(const Transaction &tx, tx_verification_context& tvc, bool keeped_by_block);
+    bool add_tx(const Transaction &tx, const Crypto::Hash &id, size_t blobSize, tx_verification_context& tvc, bool keeped_by_block, BlockchainDB& db);
+    bool add_tx(const Transaction &tx, tx_verification_context& tvc, bool keeped_by_block, BlockchainDB& db);
     //gets tx and remove it from pool
     bool take_tx(const Crypto::Hash &id, Transaction &tx, size_t& blobSize, uint64_t& fee);
 
@@ -118,7 +120,7 @@ namespace CryptoNote {
     void get_difference(const std::vector<Crypto::Hash>& known_tx_ids, std::vector<Crypto::Hash>& new_tx_ids, std::vector<Crypto::Hash>& deleted_tx_ids) const;
     size_t get_transactions_count() const;
     std::string print_pool(bool short_format) const;
-	
+
     void on_idle();
 
     bool getTransactionIdsByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionIds);
@@ -139,7 +141,7 @@ namespace CryptoNote {
     }
 
     void serialize(ISerializer& s);
-
+    void get_transactions(std::list<Transaction>& txs, bool include_unrelayed_txes, BlockchainDB& db) const;
     struct TransactionCheckInfo {
       BlockInfo maxUsedBlock;
       BlockInfo lastFailedBlock;
@@ -215,12 +217,12 @@ namespace CryptoNote {
     CryptoNote::ITransactionValidator& m_validator;
     CryptoNote::ITimeProvider& m_timeProvider;
 
-    tx_container_t m_transactions;  
+    tx_container_t m_transactions;
     tx_container_t::nth_index<1>::type& m_fee_index;
     std::unordered_map<Crypto::Hash, uint64_t> m_recentlyDeletedTransactions;
 
     Logging::LoggerRef logger;
-
+    std::unique_ptr<BlockchainDB>& m_db;
     PaymentIdIndex m_paymentIdIndex;
     TimestampTransactionsIndex m_timestampIndex;
   };

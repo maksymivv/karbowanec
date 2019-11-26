@@ -71,7 +71,7 @@ list(APPEND KarboCommon Common)
 list(APPEND KarboCore BlockchainDB Crypto CryptoNoteCore Http Logging Rpc Serialization System)
 list(APPEND KarboWallet Wallet Transfers NodeRpcProxy)
 list(APPEND KarboLink CryptoNoteProtocol P2P BlockchainExplorer)
-list(APPEND KarboPaymentGate PaymentGate JsonRpcServer InProcessNode)
+list(APPEND KarboPaymentGate PaymentGate JsonRpcServer InProcessNode BlockchainDB)
 
 if (MSVC)
   add_executable(Daemon ${Daemon} BinaryInfo/daemon.rc)
@@ -94,7 +94,7 @@ target_link_libraries(Daemon ${KarboCore} ${LMDB_LIBRARY} ${KarboLink} ${KarboCo
 target_link_libraries(SimpleWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} ${Boost_LIBRARIES})
 target_link_libraries(GreenWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} ${Boost_LIBRARIES})
 target_link_libraries(Optimizer PaymentGate ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
-target_link_libraries(PaymentGateService ${KarboPaymentGate} ${KarboWallet} ${KarboCore} ${LMDB_LIBRARY}
+target_link_libraries(PaymentGateService ${KarboCore} ${LMDB_LIBRARY} ${KarboPaymentGate} ${KarboWallet}
                       ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
 target_link_libraries(Miner ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
 
