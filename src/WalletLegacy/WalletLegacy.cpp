@@ -856,23 +856,18 @@ bool WalletLegacy::constructStakeTx(const std::string& address, const uint64_t& 
   throwIfNotInitialised();
 
   // select inputs
-  std::vector<TransactionOutputInformation> allOutputs;
-  m_transferDetails->getOutputs(allOutputs, ITransfersContainer::IncludeKeyUnlocked);
   context->foundMoney = m_sender->selectTransfersToSend(stake, false, m_currency.defaultDustThreshold(), context->selectedTransfers);
   throwIf(context->foundMoney < stake, error::WRONG_AMOUNT);
 
   // prepare transfers
   std::vector<WalletLegacyTransfer> transfers;
   WalletLegacyTransfer destination;
-  destination.amount = 0;
-  for (auto& out : context->selectedTransfers) {
-    destination.amount += out.amount;
-  }
+  destination.amount = stake;
   destination.address = address;
   transfers.push_back(destination);
 
   //prepare transaction
-  txId = m_transactionsCache.addNewTransaction(context->foundMoney, 0, extra, transfers, unlockTimestamp);
+  txId = m_transactionsCache.addNewTransaction(stake, 0, extra, transfers, unlockTimestamp);
   context->transactionId = txId;
   context->mixIn = mixin;
 

@@ -202,13 +202,14 @@ bool WalletTransactionSender::makeStakeTransaction(std::shared_ptr<SendTransacti
 
 		TransactionDestinationEntry changeDts;
 		changeDts.amount = 0;
+		changeDts.unlockTime = 0; // change is unlocked
 		uint64_t totalAmount = -transaction.totalAmount;
 		createChangeDestinations(m_keys.address, totalAmount, context->foundMoney, changeDts);
-		
+  	
 		TransactionDestinationEntry rewardDts;
 		rewardDts.addr = address;
 		rewardDts.amount = reward;
-    rewardDts.unlockTime = unlockTimestamp; // reward/stake is locked
+		rewardDts.unlockTime = unlockTimestamp; // reward is locked
 
 		std::vector<TransactionDestinationEntry> splittedDests;
 		splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, unlockTimestamp, splittedDests);
