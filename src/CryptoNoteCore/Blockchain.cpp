@@ -1144,6 +1144,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
     }
   }
 
+  // TODO add per out unlock time check instead
   if (!(b.baseTransaction.unlockTime == height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()))) {
     logger(ERROR, BRIGHT_RED)
       << "coinbase transaction have wrong unlock time="
@@ -1183,12 +1184,12 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
   uint64_t minerReward = 0;
   uint64_t inputsAmount = 0;
   uint64_t outputsAmount = 0;
-
-  for (auto& o : b.baseTransaction.outputs) {
-    outputsAmount += o.amount;
-  }
+  uint64_t lockedAmount = 0;
 
   if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    for (auto& o : b.baseTransaction.outputs) {
+      outputsAmount += o.amount;
+    }
     minerReward = outputsAmount;
   }
   else {
@@ -1198,10 +1199,19 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
       }
     }
     
+    for (uint64_t i = 0; i < b.baseTransaction.outputs.size(); ++i) {
+      TransactionOutput o = b.baseTransaction.outputs[i];
+      outputsAmount += o.amount;
+      if (b.baseTransaction.outputUnlockTimes[i] >= height + m_currency.minedMoneyUnlockWindow_v1()) {
+        lockedAmount += o.amount;
+      }
+    }
+
     if (inputsAmount == 0) {
       logger(ERROR, BRIGHT_RED) << "Zero inputs amount in coibase stake transaction";
       return false;
     }
+
     if (outputsAmount < inputsAmount) {
       logger(ERROR, BRIGHT_RED) << "Sum of outputs " << m_currency.formatAmount(outputsAmount) <<
         "is smaller than inputs " << m_currency.formatAmount(inputsAmount) << " in coibase stake transaction";
@@ -1215,21 +1225,22 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
         ", block reward is " << m_currency.formatAmount(reward);
       return false;
     }
-    else if (minerReward < reward) {
+    else if (minerReward < reward) { // or vice versa
       logger(ERROR, BRIGHT_RED) << "Coinbase stake transaction doesn't use full amount of block reward: spent " <<
         m_currency.formatAmount(minerReward) << ", block reward is " << m_currency.formatAmount(reward);
       return false;
     }
 
-    // calculate stake
+    // calculate min. stake
     uint64_t stake = m_currency.nextStake(reward, fee, alreadyGeneratedCoins);
 
-    // check stake, we don't care what's actually stake and what's change as both will be locked
-    if (inputsAmount < stake) {
-      logger(ERROR, BRIGHT_RED) << "Insufficient stake in coinbase transaction: " 
-                                << m_currency.formatAmount(inputsAmount) 
+    // check stake (locked amount should be not less than stake + reward, which must be locked too)
+    if (lockedAmount < stake + minerReward) {
+      logger(ERROR, BRIGHT_RED) << "Insufficient amount at stake in coinbase transaction: " 
+                                << m_currency.formatAmount(lockedAmount)
                                 << ", whereas minimum is " 
-                                << m_currency.formatAmount(stake);
+                                << m_currency.formatAmount(stake)
+                                << " + reward " << m_currency.formatAmount(minerReward);
       return false;
     }
 

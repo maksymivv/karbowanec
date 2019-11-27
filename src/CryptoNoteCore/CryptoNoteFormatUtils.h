@@ -49,7 +49,7 @@ struct TransactionSourceEntry {
 
 struct TransactionDestinationEntry {
   uint64_t amount;                    //money
-  uint64_t unlockTime;                //may be different for change
+  uint64_t unlockTime;                //may be different, e.g. for change
   AccountPublicAddress addr;          //destination address
 
   TransactionDestinationEntry() : amount(0), unlockTime(0), addr(boost::value_initialized<AccountPublicAddress>()) {}
