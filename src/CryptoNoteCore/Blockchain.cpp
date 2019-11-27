@@ -52,11 +52,11 @@ static const struct {
   uint64_t height;
   uint8_t threshold;
 } mainnet_hard_forks[] = {
-  {  1,      1,      0 },
-  {  2,  40000,      0 },
-  {  3,  46000,      0 },
-  {  4, 110520,      0 },
-  {  5, 250720,      0 }
+  {  1,          1,      0 },
+  {  2,      60000,      0 },
+  {  3,     216000,      0 },
+  {  4,     266000,      0 },
+  {  5, 4294967294,      0 }
 };
 
 namespace {
@@ -731,6 +731,7 @@ bool Blockchain::init(const std::string& config_folder, const std::string& db_ty
     }
 
     m_db->fixup();
+    m_hardfork->init();
     if (m_db->height() > 0)
     {
       before_popping = m_db->height()-1;
@@ -738,18 +739,19 @@ bool Blockchain::init(const std::string& config_folder, const std::string& db_ty
 
   }
 
-  uint32_t lastValidCheckpointHeight = 0;
-  if (!checkCheckpoints(lastValidCheckpointHeight)) {
-    logger(WARNING, BRIGHT_YELLOW) << "Invalid checkpoint found. Rollback blockchain to height=" << lastValidCheckpointHeight;
-    rollbackBlockchainTo(lastValidCheckpointHeight);
-  }
+  if (Tools::getDefaultDbType() != "lmdb") {
+    uint32_t lastValidCheckpointHeight = 0;
+    if (!checkCheckpoints(lastValidCheckpointHeight)) {
+      logger(WARNING, BRIGHT_YELLOW) << "Invalid checkpoint found. Rollback blockchain to height=" << lastValidCheckpointHeight;
+      rollbackBlockchainTo(lastValidCheckpointHeight);
+    }
 
-  if (!m_upgradeDetectorV2.init() || !m_upgradeDetectorV3.init() || !m_upgradeDetectorV4.init() || !m_upgradeDetectorV5.init()/* || !m_upgradeDetectorV6.init()*/) {
-    logger(ERROR, BRIGHT_RED) << "Failed to initialize upgrade detector. Trying self healing procedure.";
-    //return false;
-  }
+    if (!m_upgradeDetectorV2.init() || !m_upgradeDetectorV3.init() || !m_upgradeDetectorV4.init() || !m_upgradeDetectorV5.init()/* || !m_upgradeDetectorV6.init()*/) {
+      logger(ERROR, BRIGHT_RED) << "Failed to initialize upgrade detector. Trying self healing procedure.";
+      //return false;
+    }
 
-  bool reinitUpgradeDetectors = false;
+    bool reinitUpgradeDetectors = false;
     if (!checkUpgradeHeight(m_upgradeDetectorV2)) {
       uint32_t upgradeHeight =  m_upgradeDetectorV2.upgradeHeight();
       assert(upgradeHeight != UpgradeDetectorBase::UNDEF_HEIGHT);
@@ -788,7 +790,7 @@ bool Blockchain::init(const std::string& config_folder, const std::string& db_ty
       reinitUpgradeDetectors = true;
     } */
 
-    if ((getCurrentBlockchainHeight() > 1) && (num_popped_blocks > getCurrentBlockchainHeight()) && db_type == "lmdb")
+    if ((getCurrentBlockchainHeight() > 1) && db_type == "lmdb")
     {
       num_popped_blocks = before_popping - getCurrentBlockchainHeight(); // TODO: this section needs cleaned up
       if (num_popped_blocks > 0)
@@ -802,8 +804,7 @@ bool Blockchain::init(const std::string& config_folder, const std::string& db_ty
       logger(ERROR, BRIGHT_RED) << "Failed to initialize upgrade detector";
       return false;
     }
-
-  if (db_type != "lmdb") {
+  
     update_next_cumulative_size_limit();
 
     uint64_t timestamp_diff = time(NULL) - m_blocks.back().bl.timestamp;
@@ -3444,7 +3445,7 @@ bool Blockchain::find_blockchain_supplement(const std::vector<Crypto::Hash>& qbl
   if(Common::podToHex(qblock_ids.back()) != Common::podToHex(gen_hash))
   {
     logger(ERROR,BRIGHT_RED) << "Error! Genesis block mismatch in peer block_ids!";
-    DB_TX_STOP
+    m_db->block_txn_abort();
     return false;
   }
 
@@ -3462,7 +3463,7 @@ bool Blockchain::find_blockchain_supplement(const std::vector<Crypto::Hash>& qbl
     catch (const std::exception& e)
     {
       logger(ERROR,BRIGHT_RED) << "Non-critical error trying to find block by hash in BlockchainDB, hash: " << *bl_it;
-      DB_TX_STOP
+      m_db->block_txn_abort();
       return false;
     }
   }
@@ -3485,7 +3486,6 @@ bool Blockchain::find_blockchain_supplement(const std::vector<Crypto::Hash>& qbl
 bool Blockchain::find_blockchain_supplement(const std::vector<Crypto::Hash>& qblock_ids, std::vector<Crypto::Hash>& hashes, size_t& start_height, size_t& current_height)
 {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  DB_TX_START
 
   // if we can't find the split point, return false
   if(!find_blockchain_supplement(qblock_ids, start_height))
@@ -3493,6 +3493,7 @@ bool Blockchain::find_blockchain_supplement(const std::vector<Crypto::Hash>& qbl
     return false;
   }
 
+  DB_TX_START
   current_height = getCurrentBlockchainHeight();
   size_t count = 0;
   for(size_t i = start_height; i < current_height && count < BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT; i++, count++)

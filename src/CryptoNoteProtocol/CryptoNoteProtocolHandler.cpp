@@ -23,11 +23,13 @@
 #include <boost/scope_exit.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <System/Dispatcher.h>
+#include "Common/Util.h"
 
 #include "CryptoNoteCore/CryptoNoteBasicImpl.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteCore/Currency.h"
+#include "CryptoNoteCore/Blockchain.h"
 #include "CryptoNoteCore/VerificationContext.h"
 #include "P2p/LevinProtocol.h"
 
@@ -110,8 +112,8 @@ bool CryptoNoteProtocolHandler::start_sync(CryptoNoteConnectionContext& context)
   logger(Logging::TRACE) << context << "Starting synchronization";
 
   if (context.m_state == CryptoNoteConnectionContext::state_synchronizing) {
-    assert(context.m_needed_objects.empty());
-    assert(context.m_requested_objects.empty());
+    //assert(context.m_needed_objects.empty());
+    //assert(context.m_requested_objects.empty());
 
     NOTIFY_REQUEST_CHAIN::request r = boost::value_initialized<NOTIFY_REQUEST_CHAIN::request>();
     r.block_ids = m_core.buildSparseChain();
@@ -272,7 +274,7 @@ int CryptoNoteProtocolHandler::handle_notify_new_block(int command, NOTIFY_NEW_B
   if (bvc.m_added_to_main_chain) {
     ++arg.hop;
     //TODO: Add here announce protocol usage
-    relay_post_notify<NOTIFY_NEW_BLOCK>(*m_p2p, arg, &context.m_connection_id);
+    //relay_post_notify<NOTIFY_NEW_BLOCK>(*m_p2p, arg, &context.m_connection_id);
     // relay_block(arg, context);
 
     if (bvc.m_switched_to_alt_chain) {
@@ -312,10 +314,10 @@ int CryptoNoteProtocolHandler::handle_notify_new_transactions(int command, NOTIF
     }
   }
 
-  if (arg.txs.size()) {
+  //if (arg.txs.size()) {
     //TODO: add announce usage here
-    relay_post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, &context.m_connection_id);
-  }
+  //  relay_post_notify<NOTIFY_NEW_TRANSACTIONS>(*m_p2p, arg, &context.m_connection_id);
+  //}
 
   return true;
 }
@@ -600,6 +602,7 @@ bool CryptoNoteProtocolHandler::request_missing_objects(CryptoNoteConnectionCont
     logger(Logging::INFO, Logging::BRIGHT_GREEN) << context << "SYNCHRONIZED OK";
     on_connection_synchronized();
   }
+//  m_core.safesyncmode(true);
   return true;
 }
 
@@ -703,8 +706,9 @@ void CryptoNoteProtocolHandler::requestMissingPoolTransactions(const CryptoNoteC
     return;
   }
 
-  auto poolTxs = m_core.getPoolTransactions();
+  std::vector<Transaction> poolTxs;
 
+  poolTxs = m_core.getPoolTransactions();
   NOTIFY_REQUEST_TX_POOL::request notification;
   for (auto& tx : poolTxs) {
     notification.txs.emplace_back(getObjectHash(tx));

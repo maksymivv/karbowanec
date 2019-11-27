@@ -31,6 +31,7 @@
 #include "TransactionExtra.h"
 #include "CryptoNoteTools.h"
 #include "Currency.h"
+#include "CryptoNoteCore/VerificationContext.h"
 
 #include "CryptoNoteConfig.h"
 
@@ -608,7 +609,7 @@ bool parse_and_validate_block_from_blob(const blobdata& b_blob, Block& b)
   if (!r) return false;
   return true;
 }
-/* bool parse_and_validate_block_from_blob(const blobdata& b_blob, Block& b)
+/*bool parse_and_validate_block_from_blob(const blobdata& b_blob, Block& b)
 {
   std::stringstream ss;
   ss << b_blob;

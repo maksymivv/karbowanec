@@ -160,7 +160,7 @@ void HardFork::init()
     heights.push_back(Params(original_version, 0, 0));
 
   versions.clear();
-  for (size_t n = 0; n < 255; ++n)
+  for (size_t n = 0; n < 256; ++n)
     last_versions[n] = 0;
   current_fork_index = 0;
 
@@ -170,7 +170,7 @@ void HardFork::init()
     height -= window_size - 1;
 
   bool populate = false;
-/*  try
+  try
   {
     db.get_hard_fork_version(0);
   }
@@ -187,7 +187,7 @@ void HardFork::init()
   }
   else {
     rescan_from_chain_height(height);
-  }*/
+  }
   //MDEBUG("reorganization done");
 }
 
@@ -211,7 +211,7 @@ bool HardFork::reorganize_from_block_height(uint64_t const& height)
 
   versions.clear();
 
-  for (size_t n = 0; n < 255; ++n)
+  for (size_t n = 0; n < 256; ++n)
     last_versions[n] = 0;
   const uint64_t rescan_height = height >= (window_size - 1) ? height - (window_size  -1) : 0;
   const uint8_t start_version = height == 0 ? original_version : db.get_hard_fork_version(height);
@@ -259,7 +259,7 @@ bool HardFork::rescan_from_block_height(uint64_t const& height)
 
   versions.clear();
 
-  for (size_t n = 0; n < 255; ++n)
+  for (size_t n = 0; n < 256; ++n)
     last_versions[n] = 0;
   for (uint64_t h = height; h < db.height(); ++h) {
     CryptoNote::Block b = db.get_block_from_height(h);
@@ -395,7 +395,7 @@ bool HardFork::get_voting_info(uint8_t const& version, uint32_t const& window, u
   const uint8_t current_version = heights[current_fork_index].version;
   const bool enabled = current_version >= version;
   votes = 0;
-  for (size_t n = version; n < 255; ++n)
+  for (size_t n = version; n < 256; ++n)
       votes += last_versions[n];
   threshold = (window * heights[current_fork_index].threshold + 99) / 100;
   //assert((votes >= threshold) == enabled);

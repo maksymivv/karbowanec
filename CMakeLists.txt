@@ -525,6 +525,8 @@ elseif(NOT MSVC)
 endif()
 
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
+include_directories(${CMAKE_CURRENT_LIST_DIR}/external/boost/archive)
+
 if(MINGW)
   set(EXTRA_LIBRARIES mswsock;ws2_32;iphlpapi)
 elseif(APPLE OR OPENBSD OR ANDROID)
