@@ -111,8 +111,15 @@ uint64_t BlockchainDB::add_block( const CryptoNote::Block& blk
                                 )
 {
   // sanity
-  if (blk.transactionHashes.size() != txs.size())
-    throw std::runtime_error("Inconsistent tx/hashes sizes");
+
+  // this could be ok as miner tx comes with block
+  // however shouldn't be as we do 
+  // > block.transactions.resize(1);
+  // > block.transactions[0].tx = blockData.baseTransaction;
+  // in Blockchain pushBlock
+
+  //if (blk.transactionHashes.size() != txs.size())
+  //  throw std::runtime_error("Inconsistent tx/hashes sizes");
 
   block_txn_start(false);
 

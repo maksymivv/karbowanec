@@ -2850,10 +2850,13 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   BlockEntry block;
   block.bl = blockData;
-  //block.transactions.resize(1);
-  //block.transactions[0].tx = blockData.baseTransaction;
-  TransactionEntry entry;
-  block.transactions.push_back(entry);
+
+  // TODO ??
+  block.transactions.resize(1);
+  block.transactions[0].tx = blockData.baseTransaction;
+  //TransactionEntry entry;
+  //block.transactions.push_back(entry);
+  
   TransactionIndex transactionIndex = { static_cast<uint32_t>(HEIGHT_COND - 1), static_cast<uint16_t>(0) };
   pushTransaction(block, minerTransactionHash, transactionIndex);
   size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
