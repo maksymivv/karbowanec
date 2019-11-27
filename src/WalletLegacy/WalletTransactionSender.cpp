@@ -52,6 +52,7 @@ void createChangeDestinations(const AccountPublicAddress& address, uint64_t need
   if (neededMoney < foundMoney) {
     changeDts.addr = address;
     changeDts.amount = foundMoney - neededMoney;
+    changeDts.unlockTime = 0; // change is not locked
   }
 }
 
@@ -203,21 +204,21 @@ bool WalletTransactionSender::makeStakeTransaction(std::shared_ptr<SendTransacti
 		changeDts.amount = 0;
 		uint64_t totalAmount = -transaction.totalAmount;
 		createChangeDestinations(m_keys.address, totalAmount, context->foundMoney, changeDts);
-
 		
 		TransactionDestinationEntry rewardDts;
 		rewardDts.addr = address;
 		rewardDts.amount = reward;
+    rewardDts.unlockTime = unlockTimestamp; // reward/stake is locked
 
 		std::vector<TransactionDestinationEntry> splittedDests;
-		splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, splittedDests);
+		splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, unlockTimestamp, splittedDests);
 		uint64_t dust = 0;
 
 		decompose_amount_into_digits(rewardDts.amount, 0,
-			[&](uint64_t chunk) { splittedDests.push_back(TransactionDestinationEntry(chunk, rewardDts.addr)); },
+			[&](uint64_t chunk) { splittedDests.push_back(TransactionDestinationEntry(chunk, rewardDts.unlockTime, rewardDts.addr)); },
 			[&](uint64_t a_dust) { dust = a_dust; });
 		if (0 != dust && !context->dustPolicy.addToFee) {
-			splittedDests.push_back(TransactionDestinationEntry(dust, context->dustPolicy.addrForDust));
+			splittedDests.push_back(TransactionDestinationEntry(dust, 0, context->dustPolicy.addrForDust));
 		}
 
 		constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, CryptoNote::STAKE_TRANSACTION_VERSION, stakeTx, context->tx_key);
@@ -225,8 +226,6 @@ bool WalletTransactionSender::makeStakeTransaction(std::shared_ptr<SendTransacti
 		stakeTxKey = context->tx_key;
 
 		m_transactionsCache.updateTransaction(context->transactionId, stakeTx, totalAmount, context->selectedTransfers, context->tx_key);
-
-		// notifyBalanceChanged(events);
 	}
 	catch (std::system_error& ec) {
 		events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, ec.code()));
@@ -299,7 +298,7 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::doSendTransaction(std::s
     createChangeDestinations(m_keys.address, totalAmount, context->foundMoney, changeDts);
 
     std::vector<TransactionDestinationEntry> splittedDests;
-    splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, splittedDests);
+    splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, transaction.unlockTime, splittedDests);
 
     Transaction tx;
     constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, CryptoNote::CURRENT_TRANSACTION_VERSION, tx, context->tx_key);
@@ -334,20 +333,20 @@ void WalletTransactionSender::relayTransactionCallback(std::shared_ptr<SendTrans
 
 
 void WalletTransactionSender::splitDestinations(TransferId firstTransferId, size_t transfersCount, const TransactionDestinationEntry& changeDts,
-  const TxDustPolicy& dustPolicy, std::vector<TransactionDestinationEntry>& splittedDests) {
+  const TxDustPolicy& dustPolicy, uint64_t unlockTime, std::vector<TransactionDestinationEntry>& splittedDests) {
   uint64_t dust = 0;
 
-  digitSplitStrategy(firstTransferId, transfersCount, changeDts, dustPolicy.dustThreshold, splittedDests, dust);
+  digitSplitStrategy(firstTransferId, transfersCount, changeDts, dustPolicy.dustThreshold, unlockTime, splittedDests, dust);
 
   throwIf(dustPolicy.dustThreshold < dust, error::INTERNAL_WALLET_ERROR);
   if (0 != dust && !dustPolicy.addToFee) {
-    splittedDests.push_back(TransactionDestinationEntry(dust, dustPolicy.addrForDust));
+    splittedDests.push_back(TransactionDestinationEntry(dust, unlockTime, dustPolicy.addrForDust));
   }
 }
 
 
 void WalletTransactionSender::digitSplitStrategy(TransferId firstTransferId, size_t transfersCount,
-  const TransactionDestinationEntry& change_dst, uint64_t dust_threshold,
+  const TransactionDestinationEntry& change_dst, uint64_t dust_threshold, uint64_t unlockTime,
   std::vector<TransactionDestinationEntry>& splitted_dsts, uint64_t& dust) {
   splitted_dsts.clear();
   dust = 0;
@@ -361,12 +360,12 @@ void WalletTransactionSender::digitSplitStrategy(TransferId firstTransferId, siz
     }
 
     decompose_amount_into_digits(de.amount, dust_threshold,
-      [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, addr)); },
-      [&](uint64_t a_dust) { splitted_dsts.push_back(TransactionDestinationEntry(a_dust, addr)); });
+      [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, unlockTime, addr)); },
+      [&](uint64_t a_dust) { splitted_dsts.push_back(TransactionDestinationEntry(a_dust, unlockTime, addr)); });
   }
 
   decompose_amount_into_digits(change_dst.amount, dust_threshold,
-    [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, change_dst.addr)); },
+    [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, change_dst.unlockTime, change_dst.addr)); },
     [&](uint64_t a_dust) { dust = a_dust; } );
 }
 

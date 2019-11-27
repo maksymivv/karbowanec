@@ -1571,9 +1571,15 @@ bool Blockchain::add_out_to_get_random_outs(std::vector<std::pair<TransactionInd
   if (!(tx.outputs[amount_outs[i].second].target.type() == typeid(KeyOutput))) { logger(ERROR, BRIGHT_RED) << "unknown tx out type"; return false; }
 
   //check if transaction is unlocked
-  if (!is_tx_spendtime_unlocked(tx.unlockTime, getCurrentBlockchainHeight()))
-    return false;
-
+  if (tx.version >= 2) {
+    if (!is_output_unlocked(tx.outputUnlockTimes[amount_outs[i].second], getCurrentBlockchainHeight()))
+      return false;
+  }
+  else {
+    if (!is_tx_spendtime_unlocked(tx.unlockTime, getCurrentBlockchainHeight()))
+      return false;
+  }
+  
   COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry& oen = *result_outs.outs.insert(result_outs.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry());
   oen.global_amount_index = static_cast<uint32_t>(i);
   oen.out_key = boost::get<KeyOutput>(tx.outputs[amount_outs[i].second].target).key;
@@ -1890,6 +1896,10 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height)
   return false;
 }
 
+bool Blockchain::is_output_unlocked(uint64_t unlock_time, uint32_t height) {
+  return is_tx_spendtime_unlocked(unlock_time, height);
+}
+
 bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
@@ -1903,14 +1913,14 @@ bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_pre
     bool handle_output(const Transaction& tx, const TransactionOutput& out, size_t transactionOutputIndex) {
       //check tx unlock time
       Crypto::Hash txId, blockId;
-	  txId = getObjectHash(tx);
+	    txId = getObjectHash(tx);
       uint32_t blockHeight;
       if (!m_bch.getBlockContainingTransaction(txId, blockId, blockHeight)) {
         logger(INFO, BRIGHT_WHITE) <<
           "Can not get block containing transaction " << Common::podToHex(txId);
         return false;
       }
-      if (!m_bch.is_tx_spendtime_unlocked(tx.unlockTime, blockHeight + tx.unlockTime)) {
+      if (tx.version == 1 ? !m_bch.is_tx_spendtime_unlocked(tx.unlockTime, blockHeight + tx.unlockTime) : !m_bch.is_output_unlocked(tx.outputUnlockTimes[transactionOutputIndex], blockHeight + tx.unlockTime)) {
         logger(INFO, BRIGHT_WHITE) <<
           "One of outputs for one of inputs have wrong tx.unlockTime = " << tx.unlockTime << ", output tx height is " << blockHeight;
         return false;

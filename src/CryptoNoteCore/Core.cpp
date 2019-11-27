@@ -1495,6 +1495,10 @@ bool core::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
   return m_blockchain.is_tx_spendtime_unlocked(unlock_time, height);
 }
 
+bool core::isOutputUnlocked(uint64_t unlock_time, uint32_t height) {
+  return m_blockchain.is_output_unlocked(unlock_time, height);
+}
+
 bool core::addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) {
   return m_blockchain.addMessageQueue(messageQueue);
 }

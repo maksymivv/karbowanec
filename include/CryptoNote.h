@@ -56,6 +56,7 @@ typedef boost::variant<KeyOutput, MultisignatureOutput> TransactionOutputTarget;
 struct TransactionOutput {
   uint64_t amount;
   TransactionOutputTarget target;
+  //uint64_t unlockTime;
 };
 
 struct TransactionPrefix {
@@ -64,6 +65,7 @@ struct TransactionPrefix {
   std::vector<TransactionInput> inputs;
   std::vector<TransactionOutput> outputs;
   std::vector<uint8_t> extra;
+  std::vector<uint64_t> outputUnlockTimes;
 };
 
 struct Transaction : public TransactionPrefix {
