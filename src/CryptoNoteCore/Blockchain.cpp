@@ -739,72 +739,72 @@ bool Blockchain::init(const std::string& config_folder, const std::string& db_ty
 
   }
 
-  if (Tools::getDefaultDbType() != "lmdb") {
-    uint32_t lastValidCheckpointHeight = 0;
-    if (!checkCheckpoints(lastValidCheckpointHeight)) {
-      logger(WARNING, BRIGHT_YELLOW) << "Invalid checkpoint found. Rollback blockchain to height=" << lastValidCheckpointHeight;
-      rollbackBlockchainTo(lastValidCheckpointHeight);
-    }
+  uint32_t lastValidCheckpointHeight = 0;
+  if (!checkCheckpoints(lastValidCheckpointHeight)) {
+    logger(WARNING, BRIGHT_YELLOW) << "Invalid checkpoint found. Rollback blockchain to height=" << lastValidCheckpointHeight;
+    rollbackBlockchainTo(lastValidCheckpointHeight);
+  }
 
-    if (!m_upgradeDetectorV2.init() || !m_upgradeDetectorV3.init() || !m_upgradeDetectorV4.init() || !m_upgradeDetectorV5.init()/* || !m_upgradeDetectorV6.init()*/) {
-      logger(ERROR, BRIGHT_RED) << "Failed to initialize upgrade detector. Trying self healing procedure.";
-      //return false;
-    }
+  if (!m_upgradeDetectorV2.init() || !m_upgradeDetectorV3.init() || !m_upgradeDetectorV4.init() || !m_upgradeDetectorV5.init()/* || !m_upgradeDetectorV6.init()*/) {
+    logger(ERROR, BRIGHT_RED) << "Failed to initialize upgrade detector. Trying self healing procedure.";
+    //return false;
+  }
 
-    bool reinitUpgradeDetectors = false;
-    if (!checkUpgradeHeight(m_upgradeDetectorV2)) {
-      uint32_t upgradeHeight =  m_upgradeDetectorV2.upgradeHeight();
-      assert(upgradeHeight != UpgradeDetectorBase::UNDEF_HEIGHT);
-      Block Block = m_db->get_block_from_height(upgradeHeight + 1);
-      logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
-        " expected=" << static_cast<int>(m_upgradeDetectorV2.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
-      rollbackBlockchainTo(upgradeHeight);
-      reinitUpgradeDetectors = true;
-    } else if (!checkUpgradeHeight(m_upgradeDetectorV3)) {
-      uint32_t upgradeHeight = m_upgradeDetectorV3.upgradeHeight();
-      Block Block = m_db->get_block_from_height(upgradeHeight + 1);
-      logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
-        " expected=" << static_cast<int>(m_upgradeDetectorV3.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
-      rollbackBlockchainTo(upgradeHeight);
-      reinitUpgradeDetectors = true;
-    } else if (!checkUpgradeHeight(m_upgradeDetectorV4)) {
-      uint32_t upgradeHeight = m_upgradeDetectorV4.upgradeHeight();
-      Block Block = m_db->get_block_from_height(upgradeHeight + 1);
-      logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
-        " expected=" << static_cast<int>(m_upgradeDetectorV4.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
-      rollbackBlockchainTo(upgradeHeight);
-      reinitUpgradeDetectors = true;
-  	} else if (!checkUpgradeHeight(m_upgradeDetectorV5)) {
-      uint32_t upgradeHeight = m_upgradeDetectorV5.upgradeHeight();
-      Block Block = m_db->get_block_from_height(upgradeHeight + 1);
-      logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
-        " expected=" << static_cast<int>(m_upgradeDetectorV5.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
-      rollbackBlockchainTo(upgradeHeight);
-      reinitUpgradeDetectors = true;
-    } /*else if (!checkUpgradeHeight(m_upgradeDetectorV6)) {
-      uint32_t upgradeHeight = m_upgradeDetectorV6.upgradeHeight();
-      Block Block = m_db->get_block_from_height(upgradeHeight + 1);
-      logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
-        " expected=" << static_cast<int>(m_upgradeDetectorV6.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
-      rollbackBlockchainTo(upgradeHeight);
-      reinitUpgradeDetectors = true;
-    } */
+  bool reinitUpgradeDetectors = false;
+  if (!checkUpgradeHeight(m_upgradeDetectorV2)) {
+    uint32_t upgradeHeight =  m_upgradeDetectorV2.upgradeHeight();
+    assert(upgradeHeight != UpgradeDetectorBase::UNDEF_HEIGHT);
+    Block Block = m_db->get_block_from_height(upgradeHeight + 1);
+    logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
+      " expected=" << static_cast<int>(m_upgradeDetectorV2.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
+    rollbackBlockchainTo(upgradeHeight);
+    reinitUpgradeDetectors = true;
+  } else if (!checkUpgradeHeight(m_upgradeDetectorV3)) {
+    uint32_t upgradeHeight = m_upgradeDetectorV3.upgradeHeight();
+    Block Block = m_db->get_block_from_height(upgradeHeight + 1);
+    logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
+      " expected=" << static_cast<int>(m_upgradeDetectorV3.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
+    rollbackBlockchainTo(upgradeHeight);
+    reinitUpgradeDetectors = true;
+  } else if (!checkUpgradeHeight(m_upgradeDetectorV4)) {
+    uint32_t upgradeHeight = m_upgradeDetectorV4.upgradeHeight();
+    Block Block = m_db->get_block_from_height(upgradeHeight + 1);
+    logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
+      " expected=" << static_cast<int>(m_upgradeDetectorV4.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
+    rollbackBlockchainTo(upgradeHeight);
+    reinitUpgradeDetectors = true;
+  } else if (!checkUpgradeHeight(m_upgradeDetectorV5)) {
+    uint32_t upgradeHeight = m_upgradeDetectorV5.upgradeHeight();
+    Block Block = m_db->get_block_from_height(upgradeHeight + 1);
+    logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
+      " expected=" << static_cast<int>(m_upgradeDetectorV5.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
+    rollbackBlockchainTo(upgradeHeight);
+    reinitUpgradeDetectors = true;
+  } /*else if (!checkUpgradeHeight(m_upgradeDetectorV6)) {
+    uint32_t upgradeHeight = m_upgradeDetectorV6.upgradeHeight();
+    Block Block = m_db->get_block_from_height(upgradeHeight + 1);
+    logger(WARNING, BRIGHT_YELLOW) << "Invalid block version at " << upgradeHeight + 1 << ": real=" << static_cast<int>((Tools::getDefaultDbType() != "lmdb") ? m_blocks[upgradeHeight + 1].bl.majorVersion : Block.majorVersion) <<
+      " expected=" << static_cast<int>(m_upgradeDetectorV6.targetVersion()) << ". Rollback blockchain to height=" << upgradeHeight;
+    rollbackBlockchainTo(upgradeHeight);
+    reinitUpgradeDetectors = true;
+  } */
 
-    if ((getCurrentBlockchainHeight() > 1) && db_type == "lmdb")
+  if ((getCurrentBlockchainHeight() > 1) && db_type == "lmdb")
+  {
+    num_popped_blocks = before_popping - getCurrentBlockchainHeight(); // TODO: this section needs cleaned up
+    if (num_popped_blocks > 0)
     {
-      num_popped_blocks = before_popping - getCurrentBlockchainHeight(); // TODO: this section needs cleaned up
-      if (num_popped_blocks > 0)
-      {
-        m_hardfork->reorganize_from_chain_height(getCurrentBlockchainHeight());
-        m_tx_pool.on_blockchain_dec(m_db->height()-1, getTailId());
-      }
+      m_hardfork->reorganize_from_chain_height(getCurrentBlockchainHeight());
+      m_tx_pool.on_blockchain_dec(m_db->height()-1, getTailId());
     }
-    if (reinitUpgradeDetectors && (!m_upgradeDetectorV2.init() || !m_upgradeDetectorV3.init() || !m_upgradeDetectorV4.init() || !m_upgradeDetectorV5.init() /*|| !m_upgradeDetectorV6.init()*/))
-    {
-      logger(ERROR, BRIGHT_RED) << "Failed to initialize upgrade detector";
-      return false;
-    }
+  }
+  if (reinitUpgradeDetectors && (!m_upgradeDetectorV2.init() || !m_upgradeDetectorV3.init() || !m_upgradeDetectorV4.init() || !m_upgradeDetectorV5.init() /*|| !m_upgradeDetectorV6.init()*/))
+  {
+    logger(ERROR, BRIGHT_RED) << "Failed to initialize upgrade detector";
+    return false;
+  }
   
+  if (db_type != "lmdb") {
     update_next_cumulative_size_limit();
 
     uint64_t timestamp_diff = time(NULL) - m_blocks.back().bl.timestamp;
