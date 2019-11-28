@@ -50,6 +50,9 @@ public:
   
   bool isConnected() const;
 
+  void setRootCert(const std::string &path);
+  void disableVerify();
+
 private:
   void connect();
   void disconnect();
@@ -57,8 +60,11 @@ private:
   const std::string m_address;
   const uint16_t m_port;
 
+  std::string m_ssl_cert;
+
   bool m_connected = false;
   bool m_ssl_enable;
+  bool m_ssl_no_verify;
   System::Dispatcher& m_dispatcher;
   System::TcpConnection m_connection;
   std::unique_ptr<System::TcpStreambuf> m_streamBuf;

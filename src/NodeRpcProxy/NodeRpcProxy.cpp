@@ -69,6 +69,8 @@ NodeRpcProxy::NodeRpcProxy(const std::string& nodeHost, unsigned short nodePort,
     m_daemon_path(daemon_path),
     m_connected(true),
     m_daemon_ssl(daemon_ssl),
+    m_daemon_cert(""),
+    m_daemon_no_verify(false),
     m_peerCount(0),
     m_networkHeight(0),
     m_nodeHeight(0),
@@ -81,6 +83,14 @@ NodeRpcProxy::~NodeRpcProxy() {
     shutdown();
   } catch (std::exception&) {
   }
+}
+
+void NodeRpcProxy::setRootCert(const std::string &path) {
+  if (m_daemon_cert.empty()) m_daemon_cert = path;
+}
+
+void NodeRpcProxy::disableVerify() {
+  if (!m_daemon_no_verify) m_daemon_no_verify = true;
 }
 
 void NodeRpcProxy::resetInternalState() {
@@ -153,6 +163,8 @@ void NodeRpcProxy::workerThread(const INode::Callback& initialized_callback) {
     m_context_group = &contextGroup;
     HttpClient httpClient(dispatcher, m_nodeHost, m_nodePort, m_daemon_ssl);
     m_httpClient = &httpClient;
+    if (!m_daemon_cert.empty()) m_httpClient->setRootCert(m_daemon_cert);
+    if (m_daemon_no_verify) m_httpClient->disableVerify();
     Event httpEvent(dispatcher);
     m_httpEvent = &httpEvent;
     m_httpEvent->set();

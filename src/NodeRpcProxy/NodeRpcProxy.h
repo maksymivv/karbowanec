@@ -96,6 +96,9 @@ public:
   const std::string m_nodeHost;
   const unsigned short m_nodePort;
 
+  virtual void setRootCert(const std::string &path) override;
+  virtual void disableVerify() override;
+
 private:
   void resetInternalState();
   void workerThread(const Callback& initialized_callback);
@@ -170,7 +173,9 @@ private:
   std::string m_fee_address;
 
   std::string m_daemon_path;
+  std::string m_daemon_cert;
   bool m_daemon_ssl;
+  bool m_daemon_no_verify;
 };
 
 }

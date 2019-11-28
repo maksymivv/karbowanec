@@ -94,13 +94,21 @@ void sockSetup(SOCKET &sock) {
 namespace CryptoNote {
 
 HttpClient::HttpClient(System::Dispatcher& dispatcher, const std::string& address, uint16_t port, bool ssl_enable) :
-  m_dispatcher(dispatcher), m_address(address), m_port(port), m_ssl_enable(ssl_enable) {
+  m_dispatcher(dispatcher), m_address(address), m_port(port), m_ssl_enable(ssl_enable), m_ssl_cert(""), m_ssl_no_verify(false) {
 }
 
 HttpClient::~HttpClient() {
   if (m_connected) {
     disconnect();
   }
+}
+
+void HttpClient::setRootCert(const std::string &path) {
+  if (this->m_ssl_cert.empty()) this->m_ssl_cert = path;
+}
+
+void HttpClient::disableVerify() {
+  if (!this->m_ssl_no_verify) this->m_ssl_no_verify = true;
 }
 
 void HttpClient::request(HttpRequest &req, HttpResponse &res) {
@@ -205,13 +213,17 @@ void HttpClient::connect() {
   if (this->m_ssl_enable) {
     try {
       boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
+      if (this->m_ssl_cert.empty()) {
 #if defined(_WIN32)
-      add_windows_root_certs(ctx);
+        add_windows_root_certs(ctx);
 #elif defined(__ANDROID__)
-      add_emb_root_certs(ctx);
+        add_emb_root_certs(ctx);
 #else
-      ctx.set_default_verify_paths();
+        ctx.set_default_verify_paths();
 #endif
+      } else {
+        ctx.load_verify_file(m_ssl_cert);
+      }
       this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, std::ref(ctx)));
       tcp::resolver resolver(this->m_io_service);
       tcp::resolver::query query(hostname, std::to_string(this->m_port));
@@ -221,7 +233,11 @@ void HttpClient::connect() {
 #endif
       this->m_ssl_sock->lowest_layer().set_option(tcp::no_delay(true));
       this->m_ssl_sock->lowest_layer().set_option(boost::asio::socket_base::keep_alive(true));
-      this->m_ssl_sock->set_verify_mode(boost::asio::ssl::verify_peer);
+      if (!this->m_ssl_no_verify) {
+        this->m_ssl_sock->set_verify_mode(boost::asio::ssl::verify_peer);
+      } else {
+        this->m_ssl_sock->set_verify_mode(boost::asio::ssl::verify_none);
+      }
       this->m_ssl_sock->set_verify_callback(boost::asio::ssl::rfc2818_verification(hostname));
       this->m_ssl_sock->handshake(boost::asio::ssl::stream_base::client);
       m_connected = true;
