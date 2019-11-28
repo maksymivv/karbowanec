@@ -241,9 +241,8 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
     }
   }
   transactionDetails.size = getObjectBinarySize(transaction);
-  if (transaction.version < 2) {
-    transactionDetails.unlockTime = transaction.unlockTime;
-  } else {
+  transactionDetails.unlockTime = transaction.unlockTime;
+  if (transaction.version >= 2) {
     transactionDetails.outputUnlockTimes = transaction.outputUnlockTimes;
   }
   transactionDetails.totalOutputsAmount = get_outs_money_amount(transaction);
