@@ -60,6 +60,7 @@ namespace CryptoNote {
     virtual Hash getTransactionPrefixHash() const override;
     virtual PublicKey getTransactionPublicKey() const override;
     virtual uint64_t getUnlockTime() const override;
+    virtual uint64_t getUnlockTime(size_t index) const override;
     virtual bool getPaymentId(Hash& hash) const override;
     virtual bool getExtraNonce(BinaryArray& nonce) const override;
     virtual BinaryArray getExtra() const override;
@@ -92,6 +93,8 @@ namespace CryptoNote {
     // ITransactionWriter
 
     virtual void setUnlockTime(uint64_t unlockTime) override;
+    virtual void setUnlockTime(uint64_t unlockTime, size_t index) override;
+    virtual void setUnlockTimes(std::vector<uint64_t> unlockTimes) override;
     virtual void setPaymentId(const Hash& hash) override;
     virtual void setExtraNonce(const BinaryArray& nonce) override;
     virtual void appendExtra(const BinaryArray& extraData) override;
@@ -209,12 +212,28 @@ namespace CryptoNote {
   }
 
   uint64_t TransactionImpl::getUnlockTime() const {
-    return transaction.unlockTime; // TODO use per-output
+    return transaction.unlockTime;
+  }
+
+  uint64_t TransactionImpl::getUnlockTime(size_t index) const {
+    return transaction.version < 2 ? transaction.unlockTime : transaction.outputUnlockTimes[index];
   }
 
   void TransactionImpl::setUnlockTime(uint64_t unlockTime) {
     checkIfSigning();
     transaction.unlockTime = unlockTime;
+    invalidateHash();
+  }
+
+  void TransactionImpl::setUnlockTime(uint64_t unlockTime, size_t index) {
+    checkIfSigning();
+    transaction.outputUnlockTimes[index] = unlockTime;
+    invalidateHash();
+  }
+
+  void TransactionImpl::setUnlockTimes(std::vector<uint64_t> unlockTimes) {
+    checkIfSigning();
+    transaction.outputUnlockTimes = unlockTimes;
     invalidateHash();
   }
 

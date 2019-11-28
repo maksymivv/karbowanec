@@ -270,7 +270,7 @@ bool TransfersContainer::addTransactionOutputs(const TransactionBlockInfo& block
     static_cast<TransactionOutputInformationIn&>(info) = transfer;
     info.blockHeight = block.height;
     info.transactionIndex = block.transactionIndex;
-    info.unlockTime = tx.getUnlockTime();
+    info.unlockTime = tx.getUnlockTime(transfer.outputInTransaction);
     info.transactionHash = txHash;
     info.visible = true;
 

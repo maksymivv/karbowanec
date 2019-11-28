@@ -63,6 +63,7 @@ public:
   virtual Crypto::PublicKey getTransactionPublicKey() const = 0;
   virtual bool getTransactionSecretKey(Crypto::SecretKey& key) const = 0;
   virtual uint64_t getUnlockTime() const = 0;
+  virtual uint64_t getUnlockTime(size_t index) const = 0;
 
   // extra
   virtual bool getPaymentId(Crypto::Hash& paymentId) const = 0;
@@ -106,6 +107,8 @@ public:
 
   // transaction parameters
   virtual void setUnlockTime(uint64_t unlockTime) = 0;
+  virtual void setUnlockTime(uint64_t unlockTime, size_t index) = 0;
+  virtual void setUnlockTimes(std::vector<uint64_t> unlockTimes) = 0;
 
   // extra
   virtual void setPaymentId(const Crypto::Hash& paymentId) = 0;

@@ -40,6 +40,7 @@ public:
   virtual Hash getTransactionPrefixHash() const override;
   virtual PublicKey getTransactionPublicKey() const override;
   virtual uint64_t getUnlockTime() const override;
+  virtual uint64_t getUnlockTime(size_t index) const override;
 
   // extra
   virtual bool getPaymentId(Hash& paymentId) const override;
@@ -106,6 +107,10 @@ PublicKey TransactionPrefixImpl::getTransactionPublicKey() const {
 
 uint64_t TransactionPrefixImpl::getUnlockTime() const {
   return m_txPrefix.unlockTime;
+}
+
+uint64_t TransactionPrefixImpl::getUnlockTime(size_t index) const {
+  return m_txPrefix.version < 2 ? m_txPrefix.unlockTime : m_txPrefix.outputUnlockTimes[index];
 }
 
 bool TransactionPrefixImpl::getPaymentId(Hash& hash) const {
