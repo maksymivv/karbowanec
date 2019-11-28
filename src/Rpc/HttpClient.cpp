@@ -32,6 +32,13 @@
 using boost::asio::ip::tcp;
 
 
+// TODO: must be native
+void getHostName(const std::string url, std::string &hostname) {
+  size_t sep_pos = url.find("/");
+  if (sep_pos == std::string::npos) hostname = url;
+  else hostname = url.substr(sep_pos);
+}
+
 #if defined(_WIN32)
 void add_windows_root_certs(boost::asio::ssl::context &ctx) {
   HCERTSTORE hStore = CertOpenSystemStore(0, "ROOT");
@@ -173,6 +180,8 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
 }
 
 void HttpClient::connect() {
+  std::string hostname;
+  getHostName(this->m_address, hostname);
   if (this->m_ssl_enable) {
     try {
       boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
@@ -183,7 +192,7 @@ void HttpClient::connect() {
 #endif
       this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, std::ref(ctx)));
       tcp::resolver resolver(this->m_io_service);
-      tcp::resolver::query query(this->m_address, std::to_string(this->m_port));
+      tcp::resolver::query query(hostname, std::to_string(this->m_port));
       boost::asio::connect(this->m_ssl_sock->lowest_layer(), resolver.resolve(query));
 #if defined(_WIN32)
       sockSetup((SOCKET &) this->m_ssl_sock->lowest_layer().native_handle());
@@ -191,7 +200,7 @@ void HttpClient::connect() {
       this->m_ssl_sock->lowest_layer().set_option(tcp::no_delay(true));
       this->m_ssl_sock->lowest_layer().set_option(boost::asio::socket_base::keep_alive(true));
       this->m_ssl_sock->set_verify_mode(boost::asio::ssl::verify_peer);
-      this->m_ssl_sock->set_verify_callback(boost::asio::ssl::rfc2818_verification(this->m_address));
+      this->m_ssl_sock->set_verify_callback(boost::asio::ssl::rfc2818_verification(hostname));
       this->m_ssl_sock->handshake(boost::asio::ssl::stream_base::client);
       m_connected = true;
     } catch (const std::exception& e) {
@@ -199,7 +208,7 @@ void HttpClient::connect() {
     }
   } else {
     try {
-      auto ipAddr = System::Ipv4Resolver(m_dispatcher).resolve(m_address);
+      auto ipAddr = System::Ipv4Resolver(m_dispatcher).resolve(hostname);
       m_connection = System::TcpConnector(m_dispatcher).connect(ipAddr, m_port);
       m_streamBuf.reset(new System::TcpStreambuf(m_connection));
       m_connected = true;

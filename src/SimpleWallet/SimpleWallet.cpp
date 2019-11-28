@@ -1796,10 +1796,12 @@ bool simple_wallet::start_mining(const std::vector<std::string>& args) {
 
   COMMAND_RPC_START_MINING::response res;
 
+  std::string rpc_url = this->m_daemon_path + "start_mining";
+
   try {
     HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port, m_daemon_ssl);
 
-    invokeJsonCommand(httpClient, "/start_mining", req, res);
+    invokeJsonCommand(httpClient, rpc_url, req, res);
 
     std::string err = interpret_rpc_response(true, res.status);
     if (err.empty())
@@ -1821,10 +1823,12 @@ bool simple_wallet::stop_mining(const std::vector<std::string>& args)
   COMMAND_RPC_STOP_MINING::request req;
   COMMAND_RPC_STOP_MINING::response res;
 
+  std::string rpc_url = this->m_daemon_path + "stop_mining";
+
   try {
     HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port, m_daemon_ssl);
 
-    invokeJsonCommand(httpClient, "/stop_mining", req, res);
+    invokeJsonCommand(httpClient, rpc_url, req, res);
     std::string err = interpret_rpc_response(true, res.status);
     if (err.empty())
       success_msg_writer() << "Mining stopped in daemon";
@@ -2088,7 +2092,9 @@ std::string simple_wallet::getFeeAddress() {
   HttpRequest req;
   HttpResponse res;
 
-  req.setUrl("/feeaddress");
+  std::string rpc_url = this->m_daemon_path + "feeaddress";
+
+  req.setUrl(rpc_url);
   try {
 	  httpClient.request(req, res);
   }
