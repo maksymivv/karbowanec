@@ -134,6 +134,7 @@ bool constructTransaction(
   tx.signatures.clear();
 
   tx.version = version;
+  tx.unlockTime = unlock_time;
 
   tx.extra = extra;
   KeyPair txkey = generateKeyPair();
@@ -230,10 +231,6 @@ bool constructTransaction(
     if (version >= 2) {
       tx.outputUnlockTimes.push_back(dst_entr.unlockTime);
     }
-  }
-
-  if (version < 2) {
-    tx.unlockTime = unlock_time;
   }
 
   //check money (for v.1 only)
