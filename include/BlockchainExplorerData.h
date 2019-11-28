@@ -127,6 +127,7 @@ struct TransactionDetails {
   uint64_t totalOutputsAmount = 0;
   uint64_t mixin = 0;
   uint64_t unlockTime = 0;
+  std::vector<uint64_t> outputUnlockTimes = {0};
   uint64_t timestamp = 0;
   uint64_t version = 1;
   Crypto::Hash paymentId;

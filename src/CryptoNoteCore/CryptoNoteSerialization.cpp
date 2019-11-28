@@ -185,12 +185,13 @@ namespace CryptoNote {
 
 void serialize(TransactionPrefix& txP, ISerializer& serializer) {
   serializer(txP.version, "version");
-  serializer(txP.unlockTime, "unlock_time");
   serializer(txP.inputs, "vin");
   serializer(txP.outputs, "vout");
   serializeAsBinary(txP.extra, "extra", serializer);
   if (txP.version >= TRANSACTION_VERSION_2) {
     serializer(txP.outputUnlockTimes, "output_unlock_times");
+  } else {
+    serializer(txP.unlockTime, "unlock_time");
   }
 }
 

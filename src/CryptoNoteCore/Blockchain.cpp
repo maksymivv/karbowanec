@@ -1144,13 +1144,14 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
     }
   }
 
-  // TODO add per out unlock time check instead
-  if (!(b.baseTransaction.unlockTime == height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()))) {
-    logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction have wrong unlock time="
-      << b.baseTransaction.unlockTime << ", expected "
-      << height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1());
-    return false;
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
+    if (!(b.baseTransaction.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
+      logger(ERROR, BRIGHT_RED)
+        << "coinbase transaction have wrong unlock time="
+        << b.baseTransaction.unlockTime << ", expected "
+        << height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1());
+      return false;
+    }
   }
 
   if (!check_outs_overflow(b.baseTransaction)) {
@@ -1181,10 +1182,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     return false;
   }
 
-  uint64_t minerReward = 0;
-  uint64_t inputsAmount = 0;
-  uint64_t outputsAmount = 0;
-  uint64_t lockedAmount = 0;
+  uint64_t minerReward = 0, inputsAmount = 0, outputsAmount = 0, lockedAmount = 0;
 
   if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
     for (auto& o : b.baseTransaction.outputs) {
@@ -1930,9 +1928,9 @@ bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_pre
           "Can not get block containing transaction " << Common::podToHex(txId);
         return false;
       }
-      if (tx.version == 1 ? !m_bch.is_tx_spendtime_unlocked(tx.unlockTime, blockHeight + tx.unlockTime) : !m_bch.is_output_unlocked(tx.outputUnlockTimes[transactionOutputIndex], blockHeight + tx.unlockTime)) {
+      if (tx.version == 1 ? !m_bch.is_tx_spendtime_unlocked(tx.unlockTime, blockHeight + tx.unlockTime) : !m_bch.is_output_unlocked(tx.outputUnlockTimes[transactionOutputIndex], blockHeight + tx.outputUnlockTimes[transactionOutputIndex])) {
         logger(INFO, BRIGHT_WHITE) <<
-          "One of outputs for one of inputs have wrong tx.unlockTime = " << tx.unlockTime << ", output tx height is " << blockHeight;
+          "One of outputs for one of inputs have wrong tx.unlockTime = " << (tx.version == 1 ? tx.unlockTime : tx.outputUnlockTimes[transactionOutputIndex]) << ", output tx height is " << blockHeight;
         return false;
       }
 
@@ -2590,7 +2588,7 @@ bool Blockchain::validateInput(const MultisignatureInput& input, const Crypto::H
     return false;
   }
   const Transaction& outputTransaction = m_blocks[outputIndex.transactionIndex.block].transactions[outputIndex.transactionIndex.transaction].tx;
-  if (!is_tx_spendtime_unlocked(outputTransaction.unlockTime, blockHeight)) {
+  if (!is_tx_spendtime_unlocked(outputTransaction.version < 2 ? outputTransaction.unlockTime : outputTransaction.outputUnlockTimes[input.outputIndex], blockHeight)) {
     logger(DEBUGGING) <<
       "Transaction << " << transactionHash << " contains multisignature input which points to a locked transaction.";
     return false;

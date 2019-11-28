@@ -165,6 +165,7 @@ namespace CryptoNote {
 
     transaction.version = CURRENT_TRANSACTION_VERSION;
     transaction.unlockTime = 0;
+    transaction.outputUnlockTimes = { 0 };
     transaction.extra = extra.serialize();
 
     secretKey = txKeys.secretKey;
@@ -208,7 +209,7 @@ namespace CryptoNote {
   }
 
   uint64_t TransactionImpl::getUnlockTime() const {
-    return transaction.unlockTime;
+    return transaction.unlockTime; // TODO use per-output
   }
 
   void TransactionImpl::setUnlockTime(uint64_t unlockTime) {

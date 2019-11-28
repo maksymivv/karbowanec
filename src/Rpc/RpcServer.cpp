@@ -1847,7 +1847,7 @@ bool RpcServer::on_check_reserve_proof(const COMMAND_RPC_CHECK_RESERVE_PROOF::re
 
 		CryptoNote::TransactionPrefix tx = *static_cast<const TransactionPrefix*>(&transactions[i]);
     
-		bool unlocked = m_core.is_tx_spendtime_unlocked(tx.unlockTime, req.height);
+		bool unlocked = m_core.is_tx_spendtime_unlocked(tx.outputUnlockTimes[proof.index_in_tx], req.height);
 
 		if (proof.index_in_tx >= tx.outputs.size()) {
 			throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "index_in_tx is out of bound" };
