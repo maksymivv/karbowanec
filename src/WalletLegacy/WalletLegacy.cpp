@@ -417,6 +417,22 @@ void WalletLegacy::doLoad(std::istream& source) {
   m_observerManager.notify(&IWalletLegacyObserver::initCompleted, std::error_code());
 }
 
+bool WalletLegacy::tryLoadWallet(std::istream& source, const std::string& password) {
+  try {
+    std::string cache;
+    WalletLegacySerializer serializer(m_account, m_transactionsCache);
+    serializer.deserialize(source, m_password, cache);
+  }
+  catch (std::system_error& e) {
+    return false;
+  }
+  catch (std::exception&) {
+    return false;
+  }
+
+  return true;
+}
+
 void WalletLegacy::shutdown() {
   {
     std::unique_lock<std::mutex> lock(m_cacheMutex);
