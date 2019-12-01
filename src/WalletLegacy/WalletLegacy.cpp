@@ -418,19 +418,9 @@ void WalletLegacy::doLoad(std::istream& source) {
 }
 
 bool WalletLegacy::tryLoadWallet(std::istream& source, const std::string& password) {
-  try {
-    std::string cache;
-    WalletLegacySerializer serializer(m_account, m_transactionsCache);
-    serializer.deserialize(source, m_password, cache);
-  }
-  catch (std::system_error& e) {
-    return false;
-  }
-  catch (std::exception&) {
-    return false;
-  }
-
-  return true;
+  std::unique_lock<std::mutex> lock(m_cacheMutex);
+  WalletLegacySerializer serializer(m_account, m_transactionsCache);
+  return serializer.deserialize(source, password);
 }
 
 void WalletLegacy::shutdown() {
