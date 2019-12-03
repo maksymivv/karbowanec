@@ -68,10 +68,11 @@ public:
   virtual void pause_mining() = 0;
   virtual void update_block_template_and_resume_mining() = 0;
   virtual bool handle_incoming_block_blob(const CryptoNote::BinaryArray& block_blob, CryptoNote::block_verification_context& bvc, bool control_miner, bool relay_block) = 0;
-  virtual bool handle_incoming_block(const Block& b, block_verification_context& bvc, bool control_miner, bool relay_block) = 0;
+  virtual bool handle_incoming_block(const Block& b, CryptoNote::block_verification_context& bvc, bool control_miner, bool relay_block) = 0;
   virtual bool handle_get_objects(NOTIFY_REQUEST_GET_OBJECTS_request& arg, NOTIFY_RESPONSE_GET_OBJECTS_request& rsp) = 0; //Deprecated. Should be removed with CryptoNoteProtocolHandler.
   virtual void on_synchronized() = 0;
   virtual size_t addChain(const std::vector<const IBlock*>& chain) = 0;
+  virtual void safesyncmode(const bool onoff) = 0;
 
   virtual void get_blockchain_top(uint32_t& height, Crypto::Hash& top_id) = 0;
   virtual std::vector<Crypto::Hash> findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds, size_t maxCount,
@@ -88,6 +89,7 @@ public:
                               std::vector<TransactionPrefixInfo>& addedTxs, std::vector<Crypto::Hash>& deletedTxsIds) = 0;
   virtual void getPoolChanges(const std::vector<Crypto::Hash>& knownTxsIds, std::vector<Transaction>& addedTxs,
                               std::vector<Crypto::Hash>& deletedTxsIds) = 0;
+  virtual uint64_t getBlockTimestamp(uint32_t height) = 0;
   virtual bool queryBlocks(
     const std::vector<Crypto::Hash>& block_ids,
     uint64_t timestamp,
