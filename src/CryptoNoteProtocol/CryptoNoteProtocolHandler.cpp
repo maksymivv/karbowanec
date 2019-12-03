@@ -112,8 +112,8 @@ bool CryptoNoteProtocolHandler::start_sync(CryptoNoteConnectionContext& context)
   logger(Logging::TRACE) << context << "Starting synchronization";
 
   if (context.m_state == CryptoNoteConnectionContext::state_synchronizing) {
-    //assert(context.m_needed_objects.empty());
-    //assert(context.m_requested_objects.empty());
+    context.m_needed_objects.clear();
+    context.m_requested_objects.clear();
 
     NOTIFY_REQUEST_CHAIN::request r = boost::value_initialized<NOTIFY_REQUEST_CHAIN::request>();
     r.block_ids = m_core.buildSparseChain();

@@ -1128,10 +1128,10 @@ bool core::findStartAndFullOffsets(const std::vector<Crypto::Hash>& knownBlockId
   }
 
   if (r) {
-    startOffset = m_blockchain.findBlockchainSupplement(knownBlockIds);
+    startOffset = lbs->findBlockchainSupplement(knownBlockIds);
   } else {
     size_t size;
-    bool find = m_blockchain.find_blockchain_supplement(knownBlockIds, size);
+    bool find = lbs->find_blockchain_supplement(knownBlockIds, size);
     if (!find) { logger(ERROR, BRIGHT_RED) << "Failed to find blockchain supplement!"; }
     else { startOffset = size; }
   }
