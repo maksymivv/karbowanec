@@ -434,7 +434,7 @@ inline int lmdb_txn_renew(MDB_txn *txn)
 void BlockchainLMDB::do_resize(uint64_t increase_size)
 {
   //LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+  std::lock_guard<std::recursive_mutex> lk(m_synchronization_lock);
 
   const uint64_t add_size = (size_t)1 << 30;
 
