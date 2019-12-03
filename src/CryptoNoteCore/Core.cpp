@@ -885,9 +885,11 @@ bool core::handle_incoming_block(const Block& b, block_verification_context& bvc
     {
       logger(ERROR, BRIGHT_RED) << "Something went wrong when handling incoming blocks!";
     }
-    m_blockchain.pushBlock(b, txs_vec, bvc);
-    if (bvc.m_verification_failed)
+    lbs->pushBlock(b, txs_vec, bvc);
+    if (bvc.m_verification_failed) {
       logger(ERROR, BRIGHT_RED) << "Error: incoming block failed verification!";
+      return false;
+    }
     if (control_miner) {
       update_block_template_and_resume_mining();
     }
@@ -964,18 +966,19 @@ std::list<CryptoNote::tx_memory_pool::TransactionDetails> core::getMemoryPool() 
 }
 
 std::vector<Crypto::Hash> core::buildSparseChain() {
+  LockedBlockchainStorage lbs(m_blockchain);
   std::vector<Crypto::Hash> chain;
   if (m_blockchain.getCurrentBlockchainHeight() < 1) {
     chain.push_back(m_currency.genesisBlockHash());
     return chain;
   }
-  return m_blockchain.buildSparseChain();
+  return lbs->buildSparseChain();
 }
 
 std::vector<Crypto::Hash> core::buildSparseChain(const Crypto::Hash& startBlockId) {
   LockedBlockchainStorage lbs(m_blockchain);
   assert(m_blockchain.haveBlock(startBlockId));
-  return m_blockchain.buildSparseChain(startBlockId);
+  return lbs->buildSparseChain(startBlockId);
 }
 
 bool core::handle_get_objects(NOTIFY_REQUEST_GET_OBJECTS::request& arg, NOTIFY_RESPONSE_GET_OBJECTS::request& rsp) { //Deprecated. Should be removed with CryptoNoteProtocolHandler.

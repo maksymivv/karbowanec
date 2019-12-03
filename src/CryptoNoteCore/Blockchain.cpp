@@ -2990,6 +2990,9 @@ bool Blockchain::add_new_block(const Block& bl, block_verification_context& bvc)
     DB_TX_STOP
     return false;
   }
+  if (m_db->height() & 255 == 0) {
+    m_db->do_resize();
+  }
 
   //check that block refers to chain tail
   bool add = pushBlock(bl, bvc);
@@ -3683,11 +3686,14 @@ bool Blockchain::store_blockchain()
 {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   try {
-     m_db->fixup();
+    DB_TX_START
+    m_db->fixup();
   } catch (const std::exception& e) {
    logger(ERROR, BRIGHT_RED) << "Exception thrown at store_blockchain(): " << e.what() << " -- shutting down to prevent issues!";
+   m_db->block_txn_abort();
    return false;
   }
+  DB_TX_STOP
   return true;
 }
 
@@ -3740,7 +3746,8 @@ void Blockchain::safesyncmode(const bool onoff)
   if (db_default_sync)
   {
     m_db->safesyncmode(onoff);
-    m_db_sync_mode = onoff ? db_nosync : db_async;
+    //m_db_sync_mode = onoff ? db_nosync : db_async;
+    m_db_sync_mode = onoff ? db_async : db_async;
   }
 }
 
@@ -3859,9 +3866,6 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
   bool stop_batch;
   uint64_t bytes = 0;
 
-    std::lock_guard<decltype(m_tx_pool)> poolLock(m_tx_pool);
-    std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-
   if(blocks_entry.size() == 0)
     return false;
 
@@ -3873,12 +3877,7 @@ bool Blockchain::prepare_handle_incoming_blocks(const std::vector<block_complete
       bytes += tx_blob.size();
     }
   }
-  while (!(stop_batch = m_db->batch_start(blocks_entry.size(), bytes))) {
-    m_blockchain_lock.unlock();
-    m_tx_pool.unlock();
-    m_tx_pool.lock();
-    m_blockchain_lock.lock();
-  }
+  m_db->batch_start(blocks_entry.size(), bytes);
 
   if ((m_db->height() + blocks_entry.size()) < m_blocks_hash_check.size())
     return true;
@@ -4361,6 +4360,9 @@ bool Blockchain::handle_block_to_main_chain(const Block& bl, const Crypto::Hash&
 //          auto block_processing_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - blockProcessingStart).count();
           add_new_block(bl, bvc);
           ht_inc = new_height;
+          if (m_db->height() & 255 == 0) {
+            m_db->do_resize();
+          }
           logger(DEBUGGING) <<
           "+++++ BLOCK SUCCESSFULLY ADDED" << ENDL << "id:\t" << id
           << ENDL << "PoW:\t" << proof_of_work

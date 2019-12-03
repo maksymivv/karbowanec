@@ -157,6 +157,11 @@ void BlockchainDB::set_hard_fork(HardFork* hf)
   m_hardfork = hf;
 }
 
+void BlockchainDB::do_resize()
+{
+  do_resize();
+}
+
 void BlockchainDB::pop_block(CryptoNote::Block& blk, std::vector<CryptoNote::Transaction>& txs)
 {
   blk = get_top_block();
@@ -229,6 +234,37 @@ CryptoNote::Transaction BlockchainDB::get_tx(const Crypto::Hash& h) const
   if (!get_tx(h, tx))
     throw(TX_DNE(std::string("tx with hash ").append(Common::podToHex(h)).append(" not found in db").c_str()));
   return tx;
+}
+
+void BlockchainDB::reset_stats()
+{
+  num_calls = 0;
+  time_blk_hash = 0;
+  time_tx_exists = 0;
+  time_add_block1 = 0;
+  time_add_transaction = 0;
+  time_commit1 = 0;
+}
+
+void BlockchainDB::show_stats()
+{
+  std::cout << std::endl
+    << "*********************************"
+    << std::endl
+    << "num_calls: " << num_calls
+    << std::endl
+    << "time_blk_hash: " << time_blk_hash << "ms"
+    << std::endl
+    << "time_tx_exists: " << time_tx_exists << "ms"
+    << std::endl
+    << "time_add_block1: " << time_add_block1 << "ms"
+    << std::endl
+    << "time_add_transaction: " << time_add_transaction << "ms"
+    << std::endl
+    << "time_commit1: " << time_commit1 << "ms"
+    << std::endl
+    << "*********************************"
+    << std::endl;
 }
 
 void BlockchainDB::fixup()

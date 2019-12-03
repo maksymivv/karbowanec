@@ -292,9 +292,9 @@ public:
    * @return a set of amount/instances
    */
   std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff) const;
+  void do_resize(uint64_t size_increase = 0);
 
 private:
-  void do_resize(uint64_t size_increase=0);
 
   bool need_resize(uint64_t threshold_size=0) const;
   void check_and_resize_for_batch(uint64_t batch_num_blocks, uint64_t batch_bytes);
