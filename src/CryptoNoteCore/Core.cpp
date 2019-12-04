@@ -117,6 +117,8 @@ void core::init_options(boost::program_options::options_description& /*desc*/) {
 
 bool core::handle_command_line(const boost::program_options::variables_map& vm) {
   m_config_folder = command_line::get_arg(vm, command_line::arg_data_dir);
+  db_sync_mode = command_line::get_arg(vm, command_line::arg_db_sync_mode);
+  m_db_type = command_line::get_arg(vm, command_line::arg_db_type);
 
   return true;
 }
@@ -191,9 +193,6 @@ bool core::init(const CoreConfig& config, const MinerConfig& minerConfig, bool l
     assert(z == true);
     if (!z)
       logger(ERROR, BRIGHT_RED) << "Failed to create directory!";
-
-    std::string m_db_type;
-    std::string db_sync_mode;
 
     // check for blockchain.bin
     try

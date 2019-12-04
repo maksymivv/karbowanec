@@ -250,6 +250,8 @@ namespace CryptoNote {
      i_cryptonote_protocol* m_pprotocol;
      std::unique_ptr<miner> m_miner;
      std::string m_config_folder;
+     std::string db_sync_mode;
+     std::string m_db_type;
      cryptonote_protocol_stub m_protocol_stub;
      friend class tx_validate_inputs;
      std::atomic<bool> m_starter_message_showed;

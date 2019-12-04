@@ -567,7 +567,12 @@ int CryptoNoteProtocolHandler::handle_request_chain(int command, NOTIFY_REQUEST_
   }*/
 
   NOTIFY_RESPONSE_CHAIN_ENTRY::request r;
-  bool blocks = m_core.get_blockchain_storage().find_blockchain_supplement(arg.block_ids, r);
+  bool blocks = false;
+  if (Tools::getDefaultDbType() == "lmdb")
+    blocks = m_core.get_blockchain_storage().find_blockchain_supplement(arg.block_ids, r);
+  else
+    blocks = m_core.get_blockchain_storage().findBlockchainSupplement(arg.block_ids);
+
   r.m_block_ids = arg.block_ids;
 
   logger(Logging::TRACE) << context << "-->>NOTIFY_RESPONSE_CHAIN_ENTRY: m_start_height=" << r.start_height << ", m_total_height=" << r.total_height << ", m_block_ids.size()=" << r.m_block_ids.size();

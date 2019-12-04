@@ -55,7 +55,8 @@ namespace CryptoNote {
     bool init() {
       bool r = Tools::getDefaultDbType() != "lmdb";
 
-      #define HEIGHT  (r ? m_blockchain.size() : db.height())
+      #define HEIGHT  (r ? (m_blockchain.size() + 1) : db.height())
+
       uint32_t upgradeHeight = m_currency.upgradeHeight(m_targetVersion);
       if (upgradeHeight == UNDEF_HEIGHT) {
         if (m_blockchain.empty()) {
