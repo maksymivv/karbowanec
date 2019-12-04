@@ -141,7 +141,7 @@ public:
     uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
     bool addNewBlock(const Block& bl, block_verification_context& bvc);
     bool add_new_block(const Block& b, block_verification_context& bvc);
-    bool cleanup_handle_incoming_blocks(bool force_sync);
+    //bool cleanup_handle_incoming_blocks(bool force_sync);
     bool prepare_handle_incoming_blocks(const std::vector<block_complete_entry> &blocks_entry);
     bool resetAndSetGenesisBlock(const Block& b);
     bool haveBlock(const Crypto::Hash& id);
@@ -465,7 +465,6 @@ private:
     void get_txpool_txs(std::list<Transaction>& txs);
     std::string filename_mdb;
     int flags_mdb;
-    bool handle_block_to_main_chain(const Block& bl, const Crypto::Hash& id, block_verification_context& bvc);
     HardFork::State get_hard_fork_state() const;
     void output_scan_worker(const uint64_t amount,const std::vector<uint32_t> &offsets,
         std::vector<output_data_t> &outputs, std::unordered_map<Crypto::Hash,

@@ -296,10 +296,6 @@ public:
 
 private:
 
-  bool need_resize(uint64_t threshold_size=0) const;
-  void check_and_resize_for_batch(uint64_t batch_num_blocks, uint64_t batch_bytes);
-  uint64_t get_estimated_batch_size(uint64_t batch_num_blocks, uint64_t batch_bytes) const;
-
   virtual void add_block( const CryptoNote::Block& blk
                 , const size_t& block_size
                 , const CryptoNote::difficulty_type& cumulative_difficulty
