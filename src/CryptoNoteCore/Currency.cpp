@@ -489,12 +489,12 @@ namespace CryptoNote {
 
   uint64_t Currency::nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const {
     // calculate supply based stake
-    // ~25% of coins in circulation (STAKE_EMISSION_FRACTION) involved in POWS around the clock
     uint64_t supplyStake = alreadyGeneratedCoins / CryptoNote::parameters::STAKE_BASE_TERM / CryptoNote::parameters::STAKE_EMISSION_FRACTION;
+    
     uint64_t baseReward = reward - fee; // exclude fees
 
     // caclulate profitable stake based on reward
-    uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward;
+    uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward * CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY / CryptoNote::parameters::STAKE_BASE_TERM;
 
     // calculate final stake as aurea mediocritas between emission based stake
     // and reward/profitability based stake
@@ -504,9 +504,9 @@ namespace CryptoNote {
     uint64_t adjustedStake = Common::medianValue(stakes);
 
     // Output info for debugging and checkout
-    logger(INFO, BRIGHT_BLUE) << "Base Stake: " << formatAmount(supplyStake);
-    logger(INFO, BRIGHT_BLUE) << "Int. Stake: " << formatAmount(interStake);
-    logger(INFO, BRIGHT_BLUE) << "Adj. Stake: " << formatAmount(adjustedStake);
+    logger(DEBUGGING, BRIGHT_BLUE) << "Base Stake: " << formatAmount(supplyStake);
+    logger(DEBUGGING, BRIGHT_BLUE) << "Int. Stake: " << formatAmount(interStake);
+    logger(DEBUGGING, BRIGHT_BLUE) << "Adj. Stake: " << formatAmount(adjustedStake);
 
     // Make all insignificant digits zero
     uint64_t i = 1000000000;
@@ -515,7 +515,7 @@ namespace CryptoNote {
       else { i /= 10; }
     }
 
-    return std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
+    return adjustedStake;
   }
 
   uint64_t Currency::calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& transactionStake) const {
