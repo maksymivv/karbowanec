@@ -1137,14 +1137,13 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
         << "coinbase transaction in the block has the wrong type";
       return false;
     }
+
     if (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex != height) {
       logger(INFO, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
         boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex << ", expected: " << height;
       return false;
     }
-  }
 
-  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) {
     if (!(b.baseTransaction.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
       logger(ERROR, BRIGHT_RED)
         << "coinbase transaction have wrong unlock time="
@@ -1171,7 +1170,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 }
 
 bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, size_t cumulativeBlockSize,
-  uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange) {
+  uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange, uint64_t& baseStake, uint64_t& transactionStake) {
 
   std::vector<size_t> lastBlocksSizes;
   get_last_n_blocks_sizes(lastBlocksSizes, m_currency.rewardBlocksWindow());
@@ -1197,11 +1196,15 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
       }
     }
     
+    std::vector<uint64_t> unlockTimes;
+
     for (uint64_t i = 0; i < b.baseTransaction.outputs.size(); ++i) {
       TransactionOutput o = b.baseTransaction.outputs[i];
+      uint64_t u = b.baseTransaction.outputUnlockTimes[i];
       outputsAmount += o.amount;
-      if (b.baseTransaction.outputUnlockTimes[i] == height + m_currency.expectedNumberOfBlocksPerDay()) {
+      if (u >= height + m_currency.minedMoneyUnlockWindow()) {
         lockedAmount += o.amount;
+        unlockTimes.push_back(u);
       }
     }
 
@@ -1230,18 +1233,30 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     }
 
     // calculate min. stake
-    uint64_t stake = m_currency.nextStake(reward, fee, alreadyGeneratedCoins);
+    baseStake = m_currency.nextStake(reward, fee, alreadyGeneratedCoins);
 
     // check stake (locked amount should be not less than stake + reward, which must be locked too)
-    if (lockedAmount < stake + minerReward) {
+    if (lockedAmount < baseStake + minerReward) {
       logger(ERROR, BRIGHT_RED) << "Insufficient amount at stake in coinbase transaction: " 
                                 << m_currency.formatAmount(lockedAmount) << ", whereas minimum is "                              
-                                << m_currency.formatAmount(stake) << " + reward "
+                                << m_currency.formatAmount(baseStake) << " + reward "
                                 << m_currency.formatAmount(minerReward);
       return false;
     }
 
-    return true;
+    transactionStake = lockedAmount - minerReward;
+
+    uint64_t targetTerm = m_currency.calculateStakeDepositTerm(baseStake, transactionStake);
+
+    for (const auto u : unlockTimes) {
+      if (u < height + targetTerm) {
+        logger(ERROR, BRIGHT_RED) << "One of the outputs in coibase stake transaction has wrong unlock time "
+                                  << u << " when minimum for the stake "
+                                  << m_currency.formatAmount(transactionStake)
+                                  << " is " << height + targetTerm;
+        return false;
+      }
+    }
   }
 
   if (minerReward > reward) {
@@ -2229,26 +2244,6 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     return false;
   }
 
-  auto longhashTimeStart = std::chrono::steady_clock::now();
-  Crypto::Hash proof_of_work = NULL_HASH;
-  if (m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
-    if (!m_checkpoints.check_block(getCurrentBlockchainHeight(), blockHash)) {
-      logger(ERROR, BRIGHT_RED) <<
-        "CHECKPOINT VALIDATION FAILED";
-      bvc.m_verification_failed = true;
-      return false;
-    }
-  } else {
-    if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, currentDifficulty, proof_of_work)) {
-      logger(INFO, BRIGHT_WHITE) <<
-        "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
-      bvc.m_verification_failed = true;
-      return false;
-    }
-  }
-
-  auto longhash_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - longhashTimeStart).count();
-
   if (!prevalidate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()))) {
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " failed to pass prevalidation";
@@ -2306,17 +2301,41 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   int64_t emissionChange = 0;
   uint64_t reward = 0;
+  uint64_t baseStake = 0;
+  uint64_t actualStake = 0;
   uint64_t already_generated_coins = m_blocks.empty() ? 0 : m_blocks.back().already_generated_coins;
-  if (!validate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
+  if (!validate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange, baseStake, actualStake)) {
     logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
     bvc.m_verification_failed = true;
     popTransactions(block, minerTransactionHash);
     return false;
   }
 
+  difficulty_type adjDifficulty = m_currency.calculateStakeDifficulty(currentDifficulty, baseStake, actualStake);
+
+  auto longhashTimeStart = std::chrono::steady_clock::now();
+  Crypto::Hash proof_of_work = NULL_HASH;
+  if (m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
+    if (!m_checkpoints.check_block(getCurrentBlockchainHeight(), blockHash)) {
+      logger(ERROR, BRIGHT_RED) <<
+        "CHECKPOINT VALIDATION FAILED";
+      bvc.m_verification_failed = true;
+      return false;
+    }
+  }
+  else {
+    if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, adjDifficulty, proof_of_work)) {
+      logger(INFO, BRIGHT_WHITE) <<
+        "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
+      bvc.m_verification_failed = true;
+      return false;
+    }
+  }
+  auto longhash_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - longhashTimeStart).count();
+
   block.height = static_cast<uint32_t>(m_blocks.size());
   block.block_cumulative_size = block.bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? cumulative_block_size : cumulative_block_size + coinbase_blob_size;
-  block.cumulative_difficulty = currentDifficulty;
+  block.cumulative_difficulty = adjDifficulty;
   block.already_generated_coins = already_generated_coins + emissionChange;
   if (m_blocks.size() > 0) {
     block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;

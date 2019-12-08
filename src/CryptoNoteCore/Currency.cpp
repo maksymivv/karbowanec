@@ -492,12 +492,11 @@ namespace CryptoNote {
     // This is P, a STAKE_EMISSION_FRACTION.
 
     const uint64_t emissionFraction = CryptoNote::parameters::STAKE_EMISSION_FRACTION;
-    uint64_t baseStake = alreadyGeneratedCoins / /*CryptoNote::parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1*/ 360 / emissionFraction;
+    uint64_t baseStake = alreadyGeneratedCoins / expectedNumberOfBlocksPerDay() / emissionFraction;
     uint64_t baseReward = reward - fee; // exclude fees
 
     // caclulate profitable stake based on reward
-    //uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward;
-    uint64_t interStake = 128;
+    uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward;
 
     // calculate final stake as aurea mediocritas between emission based stake
     // and reward/profitability based stake
@@ -519,6 +518,15 @@ namespace CryptoNote {
     }
 
     return std::min<uint64_t>(adjustedStake, CryptoNote::parameters::STAKE_MAX_LIMIT);
+  }
+
+  uint64_t Currency::calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& transactionStake) const {
+    return static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(transactionStake) * expectedNumberOfBlocksPerDay());
+  }
+
+  difficulty_type Currency::calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const {
+    double workFactor = static_cast<double>(baseStake) / static_cast<double>(transactionStake);
+    return static_cast<uint64_t>(static_cast<double>(baseDifficulty) * workFactor);
   }
 
 	difficulty_type Currency::nextDifficulty(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps,
