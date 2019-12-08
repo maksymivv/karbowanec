@@ -1202,7 +1202,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
       TransactionOutput o = b.baseTransaction.outputs[i];
       uint64_t u = b.baseTransaction.outputUnlockTimes[i];
       outputsAmount += o.amount;
-      if (u >= height + m_currency.minedMoneyUnlockWindow()) {
+      if (u >= height + m_currency.minedMoneyUnlockWindow()) { // ignore smaller unlock time
         lockedAmount += o.amount;
         unlockTimes.push_back(u);
       }

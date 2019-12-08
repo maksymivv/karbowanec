@@ -487,12 +487,14 @@ namespace CryptoNote {
     return ret;
   }
 
-  uint64_t Currency::nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const {
+  uint64_t Currency::calculateBaseStake(uint64_t& alreadyGeneratedCoins) const {
     // ~25% of coins in circulation involved in POWS around the clock.
-    // This is P, a STAKE_EMISSION_FRACTION.
+    // This is a STAKE_EMISSION_FRACTION.
+    return alreadyGeneratedCoins / expectedNumberOfBlocksPerDay() / CryptoNote::parameters::STAKE_EMISSION_FRACTION;
+  }
 
-    const uint64_t emissionFraction = CryptoNote::parameters::STAKE_EMISSION_FRACTION;
-    uint64_t baseStake = alreadyGeneratedCoins / expectedNumberOfBlocksPerDay() / emissionFraction;
+  uint64_t Currency::nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const {
+    uint64_t baseStake = calculateBaseStake(alreadyGeneratedCoins);
     uint64_t baseReward = reward - fee; // exclude fees
 
     // caclulate profitable stake based on reward
