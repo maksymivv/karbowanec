@@ -562,7 +562,7 @@ bool core::requestStakeTransaction(uint8_t blockMajorVersion,
 
   req.address = m_currency.accountAddressAsString(minerAddress);
   req.mixin = m_mixin;
-  req.unlock_time = m_currency.isTestnet() ? height + m_currency.minedMoneyUnlockWindow() : height + m_currency.expectedNumberOfBlocksPerDay();
+  req.unlock_time = height + CryptoNote::parameters::STAKE_BASE_TERM;
   req.extra_nonce = Common::toHex(extra_nonce);
 
   try {

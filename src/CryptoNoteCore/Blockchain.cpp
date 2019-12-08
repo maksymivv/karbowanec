@@ -1248,6 +1248,8 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
 
     uint64_t targetTerm = m_currency.calculateStakeDepositTerm(baseStake, transactionStake);
 
+    // check stake deposit terms against stake deposit amount (for terms bigger than 10)
+    // alternatively we can check deposit amount against terms
     for (const auto u : unlockTimes) {
       if (u < height + targetTerm) {
         logger(ERROR, BRIGHT_RED) << "One of the outputs in coibase stake transaction has wrong unlock time "

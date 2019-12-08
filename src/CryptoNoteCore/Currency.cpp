@@ -487,14 +487,14 @@ namespace CryptoNote {
     return ret;
   }
 
-  uint64_t Currency::calculateBaseStake(uint64_t& alreadyGeneratedCoins) const {
+  uint64_t Currency::calculateSupplyBasedStake(uint64_t& alreadyGeneratedCoins) const {
     // ~25% of coins in circulation involved in POWS around the clock.
     // This is a STAKE_EMISSION_FRACTION.
-    return alreadyGeneratedCoins / expectedNumberOfBlocksPerDay() / CryptoNote::parameters::STAKE_EMISSION_FRACTION;
+    return alreadyGeneratedCoins / CryptoNote::parameters::STAKE_BASE_TERM / CryptoNote::parameters::STAKE_EMISSION_FRACTION;
   }
 
   uint64_t Currency::nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const {
-    uint64_t baseStake = calculateBaseStake(alreadyGeneratedCoins);
+    uint64_t supplyStake = calculateSupplyBasedStake(alreadyGeneratedCoins);
     uint64_t baseReward = reward - fee; // exclude fees
 
     // caclulate profitable stake based on reward
@@ -503,12 +503,12 @@ namespace CryptoNote {
     // calculate final stake as aurea mediocritas between emission based stake
     // and reward/profitability based stake
     std::vector<uint64_t> stakes;
-    stakes.push_back(baseStake);
+    stakes.push_back(supplyStake);
     stakes.push_back(interStake);
     uint64_t adjustedStake = Common::medianValue(stakes);
 
     // Output info for debugging and checkout
-    logger(TRACE) << "Base Stake: " << formatAmount(baseStake) << ENDL
+    logger(TRACE) << "Base Stake: " << formatAmount(supplyStake) << ENDL
                   << "Int. Stake: " << formatAmount(interStake) << ENDL
                   << "Adj. Stake: " << formatAmount(adjustedStake) << ENDL;
 
@@ -523,10 +523,17 @@ namespace CryptoNote {
   }
 
   uint64_t Currency::calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& transactionStake) const {
-    return static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(transactionStake) * expectedNumberOfBlocksPerDay());
+    // T = Sb / S * Tb
+    return static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(transactionStake) * static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM));
+  }
+
+  uint64_t Currency::calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& term) const {
+    // S = Sb * Tb / T
+    return static_cast<uint64_t>(static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM) / static_cast<double>(term) * static_cast<double>(baseStake));
   }
 
   difficulty_type Currency::calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const {
+    // D = Sb / S * Db
     double workFactor = static_cast<double>(baseStake) / static_cast<double>(transactionStake);
     return static_cast<uint64_t>(static_cast<double>(baseDifficulty) * workFactor);
   }
