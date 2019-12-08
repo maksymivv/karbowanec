@@ -518,14 +518,14 @@ namespace CryptoNote {
     return adjustedStake;
   }
 
-  uint64_t Currency::calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& transactionStake) const {
+  uint64_t Currency::calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& actualStake) const {
     // T = Sb / S * Tb
-    return static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(transactionStake) * static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM));
+    return static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(actualStake) * static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM));
   }
 
-  uint64_t Currency::calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& term) const {
+  uint64_t Currency::calculateStakeDepositAmount(uint64_t& stake, uint64_t& term) const {
     // S = Sb * Tb / T
-    return static_cast<uint64_t>(static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM) / static_cast<double>(term) * static_cast<double>(baseStake));
+    return static_cast<uint64_t>(static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM) / static_cast<double>(term) * static_cast<double>(stake));
   }
 
   difficulty_type Currency::calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const {
