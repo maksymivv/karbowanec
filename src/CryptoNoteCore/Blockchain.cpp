@@ -1240,8 +1240,6 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
                                 << m_currency.formatAmount(minerReward);
       return false;
     }
-
-    return true;
   }
 
   if (minerReward > reward) {
