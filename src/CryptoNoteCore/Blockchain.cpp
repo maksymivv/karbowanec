@@ -2328,7 +2328,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   else {
     if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, adjDifficulty, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
-        "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
+        "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << adjDifficulty;
       bvc.m_verification_failed = true;
       return false;
     }
@@ -2337,7 +2337,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   block.height = static_cast<uint32_t>(m_blocks.size());
   block.block_cumulative_size = block.bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? cumulative_block_size : cumulative_block_size + coinbase_blob_size;
-  block.cumulative_difficulty = adjDifficulty;
+  block.cumulative_difficulty = currentDifficulty;
   block.already_generated_coins = already_generated_coins + emissionChange;
   if (m_blocks.size() > 0) {
     block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
