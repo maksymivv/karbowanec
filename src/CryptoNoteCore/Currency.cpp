@@ -170,7 +170,7 @@ namespace CryptoNote {
 			// Friedman's k-percent rule
 			// inflation 2% of total coins in circulation
 			// estimated tail reward ~1.52 KRB
-			const uint64_t blocksInOneYear = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365;
+			const uint64_t blocksInOneYear = expectedNumberOfBlocksPerDay() * 365;
 			uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
 			baseReward = twoPercentOfEmission / blocksInOneYear;
 		}
@@ -278,7 +278,7 @@ namespace CryptoNote {
 
 		tx.version = blockMajorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? CryptoNote::TRANSACTION_VERSION_1 : CryptoNote::STAKE_TRANSACTION_VERSION;
 		//lock
-		tx.unlockTime = height + (blockMajorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_minedMoneyUnlockWindow : m_minedMoneyUnlockWindow_v1);
+		tx.unlockTime = height + m_minedMoneyUnlockWindow;
 		tx.inputs.push_back(in);
 		return true;
 	}
@@ -449,7 +449,7 @@ namespace CryptoNote {
     const double baseFee = static_cast<double>(CryptoNote::parameters::MAXIMUM_FEE);
 
     if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-      const uint64_t blocksInTwoYears = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365 * 2;
+      const uint64_t blocksInTwoYears = expectedNumberOfBlocksPerDay() * 365 * 2;
       double dailyDifficultyMoore = static_cast<double>(avgCurrentDifficulty) / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
       minFee = gauge * CryptoNote::parameters::COIN * static_cast<double>(avgHistoricDifficulty) /
         dailyDifficultyMoore * static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
@@ -925,7 +925,6 @@ namespace CryptoNote {
 		maxTxSize(parameters::CRYPTONOTE_MAX_TX_SIZE);
 		publicAddressBase58Prefix(parameters::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX);
 		minedMoneyUnlockWindow(parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW);
-		minedMoneyUnlockWindow_v1(parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1);
 		transactionSpendableAge(parameters::CRYPTONOTE_TX_SPENDABLE_AGE);
 		expectedNumberOfBlocksPerDay(parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY);
 

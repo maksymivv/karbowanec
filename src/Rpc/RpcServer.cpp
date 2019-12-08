@@ -692,7 +692,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   // calculate stake stats (only when stake hardfork is active)
   uint64_t totalStake = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {  
-    uint32_t blocks_count = parameters::CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW_V1;
+    uint32_t blocks_count = m_core.currency().expectedNumberOfBlocksPerDay();
     uint32_t last_height = index - blocks_count;
     if (index <= blocks_count) {
       last_height = 0;

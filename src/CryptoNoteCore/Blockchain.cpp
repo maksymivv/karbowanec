@@ -1149,7 +1149,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
       logger(ERROR, BRIGHT_RED)
         << "coinbase transaction have wrong unlock time="
         << b.baseTransaction.unlockTime << ", expected "
-        << height + (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1());
+        << height + m_currency.minedMoneyUnlockWindow();
       return false;
     }
   }
@@ -1200,7 +1200,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     for (uint64_t i = 0; i < b.baseTransaction.outputs.size(); ++i) {
       TransactionOutput o = b.baseTransaction.outputs[i];
       outputsAmount += o.amount;
-      if (b.baseTransaction.outputUnlockTimes[i] == height + m_currency.minedMoneyUnlockWindow_v1()) {
+      if (b.baseTransaction.outputUnlockTimes[i] == height + m_currency.expectedNumberOfBlocksPerDay()) {
         lockedAmount += o.amount;
       }
     }
@@ -1603,7 +1603,7 @@ size_t Blockchain::find_end_of_allowed_index(const std::vector<std::pair<Transac
   size_t i = amount_outs.size();
   do {
     --i;
-    if (amount_outs[i].first.block + (getBlockMajorVersionForHeight(amount_outs[i].first.block) < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.minedMoneyUnlockWindow_v1()) <= getCurrentBlockchainHeight()) {
+    if (amount_outs[i].first.block + (getBlockMajorVersionForHeight(amount_outs[i].first.block) < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.expectedNumberOfBlocksPerDay()) <= getCurrentBlockchainHeight()) {
       return i + 1;
     }
   } while (i != 0);
