@@ -125,7 +125,7 @@ namespace CryptoNote
     }
 
     uint64_t fee;
-    if (!m_handler.get_block_template(bl, fee, m_mine_address, di, height, extra_nonce, local_dispatcher)) {
+    if (!m_handler.get_block_template(bl, fee, m_mine_address, di, height, extra_nonce, local_dispatcher, m_stake_amount)) {
       logger(ERROR) << "Failed to get_block_template(), stopping mining";
       return false;
     }
@@ -220,6 +220,13 @@ namespace CryptoNote
       if(config.miningThreads > 0) {
         m_threads_total = config.miningThreads;
       }
+
+      if (config.stakeAmount > 0) {
+        m_stake_amount = config.stakeAmount;
+      }
+      else {
+        m_stake_amount = CryptoNote::parameters::MINIMUM_STAKE;
+      }
     }
 
     return true;
@@ -230,7 +237,7 @@ namespace CryptoNote
     return !m_stop;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::start(const AccountPublicAddress& adr, size_t threads_count)
+  bool miner::start(const AccountPublicAddress& adr, size_t threads_count, uint64_t stake_amount)
   {   
     if (is_mining()) {
       logger(ERROR) << "Starting miner but it's already started";
@@ -245,6 +252,7 @@ namespace CryptoNote
     }
 
     m_mine_address = adr;
+    m_stake_amount = stake_amount;
     m_threads_total = static_cast<uint32_t>(threads_count);
     m_starter_nonce = Random::randomValue<uint32_t>();
 
@@ -300,7 +308,7 @@ namespace CryptoNote
   void miner::on_synchronized()
   {
     if(m_do_mining) {
-      start(m_mine_address, m_threads_total);
+      start(m_mine_address, m_threads_total, m_stake_amount);
     }
   }
   //-----------------------------------------------------------------------------------------------------

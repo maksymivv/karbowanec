@@ -52,7 +52,7 @@ DaemonCommandsHandler::DaemonCommandsHandler(CryptoNote::core& core, CryptoNote:
   //m_consoleHandler.setHandler("print_bc_outs", boost::bind(&DaemonCommandsHandler::print_bc_outs, this, _1));
   m_consoleHandler.setHandler("print_block", boost::bind(&DaemonCommandsHandler::print_block, this, _1), "Print block, print_block <block_hash> | <block_height>");
   m_consoleHandler.setHandler("print_tx", boost::bind(&DaemonCommandsHandler::print_tx, this, _1), "Print transaction, print_tx <transaction_hash>");
-  m_consoleHandler.setHandler("start_mining", boost::bind(&DaemonCommandsHandler::start_mining, this, _1), "Start mining for specified address, start_mining <addr> [threads=1]");
+  m_consoleHandler.setHandler("start_mining", boost::bind(&DaemonCommandsHandler::start_mining, this, _1), "Start mining for specified address, start_mining <addr> [threads=1] [stake=100]");
   m_consoleHandler.setHandler("stop_mining", boost::bind(&DaemonCommandsHandler::stop_mining, this, _1), "Stop mining");
   m_consoleHandler.setHandler("print_pool", boost::bind(&DaemonCommandsHandler::print_pool, this, _1), "Print transaction pool (long format)");
   m_consoleHandler.setHandler("print_pool_sh", boost::bind(&DaemonCommandsHandler::print_pool_sh, this, _1), "Print transaction pool (short format)");
@@ -394,7 +394,13 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string> &args) {
     threads_count = (ok && 0 < threads_count) ? threads_count : 1;
   }
 
-  m_core.get_miner().start(adr, threads_count);
+  uint64_t stake_amount = CryptoNote::parameters::MINIMUM_STAKE;
+  if (args.size() > 2) {
+    bool ok = m_core.currency().parseAmount(args[3], stake_amount);
+    stake_amount = (ok && CryptoNote::parameters::MINIMUM_STAKE <= stake_amount) ? stake_amount : CryptoNote::parameters::MINIMUM_STAKE;
+  }
+
+  m_core.get_miner().start(adr, threads_count, stake_amount);
   return true;
 }
 

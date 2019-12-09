@@ -23,7 +23,7 @@
 #include "CryptoNoteCore/CryptoNoteBasic.h"
 #include "CryptoNoteCore/Difficulty.h"
 #include "crypto/hash.h"
-
+#include "../CryptoNoteConfig.h"
 #include "Serialization/SerializationOverloads.h"
 #include "Serialization/BlockchainExplorerDataSerialization.h"
 
@@ -250,13 +250,15 @@ struct COMMAND_RPC_START_MINING {
   struct request {
     std::string miner_address;
     uint64_t threads_count;
-	std::string wallet_host;
-	uint16_t wallet_port;
-	size_t mixin;
+    uint64_t stake_amount = CryptoNote::parameters::MINIMUM_STAKE;
+    std::string wallet_host;
+    uint16_t wallet_port;
+    size_t mixin;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(miner_address)
       KV_MEMBER(threads_count)
+      KV_MEMBER(stake_amount)
       KV_MEMBER(wallet_host)
       KV_MEMBER(wallet_port)
       KV_MEMBER(mixin)
@@ -394,10 +396,12 @@ struct COMMAND_RPC_GETBLOCKHASH {
 struct COMMAND_RPC_GETBLOCKTEMPLATE {
   struct request {
     uint64_t reserve_size; //max 255 bytes
+    uint64_t stake = CryptoNote::parameters::MINIMUM_STAKE;
     std::string wallet_address;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(reserve_size)
+      KV_MEMBER(stake)
       KV_MEMBER(wallet_address)
     }
   };

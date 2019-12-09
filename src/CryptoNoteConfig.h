@@ -46,7 +46,7 @@ const uint64_t COIN                                          = UINT64_C(10000000
 const uint64_t TAIL_EMISSION_REWARD                          = UINT64_C(1000000000000);
 
 const uint64_t STAKE_BASE_TERM                               = CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW;
-const uint64_t STAKE_MIN_LIMIT                               = UINT64_C(100) * COIN;
+const uint64_t MINIMUM_STAKE                                 = UINT64_C(100) * COIN;
 const uint64_t STAKE_EMISSION_FRACTION                       = 4; // part of total supply engaged in stake mining, i.e. 4 stands for 25%
 const uint64_t STAKE_INTEREST_FACTOR                         = 666;
 

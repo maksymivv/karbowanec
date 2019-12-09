@@ -42,7 +42,7 @@ namespace CryptoNote {
     bool init(const MinerConfig& config);
     bool set_block_template(const Block& bl, const difficulty_type& diffic);
     bool on_block_chain_update();
-    bool start(const AccountPublicAddress& adr, size_t threads_count);
+    bool start(const AccountPublicAddress& adr, size_t threads_count, uint64_t stake_amount);
     uint64_t get_speed();
     void send_stop_signal();
     bool stop();
@@ -98,5 +98,6 @@ namespace CryptoNote {
     std::list<uint64_t> m_last_hash_rates;
     bool m_do_print_hashrate;
     bool m_do_mining;
+    uint64_t m_stake_amount;
   };
 }

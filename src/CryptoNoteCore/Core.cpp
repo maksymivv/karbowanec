@@ -538,31 +538,24 @@ bool core::getStake(uint64_t& stake) {
   return getStake(blockMajorVersion, 0, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
 }
 
-bool core::requestStakeTransaction(uint8_t blockMajorVersion,
-                                   uint64_t& fee,
+bool core::requestStakeTransaction(uint64_t& baseStake,
+                                   uint64_t& wantedStake,
+                                   uint64_t& blockReward,
                                    uint32_t& height,
-                                   difficulty_type& next_diff,
-                                   size_t medianSize,
-                                   uint64_t alreadyGeneratedCoins, 
-                                   size_t currentBlockSize,
                                    const AccountPublicAddress& minerAddress,
                                    const CryptoNote::BinaryArray& extra_nonce,
                                    bool local_dispatcher,
                                    Transaction& transaction) {
-  logger(INFO) << "Requesting stake deposit transaction at height " << height << " and difficulty " << next_diff;
+  logger(INFO) << "Requesting stake deposit transaction at height " << height;
 
   Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::request req;
   Tools::wallet_rpc::COMMAND_RPC_CONSTRUCT_STAKE_TX::response res;
 
-  // Calculate stake
-  if (!getStake(blockMajorVersion, fee, medianSize, alreadyGeneratedCoins, currentBlockSize, req.stake, req.reward)) {
-    logger(ERROR) << "Failed to calculate stake";
-    return false;
-  }
-
+  req.reward = blockReward;
+  req.stake = wantedStake;
   req.address = m_currency.accountAddressAsString(minerAddress);
   req.mixin = m_mixin;
-  req.unlock_time = height + CryptoNote::parameters::STAKE_BASE_TERM;
+  req.unlock_time = height + m_currency.calculateStakeDepositTerm(baseStake, wantedStake);
   req.extra_nonce = Common::toHex(extra_nonce);
 
   try {
@@ -700,7 +693,7 @@ bool core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddr
   return true;
 }
 
-bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher) {
+bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher, uint64_t wantedStake) {
   size_t median_size;
   size_t txs_size;
   uint64_t already_generated_coins;
@@ -710,9 +703,19 @@ bool core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddres
     return false;
   }
 
-  // After block v 5 don't penalize reward and simplify miner tx generation
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    bool r = requestStakeTransaction(b.majorVersion, fee, height, diffic, median_size, already_generated_coins, txs_size, adr, ex_nonce, local_dispatcher, b.baseTransaction);
+    // calculate stake
+    uint64_t baseStake = 0;
+    uint64_t blockReward = 0;
+    if (!getStake(b.majorVersion, fee, median_size, already_generated_coins, txs_size, baseStake, blockReward)) {
+      logger(ERROR) << "Failed to calculate stake";
+      return false;
+    }
+
+    // adjust difficulty
+    diffic = m_currency.calculateStakeDifficulty(diffic, baseStake, wantedStake);
+
+    bool r = requestStakeTransaction(baseStake, wantedStake, blockReward, height, adr, ex_nonce, local_dispatcher, b.baseTransaction);
     if (!r) {
       logger(ERROR, BRIGHT_RED) << "Failed to construct miner's stake deposit tx";
       return false;
