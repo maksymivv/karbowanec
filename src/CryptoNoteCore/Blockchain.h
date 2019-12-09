@@ -255,6 +255,7 @@ namespace CryptoNote {
       uint32_t height;
       uint64_t block_cumulative_size;
       difficulty_type cumulative_difficulty;
+      uint64_t cumulative_stake;
       uint64_t already_generated_coins;
       std::vector<TransactionEntry> transactions;
 
@@ -263,6 +264,9 @@ namespace CryptoNote {
         s(height, "height");
         s(block_cumulative_size, "block_cumulative_size");
         s(cumulative_difficulty, "cumulative_difficulty");
+        if (bl.majorVersion >= BLOCK_MAJOR_VERSION_5)
+          s(cumulative_stake, "cumulative_stake");
+        
         s(already_generated_coins, "already_generated_coins");
         s(transactions, "transactions");
       }
