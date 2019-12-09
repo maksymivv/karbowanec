@@ -37,6 +37,7 @@ struct MiningConfig {
   size_t blocksLimit;
   uint64_t firstBlockTimestamp;
   int64_t blockTimestampInterval;
+  uint64_t stakeAmount;
   bool help;
 };
 

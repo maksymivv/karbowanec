@@ -76,7 +76,8 @@ MiningConfig::MiningConfig(): help(false) {
       ("limit", po::value<size_t>()->default_value(0), "Mine exact quantity of blocks. 0 means no limit")
       ("first-block-timestamp", po::value<uint64_t>()->default_value(0), "Set timestamp to the first mined block. 0 means leave timestamp unchanged")
       ("block-timestamp-interval", po::value<int64_t>()->default_value(0), "Timestamp step for each subsequent block. May be set only if --first-block-timestamp has been set."
-                                                         " If not set blocks' timestamps remain unchanged");
+                                                         " If not set blocks' timestamps remain unchanged")
+      ("stake-amount", po::value<size_t>()->default_value(CryptoNote::parameters::MINIMUM_STAKE), "Stake amount.");
 }
 
 void MiningConfig::parse(int argc, char** argv) {
@@ -129,6 +130,12 @@ void MiningConfig::parse(int argc, char** argv) {
 
   firstBlockTimestamp = options["first-block-timestamp"].as<uint64_t>();
   blockTimestampInterval = options["block-timestamp-interval"].as<int64_t>();
+
+  stakeAmount = options["stake-amount"].as<size_t>();
+  if (stakeAmount == 0 || stakeAmount < CryptoNote::parameters::MINIMUM_STAKE) {
+    throw std::runtime_error("--stake-amount option must not be less than " + std::to_string(CryptoNote::parameters::MINIMUM_STAKE));
+  }
+
 }
 
 void MiningConfig::printHelp() {

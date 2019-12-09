@@ -236,6 +236,7 @@ BlockMiningParameters MinerManager::requestMiningParameters(System::Dispatcher& 
     COMMAND_RPC_GETBLOCKTEMPLATE::request request;
     request.wallet_address = miningAddress;
     request.reserve_size = 0;
+    request.stake = m_config.stakeAmount;
 
     COMMAND_RPC_GETBLOCKTEMPLATE::response response;
 
