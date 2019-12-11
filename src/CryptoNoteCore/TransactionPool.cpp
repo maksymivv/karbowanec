@@ -120,7 +120,7 @@ namespace CryptoNote {
     m_timestampIndex(blockchainIndexesEnabled) {
   }
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::add_tx(const Transaction &tx, /*const Crypto::Hash& tx_prefix_hash,*/ const Crypto::Hash &id, size_t blobSize, tx_verification_context& tvc, bool keptByBlock) {
+  bool tx_memory_pool::add_tx(const Transaction &tx, /*const Crypto::Hash& tx_prefix_hash,*/ const Crypto::Hash &id, size_t blobSize, tx_verification_context& tvc, bool keptByBlock, bool skip_inputs_check) {
     if (!check_inputs_types_supported(tx)) {
       tvc.m_verification_failed = true;
       return false;
@@ -157,7 +157,7 @@ namespace CryptoNote {
     BlockInfo maxUsedBlock;
 
     // check inputs
-    bool inputsValid = m_validator.checkTransactionInputs(tx, maxUsedBlock);
+    bool inputsValid = skip_inputs_check ? true : m_validator.checkTransactionInputs(tx, maxUsedBlock);
 
     if (!inputsValid) {
       if (!keptByBlock) {
@@ -225,11 +225,11 @@ namespace CryptoNote {
   }
 
   //---------------------------------------------------------------------------------
-  bool tx_memory_pool::add_tx(const Transaction &tx, tx_verification_context& tvc, bool keeped_by_block) {
+  bool tx_memory_pool::add_tx(const Transaction &tx, tx_verification_context& tvc, bool keeped_by_block, bool skip_inputs_check) {
     Crypto::Hash h = NULL_HASH;
     size_t blobSize = 0;
     getObjectHash(tx, h, blobSize);
-    return add_tx(tx, h, blobSize, tvc, keeped_by_block);
+    return add_tx(tx, h, blobSize, tvc, keeped_by_block, skip_inputs_check);
   }
   //---------------------------------------------------------------------------------
   bool tx_memory_pool::take_tx(const Crypto::Hash &id, Transaction &tx, size_t& blobSize, uint64_t& fee) {

@@ -446,7 +446,7 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
     return true;
   }
 
-  return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block);
+  return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block, m_blockchain.isInCheckpointZone(get_current_blockchain_height()));
 }
 
 bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce) {
@@ -1197,7 +1197,7 @@ bool core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
       logger(ERROR) << "Transaction verification failed: unmixable output for transaction " << txHash << ", rejected";
       tvc.m_verification_failed = true;
       return false;
-	}
+	  }
 
   }
 

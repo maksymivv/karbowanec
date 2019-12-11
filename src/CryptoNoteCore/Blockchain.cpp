@@ -2156,14 +2156,16 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
     blob_size = toBinaryArray(block.transactions.back().tx).size();
     fee = getInputAmount(block.transactions.back().tx) - getOutputAmount(block.transactions.back().tx);
-    if (!checkTransactionInputs(block.transactions.back().tx)) {
-      logger(INFO, BRIGHT_WHITE) <<
-        "Block " << blockHash << " has at least one transaction with wrong inputs: " << tx_id;
-      bvc.m_verification_failed = true;
+    if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
+      if (!checkTransactionInputs(block.transactions.back().tx)) {
+        logger(INFO, BRIGHT_WHITE) <<
+          "Block " << blockHash << " has at least one transaction with wrong inputs: " << tx_id;
+          bvc.m_verification_failed = true;
 
-      block.transactions.pop_back();
-      popTransactions(block, minerTransactionHash);
-      return false;
+          block.transactions.pop_back();
+          popTransactions(block, minerTransactionHash);
+          return false;
+      }
     }
 
     ++transactionIndex.transaction;
@@ -2710,7 +2712,7 @@ bool Blockchain::loadTransactions(const Block& block, std::vector<Transaction>& 
     if (!m_tx_pool.take_tx(block.transactionHashes[i], transactions[i], transactionSize, fee)) {
       tx_verification_context context;
       for (size_t j = 0; j < i; ++j) {
-        if (!m_tx_pool.add_tx(transactions[i - 1 - j], context, true)) {
+        if (!m_tx_pool.add_tx(transactions[i - 1 - j], context, true, isInCheckpointZone(getCurrentBlockchainHeight()))) {
           throw std::runtime_error("Blockchain::loadTransactions, failed to add transaction to pool");
         }
       }
@@ -2725,7 +2727,7 @@ bool Blockchain::loadTransactions(const Block& block, std::vector<Transaction>& 
 void Blockchain::saveTransactions(const std::vector<Transaction>& transactions) {
   tx_verification_context context;
   for (size_t i = 0; i < transactions.size(); ++i) {
-    if (!m_tx_pool.add_tx(transactions[transactions.size() - 1 - i], context, true)) {
+    if (!m_tx_pool.add_tx(transactions[transactions.size() - 1 - i], context, true, true)) {
       logger(WARNING, BRIGHT_YELLOW) << "Blockchain::saveTransactions, failed to add transaction to pool";
     }
   }
