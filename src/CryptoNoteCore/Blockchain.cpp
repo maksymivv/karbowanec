@@ -2727,7 +2727,7 @@ bool Blockchain::loadTransactions(const Block& block, std::vector<Transaction>& 
 void Blockchain::saveTransactions(const std::vector<Transaction>& transactions) {
   tx_verification_context context;
   for (size_t i = 0; i < transactions.size(); ++i) {
-    if (!m_tx_pool.add_tx(transactions[transactions.size() - 1 - i], context, true, true)) {
+    if (!m_tx_pool.add_tx(transactions[transactions.size() - 1 - i], context, true, isInCheckpointZone(getCurrentBlockchainHeight()))) {
       logger(WARNING, BRIGHT_YELLOW) << "Blockchain::saveTransactions, failed to add transaction to pool";
     }
   }

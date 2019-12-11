@@ -174,7 +174,7 @@ namespace CryptoNote {
      bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height);
 
    private:
-     bool add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block);
+     bool add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block, uint32_t height);
      bool load_state_data();
      bool parse_tx_from_blob(Transaction& tx, Crypto::Hash& tx_hash, Crypto::Hash& tx_prefix_hash, const BinaryArray& blob);
 

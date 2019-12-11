@@ -431,7 +431,7 @@ size_t core::get_blockchain_total_transactions() {
 //  return m_blockchain.get_outs(amount, pkeys);
 //}
 
-bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block) {
+bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t blob_size, tx_verification_context& tvc, bool keeped_by_block, uint32_t height) {
   //Locking on m_mempool and m_blockchain closes possibility to add tx to memory pool which is already in blockchain 
   std::lock_guard<decltype(m_mempool)> lk(m_mempool);
   LockedBlockchainStorage lbs(m_blockchain);
@@ -446,7 +446,7 @@ bool core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
     return true;
   }
 
-  return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block, m_blockchain.isInCheckpointZone(get_current_blockchain_height()));
+  return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block, m_blockchain.isInCheckpointZone(height));
 }
 
 bool core::get_block_template(Block& b, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce) {
@@ -1175,7 +1175,7 @@ bool core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
   }
 
   // is in checkpoint zone
-  if (!m_blockchain.isInCheckpointZone(get_current_blockchain_height())) {
+  if (!m_blockchain.isInCheckpointZone(height)) {
     if (blobSize > m_currency.maxTransactionSizeLimit() && getCurrentBlockMajorVersion() >= BLOCK_MAJOR_VERSION_4) {
       logger(INFO) << "Transaction verification failed: too big size " << blobSize << " of transaction " << txHash << ", rejected";
       tvc.m_verification_failed = true;
@@ -1207,7 +1207,7 @@ bool core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
     return false;
   }
 
-  bool r = add_new_tx(tx, txHash, blobSize, tvc, keptByBlock);
+  bool r = add_new_tx(tx, txHash, blobSize, tvc, keptByBlock, height);
   if (tvc.m_verification_failed) {
     if (!tvc.m_tx_fee_too_small) {
       logger(ERROR) << "Transaction verification failed: " << txHash;
