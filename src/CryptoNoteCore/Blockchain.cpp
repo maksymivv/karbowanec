@@ -1743,10 +1743,15 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
         return false;
       }
 
-      if (!check_tx_input(in_to_key, tx_prefix_hash, tx.signatures[inputIndex], pmax_used_block_height)) {
-        logger(INFO, BRIGHT_WHITE) <<
-          "Failed to check ring signature for tx " << transactionHash;
-        return false;
+      Crypto::Hash blockId;
+      uint32_t blockHeight;
+      getBlockContainingTransaction(transactionHash, blockId, blockHeight);
+      if (!isInCheckpointZone(blockHeight + 1)) {
+        if (!check_tx_input(in_to_key, tx_prefix_hash, tx.signatures[inputIndex], pmax_used_block_height)) {
+          logger(INFO, BRIGHT_WHITE) <<
+            "Failed to check input in transaction " << transactionHash;
+          return false;
+        }
       }
 
       ++inputIndex;
