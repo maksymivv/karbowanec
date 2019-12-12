@@ -1,4 +1,5 @@
-
+// Copyright (c) 2016-2019 Karbowanec developers
+//
 // This file is part of Karbo.
 //
 // Bundle of CA Root Certificates
