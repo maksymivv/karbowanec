@@ -20,6 +20,7 @@
 
 #include <list>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/filesystem.hpp>
 #include "WalletRpcServer.h"
 #include "crypto/hash.h"
 #include "Common/CommandLine.h"
@@ -36,30 +37,57 @@
 
 #include "ITransfersContainer.h"
 
+#if defined(ERROR)
+#undef ERROR
+#endif
+
+
 using namespace Logging;
 using namespace CryptoNote;
 
 namespace Tools {
 
-const command_line::arg_descriptor<uint16_t>    wallet_rpc_server::arg_rpc_bind_port = 
+	const std::string DEFAULT_RPC_IP = "127.0.0.1";
+	const uint16_t DEFAULT_RPC_PORT = WALLET_RPC_DEFAULT_PORT;
+	const uint16_t DEFAULT_RPC_SSL_PORT = WALLET_RPC_DEFAULT_SSL_PORT;
+	const std::string DEFAULT_RPC_CHAIN_FILE = std::string(RPC_DEFAULT_CHAIN_FILE);
+	const std::string DEFAULT_RPC_KEY_FILE = std::string(RPC_DEFAULT_KEY_FILE);
+	const std::string DEFAULT_RPC_DH_FILE = std::string(RPC_DEFAULT_DH_FILE);
+
+const command_line::arg_descriptor<uint16_t>    wallet_rpc_server::arg_rpc_bind_port =
 	{ "rpc-bind-port", "Starts wallet as RPC server for wallet operations, sets bind port for server.", 0, true };
+const command_line::arg_descriptor<uint16_t>    wallet_rpc_server::arg_rpc_bind_ssl_port =
+	{ "rpc-bind-ssl-port", "Starts wallet as RPC server for wallet operations, sets bind port ssl for server.", DEFAULT_RPC_SSL_PORT };
 const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_bind_ip = 
 	{ "rpc-bind-ip"  , "Specify IP to bind RPC server to.", "127.0.0.1" };
-const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_user = 
+const command_line::arg_descriptor<bool>    wallet_rpc_server::arg_rpc_bind_ssl_enable =
+	{ "rpc-bind-ssl-enable", "Enable SSL for RPC service", false, true };
+const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_user =
 	{ "rpc-user"     , "Username to use with the RPC server. If empty, no server authorization will be done.", "" };
-const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_password = 
+const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_rpc_password =
 	{ "rpc-password" , "Password to use with the RPC server. If empty, no server authorization will be done.", "" };
+const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_chain_file =
+	{ "rpc-chain-file" , "SSL chain file", DEFAULT_RPC_CHAIN_FILE };
+const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_key_file =
+	{ "rpc-key-file" , "SSL key file", DEFAULT_RPC_KEY_FILE };
+const command_line::arg_descriptor<std::string> wallet_rpc_server::arg_dh_file =
+	{ "rpc-dh-file" , "SSL DH file", DEFAULT_RPC_DH_FILE };
 
+//------------------------------------------------------------------------------------------------------------------------------
 void wallet_rpc_server::init_options(boost::program_options::options_description& desc)
 {
 	command_line::add_arg(desc, arg_rpc_bind_ip);
 	command_line::add_arg(desc, arg_rpc_bind_port);
+	command_line::add_arg(desc, arg_rpc_bind_ssl_port);
+	command_line::add_arg(desc, arg_rpc_bind_ssl_enable);
 	command_line::add_arg(desc, arg_rpc_user);
 	command_line::add_arg(desc, arg_rpc_password);
+	command_line::add_arg(desc, arg_chain_file);
+	command_line::add_arg(desc, arg_key_file);
+	command_line::add_arg(desc, arg_dh_file);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
-
 wallet_rpc_server::wallet_rpc_server(
 	System::Dispatcher& dispatcher, 
 	Logging::ILogger& log, 
@@ -78,14 +106,14 @@ wallet_rpc_server::wallet_rpc_server(
 {}
 
 //------------------------------------------------------------------------------------------------------------------------------
-
 bool wallet_rpc_server::run()
 {
-	start(m_bind_ip, m_port, m_rpcUser, m_rpcPassword);
+	start(m_bind_ip, m_port, m_port_ssl, m_run_ssl, m_rpcUser, m_rpcPassword);
 	m_stopComplete.wait();
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 void wallet_rpc_server::send_stop_signal()
 {
 	m_dispatcher.remoteSpawn([this]
@@ -97,27 +125,65 @@ void wallet_rpc_server::send_stop_signal()
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
-
 bool wallet_rpc_server::handle_command_line(const boost::program_options::variables_map& vm)
 {
-	m_bind_ip	  = command_line::get_arg(vm, arg_rpc_bind_ip);
-	m_port		  = command_line::get_arg(vm, arg_rpc_bind_port);
-	m_rpcUser	  = command_line::get_arg(vm, arg_rpc_user);
-	m_rpcPassword = command_line::get_arg(vm, arg_rpc_password);
+	m_bind_ip	    = command_line::get_arg(vm, arg_rpc_bind_ip);
+	m_port		    = command_line::get_arg(vm, arg_rpc_bind_port);
+	m_port_ssl	  = command_line::get_arg(vm, arg_rpc_bind_ssl_port);
+	m_enable_ssl	= command_line::get_arg(vm, arg_rpc_bind_ssl_enable);
+	m_rpcUser	    = command_line::get_arg(vm, arg_rpc_user);
+	m_rpcPassword	= command_line::get_arg(vm, arg_rpc_password);
+	m_chain_file	= command_line::get_arg(vm, arg_chain_file);
+	m_key_file	  = command_line::get_arg(vm, arg_key_file);
+	m_dh_file	    = command_line::get_arg(vm, arg_dh_file);
 	return true;
 }
-//------------------------------------------------------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::init(const boost::program_options::variables_map& vm)
 {
+	m_run_ssl = false;
 	if (!handle_command_line(vm))
 	{
 		logger(Logging::ERROR) << "Failed to process command line in wallet_rpc_server";
 		return false;
 	}
-	return true;
+	else
+        {
+		boost::system::error_code ec;
+		boost::filesystem::path data_dir_path(boost::filesystem::current_path());
+		boost::filesystem::path chain_file_path(m_chain_file);
+		boost::filesystem::path key_file_path(m_key_file);
+		boost::filesystem::path dh_file_path(m_dh_file);
+		if (!chain_file_path.has_parent_path()) chain_file_path = data_dir_path / chain_file_path;
+		if (!key_file_path.has_parent_path()) key_file_path = data_dir_path / key_file_path;
+		if (!dh_file_path.has_parent_path()) dh_file_path = data_dir_path / dh_file_path;
+		if (m_enable_ssl) {
+			if (boost::filesystem::exists(chain_file_path, ec) &&
+			    boost::filesystem::exists(key_file_path, ec) &&
+			    boost::filesystem::exists(dh_file_path, ec)) {
+				setCerts(boost::filesystem::canonical(chain_file_path).string(),
+				         boost::filesystem::canonical(key_file_path).string(),
+				         boost::filesystem::canonical(dh_file_path).string());
+				m_run_ssl = true;
+			}
+			else
+			{
+				logger(ERROR, BRIGHT_RED) << "Start RPC SSL server was canceled because certificate file(s) could not be found" << std::endl;
+			}
+		}
+		return true;
+	}
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
+void wallet_rpc_server::getServerConf(std::string &bind_address, std::string &bind_address_ssl, bool &enable_ssl) {
+  bind_address = m_bind_ip + ":" + std::to_string(m_port);
+  bind_address_ssl = m_bind_ip + ":" + std::to_string(m_port_ssl);
+  enable_ssl = m_enable_ssl;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------
 void wallet_rpc_server::processRequest(const CryptoNote::HttpRequest& request, CryptoNote::HttpResponse& response)
 {
 	using namespace CryptoNote::JsonRpc;
@@ -132,27 +198,27 @@ void wallet_rpc_server::processRequest(const CryptoNote::HttpRequest& request, C
 
 		static const std::unordered_map<std::string, JsonMemberMethod> s_methods =
 		{
-            { "getbalance"       , makeMemberMethod(&wallet_rpc_server::on_getbalance)        },
-            { "transfer"         , makeMemberMethod(&wallet_rpc_server::on_transfer)          },
-            { "store"            , makeMemberMethod(&wallet_rpc_server::on_store)             },
-            { "stop_wallet"      , makeMemberMethod(&wallet_rpc_server::on_stop_wallet)       },
-            { "reset"            , makeMemberMethod(&wallet_rpc_server::on_reset)             },
-            { "get_payments"     , makeMemberMethod(&wallet_rpc_server::on_get_payments)      },
-            { "get_transfers"    , makeMemberMethod(&wallet_rpc_server::on_get_transfers)     },
-            { "get_transaction"  , makeMemberMethod(&wallet_rpc_server::on_get_transaction)   },
-            { "get_height"       , makeMemberMethod(&wallet_rpc_server::on_get_height)        },
-            { "get_address"      , makeMemberMethod(&wallet_rpc_server::on_get_address)       },
-            { "validate_address" , makeMemberMethod(&wallet_rpc_server::on_validate_address)  },
-            { "query_key"        , makeMemberMethod(&wallet_rpc_server::on_query_key)         },
-            { "get_paymentid"    , makeMemberMethod(&wallet_rpc_server::on_gen_paymentid)     },
-            { "get_tx_key"       , makeMemberMethod(&wallet_rpc_server::on_get_tx_key)        },
-            { "get_tx_proof"     , makeMemberMethod(&wallet_rpc_server::on_get_tx_proof)      },
-            { "get_reserve_proof", makeMemberMethod(&wallet_rpc_server::on_get_reserve_proof) },
-            { "sign_message"     , makeMemberMethod(&wallet_rpc_server::on_sign_message)      },
-            { "verify_message"   , makeMemberMethod(&wallet_rpc_server::on_verify_message)    },
-            { "change_password"  , makeMemberMethod(&wallet_rpc_server::on_change_password)   },
-            { "estimate_fusion"  , makeMemberMethod(&wallet_rpc_server::on_estimate_fusion)   },
-            { "send_fusion"      , makeMemberMethod(&wallet_rpc_server::on_send_fusion)       },
+      { "getbalance"       , makeMemberMethod(&wallet_rpc_server::on_getbalance)        },
+      { "transfer"         , makeMemberMethod(&wallet_rpc_server::on_transfer)          },
+      { "store"            , makeMemberMethod(&wallet_rpc_server::on_store)             },
+      { "stop_wallet"      , makeMemberMethod(&wallet_rpc_server::on_stop_wallet)       },
+      { "reset"            , makeMemberMethod(&wallet_rpc_server::on_reset)             },
+      { "get_payments"     , makeMemberMethod(&wallet_rpc_server::on_get_payments)      },
+      { "get_transfers"    , makeMemberMethod(&wallet_rpc_server::on_get_transfers)     },
+      { "get_transaction"  , makeMemberMethod(&wallet_rpc_server::on_get_transaction)   },
+      { "get_height"       , makeMemberMethod(&wallet_rpc_server::on_get_height)        },
+      { "get_address"      , makeMemberMethod(&wallet_rpc_server::on_get_address)       },
+      { "validate_address" , makeMemberMethod(&wallet_rpc_server::on_validate_address)  },
+      { "query_key"        , makeMemberMethod(&wallet_rpc_server::on_query_key)         },
+      { "get_paymentid"    , makeMemberMethod(&wallet_rpc_server::on_gen_paymentid)     },
+      { "get_tx_key"       , makeMemberMethod(&wallet_rpc_server::on_get_tx_key)        },
+      { "get_tx_proof"     , makeMemberMethod(&wallet_rpc_server::on_get_tx_proof)      },
+      { "get_reserve_proof", makeMemberMethod(&wallet_rpc_server::on_get_reserve_proof) },
+      { "sign_message"     , makeMemberMethod(&wallet_rpc_server::on_sign_message)      },
+      { "verify_message"   , makeMemberMethod(&wallet_rpc_server::on_verify_message)    },
+      { "change_password"  , makeMemberMethod(&wallet_rpc_server::on_change_password)   },
+      { "estimate_fusion"  , makeMemberMethod(&wallet_rpc_server::on_estimate_fusion)   },
+      { "send_fusion"      , makeMemberMethod(&wallet_rpc_server::on_send_fusion)       },
 		};
 
 		auto it = s_methods.find(jsonRequest.getMethod());
@@ -174,7 +240,6 @@ void wallet_rpc_server::processRequest(const CryptoNote::HttpRequest& request, C
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
-
 bool wallet_rpc_server::on_getbalance(const wallet_rpc::COMMAND_RPC_GET_BALANCE::request& req, 
 	wallet_rpc::COMMAND_RPC_GET_BALANCE::response& res)
 {
@@ -184,7 +249,6 @@ bool wallet_rpc_server::on_getbalance(const wallet_rpc::COMMAND_RPC_GET_BALANCE:
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
-
 bool wallet_rpc_server::on_transfer(const wallet_rpc::COMMAND_RPC_TRANSFER::request& req,
 	wallet_rpc::COMMAND_RPC_TRANSFER::response& res)
 {
@@ -260,7 +324,6 @@ bool wallet_rpc_server::on_transfer(const wallet_rpc::COMMAND_RPC_TRANSFER::requ
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
-
 bool wallet_rpc_server::on_store(const wallet_rpc::COMMAND_RPC_STORE::request& req, 
 	wallet_rpc::COMMAND_RPC_STORE::response& res)
 {
@@ -275,8 +338,8 @@ bool wallet_rpc_server::on_store(const wallet_rpc::COMMAND_RPC_STORE::request& r
 	}
 	return true;
 }
-//------------------------------------------------------------------------------------------------------------------------------
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_get_payments(const wallet_rpc::COMMAND_RPC_GET_PAYMENTS::request& req, 
 	wallet_rpc::COMMAND_RPC_GET_PAYMENTS::response& res)
 {
@@ -317,6 +380,7 @@ bool wallet_rpc_server::on_get_payments(const wallet_rpc::COMMAND_RPC_GET_PAYMEN
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_get_transfers(const wallet_rpc::COMMAND_RPC_GET_TRANSFERS::request& req, 
 	wallet_rpc::COMMAND_RPC_GET_TRANSFERS::response& res)
 {
@@ -371,6 +435,7 @@ bool wallet_rpc_server::on_get_transfers(const wallet_rpc::COMMAND_RPC_GET_TRANS
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_get_transaction(const wallet_rpc::COMMAND_RPC_GET_TRANSACTION::request& req,
 	wallet_rpc::COMMAND_RPC_GET_TRANSACTION::response& res)
 {
@@ -443,6 +508,7 @@ bool wallet_rpc_server::on_get_transaction(const wallet_rpc::COMMAND_RPC_GET_TRA
 	return false;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_get_height(const wallet_rpc::COMMAND_RPC_GET_HEIGHT::request& req, 
 	wallet_rpc::COMMAND_RPC_GET_HEIGHT::response& res)
 {
@@ -450,6 +516,7 @@ bool wallet_rpc_server::on_get_height(const wallet_rpc::COMMAND_RPC_GET_HEIGHT::
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_get_address(const wallet_rpc::COMMAND_RPC_GET_ADDRESS::request& req, 
 	wallet_rpc::COMMAND_RPC_GET_ADDRESS::response& res)
 {
@@ -457,6 +524,7 @@ bool wallet_rpc_server::on_get_address(const wallet_rpc::COMMAND_RPC_GET_ADDRESS
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_query_key(const wallet_rpc::COMMAND_RPC_QUERY_KEY::request& req,
 	wallet_rpc::COMMAND_RPC_QUERY_KEY::response& res)
 {
@@ -473,6 +541,7 @@ bool wallet_rpc_server::on_query_key(const wallet_rpc::COMMAND_RPC_QUERY_KEY::re
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_reset(const wallet_rpc::COMMAND_RPC_RESET::request& req, 
 	wallet_rpc::COMMAND_RPC_RESET::response& res)
 {
@@ -480,6 +549,7 @@ bool wallet_rpc_server::on_reset(const wallet_rpc::COMMAND_RPC_RESET::request& r
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_validate_address(const wallet_rpc::COMMAND_RPC_VALIDATE_ADDRESS::request& req,
 	wallet_rpc::COMMAND_RPC_VALIDATE_ADDRESS::response& res)
 {
@@ -540,6 +610,7 @@ bool wallet_rpc_server::on_get_tx_key(const wallet_rpc::COMMAND_RPC_GET_TX_KEY::
 	return true;
 }
 
+//------------------------------------------------------------------------------------------------------------------------------
 bool wallet_rpc_server::on_get_tx_proof(const wallet_rpc::COMMAND_RPC_GET_TX_PROOF::request& req,
 	wallet_rpc::COMMAND_RPC_GET_TX_PROOF::response& res) {
 	Crypto::Hash txid;
