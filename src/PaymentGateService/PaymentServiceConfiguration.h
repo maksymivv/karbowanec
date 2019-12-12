@@ -48,8 +48,8 @@ struct Configuration {
   std::string m_bind_address;
   uint16_t m_bind_port;
   uint16_t m_bind_port_ssl;
-  std::string m_rpcUser;
-  std::string m_rpcPassword;
+  std::string m_rpc_user;
+  std::string m_rpc_password;
   bool m_enable_ssl;
   std::string m_chain_file;
   std::string m_key_file;

@@ -45,8 +45,8 @@ Configuration::Configuration() {
   m_bind_address = "";
   m_bind_port = 0;
   m_bind_port_ssl = 0;
-  m_rpcUser = "";
-  m_rpcPassword = "";
+  m_rpc_user = "";
+  m_rpc_password = "";
   secretViewKey = "";
   secretSpendKey = "";
   mnemonicSeed = "";
@@ -135,11 +135,11 @@ void Configuration::init(const boost::program_options::variables_map& options) {
   }
 
   if (options.count("rpc-user") != 0) {
-    m_rpcUser = options["rpc-user"].as<std::string>();
+    m_rpc_user = options["rpc-user"].as<std::string>();
   }
 
   if (options.count("rpc-password") != 0) {
-    m_rpcPassword = options["rpc-password"].as<std::string>();
+    m_rpc_password = options["rpc-password"].as<std::string>();
   }
 
   if (options["rpc-ssl-enable"].as<bool>()){

@@ -95,6 +95,9 @@ public:
 
   virtual std::string feeAddress() const override { return std::string(); }
 
+  virtual void setRootCert(const std::string &path) override { }
+  virtual void disableVerify() override { }
+
 };
 
 
