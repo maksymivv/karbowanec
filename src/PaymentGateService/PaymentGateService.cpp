@@ -216,8 +216,9 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   }
 
   log(Logging::INFO) << "Starting core rpc server on "
-	  << config.remoteNodeConfig.daemonHost << ":" << config.remoteNodeConfig.daemonPort;
-  rpcServer.start(config.remoteNodeConfig.daemonHost, config.remoteNodeConfig.daemonPort);
+	  << config.remoteNodeConfig.m_daemon_host << ":" << config.remoteNodeConfig.m_daemon_port;
+  rpcServer.start(config.remoteNodeConfig.m_daemon_host, config.remoteNodeConfig.m_daemon_port, config.remoteNodeConfig.m_daemon_port_ssl, config.remoteNodeConfig.m_enable_ssl);
+
   log(Logging::INFO) << "Core rpc server started ok";
 
   log(Logging::INFO) << "Spawning p2p server";
@@ -249,8 +250,11 @@ void PaymentGateService::runRpcProxy(Logging::LoggerRef& log) {
 
   std::unique_ptr<CryptoNote::INode> node(
     PaymentService::NodeFactory::createNode(
-      config.remoteNodeConfig.daemonHost,
-      config.remoteNodeConfig.daemonPort));
+      config.remoteNodeConfig.m_daemon_host,
+      config.remoteNodeConfig.m_daemon_port,
+      // TODO: need to add implementation after merge
+      "/",
+      config.remoteNodeConfig.m_enable_ssl));
 
   runWalletService(currency, *node);
 }
@@ -281,7 +285,7 @@ void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, 
     }
   } else {
     PaymentService::PaymentServiceJsonRpcServer rpcServer(*dispatcher, *stopEvent, *service, logger);
-    rpcServer.start(config.gateConfiguration.bindAddress, config.gateConfiguration.bindPort, config.gateConfiguration.m_rpcUser, config.gateConfiguration.m_rpcPassword);
+    rpcServer.start(config.gateConfiguration.m_bind_address, config.gateConfiguration.m_bind_port, config.gateConfiguration.m_bind_port_ssl, config.gateConfiguration.m_enable_ssl, config.gateConfiguration.m_rpc_user, config.gateConfiguration.m_rpc_password);
 
     Logging::LoggerRef(logger, "PaymentGateService")(Logging::INFO, Logging::BRIGHT_WHITE) << "JSON-RPC server stopped, stopping wallet service...";
 
