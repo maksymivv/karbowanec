@@ -122,9 +122,11 @@ void HttpClient::disableVerify() {
 }
 
 void HttpClient::request(HttpRequest &req, HttpResponse &res) {
+  req.addHeader("Connection", "Keep-Alive");
   if (!m_connected) {
     connect();
   }
+  bool conn_close = false;
   req.setHost(m_address);
   if (this->m_ssl_enable) {
     try {
@@ -155,6 +157,7 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
       char resp_buff[resp_buff_size];
       const char *header_end_sep = "\r\n\r\n";
       const char *content_lenght_name = "Content-Length";
+      const char *connection_close = "Connection: close";
       const char *content_lenght_end_sep = "\r\n";
       size_t header_end = 0;
       size_t stream_len = 0;
@@ -184,6 +187,11 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
                        &stream_len);
                 stream_len += header_end + 4;
               }
+              size_t connection_close_start = data.find(connection_close);
+              size_t connection_close_end = data.find(content_lenght_end_sep, content_lenght_start);
+              if (connection_close_start != std::string::npos && connection_close_end != std::string::npos) {
+                conn_close = true;
+              }
             }
           }
           if (header_found) {
@@ -199,6 +207,7 @@ void HttpClient::request(HttpRequest &req, HttpResponse &res) {
       }
       streambuf.setRespdata(resp_data);
       parser.receiveResponse(stream, res);
+      if (conn_close) disconnect();
     } catch (const std::exception &) {
       disconnect();
       throw;
@@ -237,7 +246,12 @@ void HttpClient::connect() {
       this->m_ssl_sock.reset(new boost::asio::ssl::stream<tcp::socket> (this->m_io_service, std::ref(ctx)));
       tcp::resolver resolver(this->m_io_service);
       tcp::resolver::query query(hostname, std::to_string(this->m_port));
+      int32_t timeout = 60000;
+      unsigned long val = 1;
       boost::asio::connect(this->m_ssl_sock->lowest_layer(), resolver.resolve(query));
+      setsockopt(this->m_ssl_sock->lowest_layer().native_handle(), SOL_SOCKET, SO_KEEPALIVE, (char*)&val, sizeof(val));
+      setsockopt(this->m_ssl_sock->lowest_layer().native_handle(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+      setsockopt(this->m_ssl_sock->lowest_layer().native_handle(), SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout, sizeof(timeout));
 #if defined(_WIN32)
       sockSetup((SOCKET &) this->m_ssl_sock->lowest_layer().native_handle());
 #endif
