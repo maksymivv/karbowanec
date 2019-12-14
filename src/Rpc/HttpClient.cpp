@@ -248,6 +248,7 @@ void HttpClient::connect() {
       } else {
         this->m_ssl_sock->set_verify_mode(boost::asio::ssl::verify_none);
       }
+      SSL_set_tlsext_host_name(this->m_ssl_sock->native_handle(), hostname.c_str());
       this->m_ssl_sock->set_verify_callback(boost::asio::ssl::rfc2818_verification(hostname));
       this->m_ssl_sock->handshake(boost::asio::ssl::stream_base::client);
       m_connected = true;
