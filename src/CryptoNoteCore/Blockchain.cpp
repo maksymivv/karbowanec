@@ -1715,7 +1715,7 @@ uint32_t Blockchain::findBlockchainSupplement(const std::vector<Crypto::Hash>& q
 
 uint64_t Blockchain::blockDifficulty(size_t i) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
+  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::blockDifficulty()"; return false; }
   if (i == 0)
     return m_blocks[i].cumulative_difficulty;
 
@@ -1724,9 +1724,16 @@ uint64_t Blockchain::blockDifficulty(size_t i) {
 
 uint64_t Blockchain::blockCumulativeDifficulty(size_t i) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
+  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::blockCumulativeDifficulty()"; return false; }
 
   return m_blocks[i].cumulative_difficulty;
+}
+
+uint64_t Blockchain::blockCumulativeStake(size_t i) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::blockCumulativeStake()"; return false; }
+
+  return m_blocks[i].bl.majorVersion < BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks[i].cumulative_stake;
 }
 
 void Blockchain::print_blockchain(uint64_t start_index, uint64_t end_index) {

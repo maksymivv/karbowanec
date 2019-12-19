@@ -73,9 +73,12 @@ public:
   virtual size_t addChain(const std::vector<const IBlock*>& chain) = 0;
 
   virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
+  
   virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) = 0;
   virtual bool getStake(const uint32_t height, uint64_t& stake) = 0;
   virtual bool getStake(uint64_t& stake) = 0;
+  virtual bool getCumulativeStake(const uint32_t height, uint64_t& cumulative_stake) = 0;
+
   virtual bool isOutputUnlocked(uint64_t unlock_time, uint32_t height) = 0;
   virtual bool handle_block_found(Block& b) = 0;
 

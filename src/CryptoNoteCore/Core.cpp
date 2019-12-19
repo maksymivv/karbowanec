@@ -1227,6 +1227,11 @@ bool Core::getBlockCumulativeDifficulty(uint32_t height, difficulty_type& diffic
   return true;
 }
 
+bool Core::getCumulativeStake(uint32_t height, uint64_t& cumulative_stake) {
+  cumulative_stake = m_blockchain.blockCumulativeStake(height);
+  return true;
+}
+
 bool Core::getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) {
   return m_blockchain.getBlockContainingTransaction(txId, blockId, blockHeight);
 }

@@ -663,26 +663,11 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   uint64_t totalStake = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {  
     uint32_t blocks_count = m_core.currency().expectedNumberOfBlocksPerDay();
-    uint32_t last_height = index - blocks_count;
-    if (index <= blocks_count) {
-      last_height = 0;
-    }
-    for (uint32_t i = index; i >= last_height; i--) {
-      Crypto::Hash block_hash = m_core.getBlockIdByHeight(i);
-      Block blk;
-      if (!m_core.getBlockByHash(block_hash, blk)) {
-        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-          "Internal error: can't get block by height. Height = " + std::to_string(i) + '.' };
-      }
-      uint64_t stake = 0;
-      if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-        if (!get_inputs_money_amount(blk.baseTransaction, stake)) {
-          throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-            "Internal error: can't get stake for block at height " + std::to_string(i) + '.' };
-        }
-      }
-      totalStake += stake;
-    }
+    uint64_t first_cum_stake = 0;
+    m_core.getCumulativeStake(index - blocks_count, first_cum_stake);
+    uint64_t last_cum_stake = 0;
+    m_core.getCumulativeStake(index, last_cum_stake);
+    totalStake = last_cum_stake - first_cum_stake;
   }
   res.total_coins_locked = totalStake;
   res.status = CORE_RPC_STATUS_OK;
