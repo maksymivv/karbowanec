@@ -1454,6 +1454,34 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     bei.cumulative_difficulty = alt_chain.size() ? it_prev->second.cumulative_difficulty : m_blocks[mainPrevHeight].cumulative_difficulty;
     bei.cumulative_difficulty += current_diff;
 
+    // get cumulative stake (for this we need to get txs and calc. their sizes and fees)
+    size_t cumulative_block_size = 0;
+    std::vector<Transaction> transactions;
+    std::vector<Crypto::Hash> missed_txs;
+    m_tx_pool.getTransactions(bei.bl.transactionHashes, transactions, missed_txs);
+
+    uint64_t fee_summary = 0;
+    for (size_t i = 0; i < transactions.size(); ++i) {
+      size_t blob_size = toBinaryArray(transactions[i]).size();
+      uint64_t fee = getInputAmount(transactions[i]) - getOutputAmount(transactions[i]);
+      cumulative_block_size += blob_size;
+      fee_summary += fee;
+    }
+
+    int64_t emissionChange = 0;
+    uint64_t reward = 0;
+    uint64_t baseStake = 0;
+    uint64_t blockStake = 0;
+    uint64_t already_generated_coins = alt_chain.size() ? it_prev->second.already_generated_coins : m_blocks[mainPrevHeight].already_generated_coins;
+
+    if (!validate_miner_transaction(bei.bl, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange, baseStake, blockStake)) {
+      logger(INFO, BRIGHT_WHITE) << "Block " << id << " has invalid miner transaction";
+      bvc.m_verification_failed = true;
+      return false;
+    }
+    bei.cumulative_stake = alt_chain.size() ? it_prev->second.cumulative_stake : m_blocks[mainPrevHeight].cumulative_stake;
+    bei.cumulative_stake += blockStake;
+
 #ifdef _DEBUG
     auto i_dres = m_alternative_chains.find(id);
     if (!(i_dres == m_alternative_chains.end())) { logger(ERROR, BRIGHT_RED) << "insertion of new alternative block returned as it already exist"; return false; }
@@ -1479,7 +1507,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
         bvc.m_verification_failed = true;
       }
       return r;
-    } else if (m_blocks.back().cumulative_difficulty < bei.cumulative_difficulty) //check if difficulty bigger then in main chain
+    } else if (m_blocks.back().cumulative_difficulty < bei.cumulative_difficulty && m_blocks.back().cumulative_stake < bei.cumulative_stake) // check if difficulty AND stake are bigger than in main chain
     {
       //do reorganize!
       logger(INFO, BRIGHT_GREEN) <<
@@ -2301,16 +2329,16 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   int64_t emissionChange = 0;
   uint64_t reward = 0;
   uint64_t baseStake = 0;
-  uint64_t actualStake = 0;
+  uint64_t blockStake = 0;
   uint64_t already_generated_coins = m_blocks.empty() ? 0 : m_blocks.back().already_generated_coins;
-  if (!validate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange, baseStake, actualStake)) {
+  if (!validate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange, baseStake, blockStake)) {
     logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
     bvc.m_verification_failed = true;
     popTransactions(block, minerTransactionHash);
     return false;
   }
 
-  difficulty_type adjDifficulty = m_currency.calculateStakeDifficulty(currentDifficulty, baseStake, actualStake);
+  difficulty_type adjDifficulty = m_currency.calculateStakeDifficulty(currentDifficulty, baseStake, blockStake);
 
   auto longhashTimeStart = std::chrono::steady_clock::now();
   Crypto::Hash proof_of_work = NULL_HASH;
@@ -2335,9 +2363,11 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   block.height = static_cast<uint32_t>(m_blocks.size());
   block.block_cumulative_size = block.bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? cumulative_block_size : cumulative_block_size + coinbase_blob_size;
   block.cumulative_difficulty = currentDifficulty;
+  block.cumulative_stake = blockStake;
   block.already_generated_coins = already_generated_coins + emissionChange;
   if (m_blocks.size() > 0) {
     block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
+    block.cumulative_stake += m_blocks.back().cumulative_stake;
   }
 
   pushBlock(block);
