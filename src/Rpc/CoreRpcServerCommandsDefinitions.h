@@ -311,7 +311,6 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(next_reward)
       KV_MEMBER(next_stake)
       KV_MEMBER(min_fee)
-      KV_MEMBER(readable_tx_fee)
       KV_MEMBER(transactions_count)
       KV_MEMBER(transactions_pool_size)
       KV_MEMBER(alt_blocks_count)

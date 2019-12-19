@@ -668,7 +668,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       last_height = 0;
     }
     for (uint32_t i = index; i >= last_height; i--) {
-      Hash block_hash = m_core.getBlockIdByHeight(i);
+      Crypto::Hash block_hash = m_core.getBlockIdByHeight(i);
       Block blk;
       if (!m_core.getBlockByHash(block_hash, blk)) {
         throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
@@ -1019,7 +1019,7 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
   blob_reserve.resize(req.reserve_size, 0);
   uint64_t fee;
   if (!m_core.get_block_template(b, fee, acc, res.difficulty, res.height, blob_reserve, false, req.stake)) {
-    logger(ERROR) << "Failed to create block template";
+    logger(Logging::ERROR) << "Failed to create block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to create block template" };
   }
 
@@ -1047,7 +1047,7 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
 
   BinaryArray hashing_blob;
   if (!get_block_hashing_blob(b, hashing_blob)) {
-    logger(ERROR) << "Failed to get blockhashing_blob";
+    logger(Logging::ERROR) << "Failed to get blockhashing_blob";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to get blockhashing_blob" };
   }
 
@@ -1074,12 +1074,12 @@ bool RpcServer::on_prepareblocktemplate(const COMMAND_RPC_PREPARE_BLOCKTEMPLATE:
   blob_reserve.resize(req.reserve_size, 0);
   uint64_t fee;
   if (!m_core.prepareBlockTemplate(b, fee, acc, res.difficulty, res.height, blob_reserve, res.median_size, res.txs_size, res.already_generated_coins)) {
-    logger(ERROR) << "Failed to prepare block template";
+    logger(Logging::ERROR) << "Failed to prepare block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to prepare block template" };
   }
 
   BinaryArray block_blob = toBinaryArray(b);
-  res.blocktemplate_blob = toHex(block_blob);
+  res.blocktemplate_blob = Common::toHex(block_blob);
   res.reserved_offset = 0;
   res.status = CORE_RPC_STATUS_OK;
 
@@ -1529,7 +1529,7 @@ bool RpcServer::on_check_reserve_proof(const COMMAND_RPC_CHECK_RESERVE_PROOF::re
 
 		CryptoNote::TransactionPrefix tx = *static_cast<const TransactionPrefix*>(&transactions[i]);
    
-		bool unlocked = m_core.is_tx_spendtime_unlocked(tx.outputUnlockTimes[proof.index_in_tx], req.height);
+		bool unlocked = m_core.is_tx_spendtime_unlocked(tx.outputUnlockTimes[proof.index_in_transaction], req.height);
 
 		if (proof.index_in_transaction >= tx.outputs.size()) {
 			throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "index_in_tx is out of bound" };
