@@ -374,16 +374,16 @@ namespace CryptoNote {
       }
 
       ss << "blobSize: " << txd.blobSize << std::endl
-        << "fee: " << m_currency.formatAmount(txd.fee) << std::endl
-        << "keptByBlock: " << (txd.keptByBlock ? 'T' : 'F') << std::endl
-        << "max_used_block_height: " << txd.maxUsedBlock.height << std::endl
-        << "max_used_block_id: " << txd.maxUsedBlock.id << std::endl
-        << "last_failed_height: " << txd.lastFailedBlock.height << std::endl
-		<< "last_failed_id: " << txd.lastFailedBlock.id << std::endl
-		<< "amount_out: " << get_outs_money_amount(txd.tx) << std::endl
-        << "fee_atomic_units: " << txd.fee << std::endl
-        << "received_timestamp: " << txd.receiveTime << std::endl
-        << "received: " << std::ctime(&txd.receiveTime) << std::endl;
+         << "fee: " << m_currency.formatAmount(txd.fee) << std::endl
+         << "keptByBlock: " << (txd.keptByBlock ? 'T' : 'F') << std::endl
+         << "max_used_block_height: " << txd.maxUsedBlock.height << std::endl
+         << "max_used_block_id: " << txd.maxUsedBlock.id << std::endl
+         << "last_failed_height: " << txd.lastFailedBlock.height << std::endl
+         << "last_failed_id: " << txd.lastFailedBlock.id << std::endl
+         << "amount_out: " << get_outs_money_amount(txd.tx) << std::endl
+         << "fee_atomic_units: " << txd.fee << std::endl
+         << "received_timestamp: " << txd.receiveTime << std::endl
+         << "received: " << std::ctime(&txd.receiveTime) << std::endl;
     }
 
     return ss.str();
