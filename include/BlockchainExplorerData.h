@@ -129,7 +129,7 @@ struct TransactionDetails {
   uint64_t unlockTime = 0;
   std::vector<uint64_t> outputUnlockTimes = {0};
   uint64_t timestamp = 0;
-  uint64_t version = 1;
+  uint8_t version = 0;
   Crypto::Hash paymentId;
   bool hasPaymentId = false;
   bool inBlockchain = false;

@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2018, The Monero Project
-// Copyright (c) 2017-2018, Karbo developers
+// Copyright (c) 2016-2019, Karbo developers
 // 
 // All rights reserved.
 // 
@@ -1202,8 +1202,8 @@ std::string WalletLegacy::getReserveProof(const uint64_t &reserve, const std::st
 		const TransactionOutputInformation &td = selected_transfers[i];
 		reserve_proof_entry& proof = proofs[i];
 		proof.key_image = kimages[i];
-		proof.txid = td.transactionHash;
-		proof.index_in_tx = td.outputInTransaction;
+		proof.transaction_id = td.transactionHash;
+		proof.index_in_transaction = td.outputInTransaction;
 
 		auto txPubKey = td.transactionPublicKey;
 

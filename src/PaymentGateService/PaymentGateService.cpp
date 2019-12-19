@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2014 - 2017 XDN - project developers
+// Copyright (c) 2014-2017 XDN - project developers
 // Copyright (c) 2018, The TurtleCoin Developers
 // Copyright (c) 2016-2019 The Karbo developers
 //
@@ -169,7 +169,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   log(Logging::INFO) << "Starting Payment Gate with local node";
 
   CryptoNote::Currency currency = currencyBuilder.currency();
-  CryptoNote::core core(currency, NULL, logger, *dispatcher, false);
+  CryptoNote::Core core(currency, NULL, logger, *dispatcher, false);
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, NULL, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);

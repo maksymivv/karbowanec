@@ -44,10 +44,10 @@ namespace CryptoNote {
   class miner;
   class CoreConfig;
 
-  class core : public ICore, public IMinerHandler, public IBlockchainStorageObserver, public ITxPoolObserver {
+  class Core : public ICore, public IMinerHandler, public IBlockchainStorageObserver, public ITxPoolObserver {
    public:
-     core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher& dispatcher, bool blockchainIndexesEnabled);
-     ~core();
+     Core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher& dispatcher, bool blockchainIndexesEnabled);
+     ~Core();
 
      bool on_idle() override;
      virtual bool handle_incoming_tx(const BinaryArray& tx_blob, tx_verification_context& tvc, bool keeped_by_block) override; //Deprecated. Should be removed with CryptoNoteProtocolHandler.
@@ -172,6 +172,8 @@ namespace CryptoNote {
 
      virtual void rollbackBlockchain(const uint32_t height) override;
 
+     virtual bool saveBlockchain() override;
+
      uint64_t getNextBlockDifficulty();
      uint64_t getTotalGeneratedAmount();
      uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
@@ -198,10 +200,8 @@ namespace CryptoNote {
      //check if tx is not sending unmixable outputs
      bool check_tx_unmixable(const Transaction& tx, uint32_t height);
 
-     bool check_tx_ring_signature(const KeyInput& tx, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig);
      bool update_miner_block_template();
      bool handle_command_line(const boost::program_options::variables_map& vm);
-     bool on_update_blocktemplate_interval();
      bool check_tx_inputs_keyimages_diff(const Transaction& tx);
      virtual void blockchainUpdated() override;
      virtual void txDeletedFromPool() override;
