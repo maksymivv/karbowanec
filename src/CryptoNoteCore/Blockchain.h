@@ -223,9 +223,6 @@ namespace CryptoNote {
     bool is_tx_spendtime_unlocked(uint64_t unlock_time);
     bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height);
 
-    //bool checkIfSpentMultisignature(uint64_t amount, uint32_t globalIndex) const override;
-    //bool checkIfSpentMultisignature(uint64_t amount, uint32_t globalIndex, uint32_t blockIndex) const override;
-
     void rebuildCache();
     bool storeCache();
 
