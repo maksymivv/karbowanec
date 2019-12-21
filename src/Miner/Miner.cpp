@@ -22,6 +22,7 @@
 
 #include "crypto/crypto.h"
 #include "crypto/random.h"
+#include "crypto/cn_slow_hash.hpp"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 
 #include <System/InterruptedException.h>
