@@ -34,6 +34,7 @@
 #include "CryptoNoteTools.h"
 #include "TransactionExtra.h"
 
+#include "../crypto/hash.h"
 using namespace Logging;
 using namespace Common;
 
@@ -1312,7 +1313,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     if (!m_currency.checkProofOfWork(m_pow_ctx, bei.bl, current_diff, proof_of_work)) {
       logger(INFO, BRIGHT_RED) <<
         "Block with id: " << id
-        << ENDL << " for alternative chain, have not enough proof of work: " << proof_of_work
+        << ENDL << " for alternative chain, has not enough proof of work: " << proof_of_work
         << ENDL << " expected difficulty: " << current_diff;
       bvc.m_verification_failed = true;
       return false;

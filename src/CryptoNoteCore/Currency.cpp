@@ -24,7 +24,9 @@
 #include <boost/lexical_cast.hpp>
 #include "../Common/Base58.h"
 #include "../Common/int-util.h"
+#include "../Common/Math.h"
 #include "../Common/StringTools.h"
+#include "crypto/crypto.h"
 
 #include "Account.h"
 #include "CryptoNoteBasicImpl.h"
@@ -32,6 +34,7 @@
 #include "CryptoNoteTools.h"
 #include "TransactionExtra.h"
 #include "UpgradeDetector.h"
+#include "Serialization/SerializationTools.h"
 
 #undef ERROR
 
@@ -147,6 +150,9 @@ namespace CryptoNote {
 		}
 	}
 
+	uint32_t Currency::upgradeHeightV5() const {
+		return m_upgradeHeightV5;
+	}
 	bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
 		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
 		// assert(alreadyGeneratedCoins <= m_moneySupply);
@@ -162,7 +168,8 @@ namespace CryptoNote {
 
 			// Friedman's k-percent rule
 			// inflation 2% of total coins in circulation
-			const uint64_t blocksInOneYear = CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 365;
+			// estimated tail reward ~1.52 KRB
+			const uint64_t blocksInOneYear = expectedNumberOfBlocksPerDay() * 365;
 			uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
 			baseReward = twoPercentOfEmission / blocksInOneYear;
 		}

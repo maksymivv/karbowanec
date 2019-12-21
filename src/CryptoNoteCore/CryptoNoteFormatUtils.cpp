@@ -47,7 +47,9 @@ bool parseAndValidateTransactionFromBinaryArray(const BinaryArray& tx_blob, Tran
 
   //TODO: validate tx
   cn_fast_hash(tx_blob.data(), tx_blob.size(), tx_hash);
-  getObjectHash(*static_cast<TransactionPrefix*>(&tx), tx_prefix_hash);
+  if (!getObjectHash(*static_cast<TransactionPrefix*>(&tx), tx_prefix_hash)) {
+    return false;
+  }
   return true;
 }
 
@@ -529,13 +531,12 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, const Block& b, Hash& res) {
   } else {
     return false;
   }
-  if (b.majorVersion < BLOCK_MAJOR_VERSION_5) {
-	  cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
-	  ctx_v1.hash(bd.data(), bd.size(), res.data);
-  }
-  else {
-      cn_pow_hash_v4 ctx_v4 = cn_pow_hash_v4::make_borrowed_v4(ctx);
-      ctx_v4.hash(bd.data(), bd.size(), res.data);
+  if (b.majorVersion <= BLOCK_MAJOR_VERSION_4) {
+    cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
+    ctx_v1.hash(bd.data(), bd.size(), res.data);
+  } else {
+    cn_pow_hash_v4 ctx_v4 = cn_pow_hash_v4::make_borrowed_v4(ctx);
+    ctx_v4.hash(bd.data(), bd.size(), res.data);
   }
 
   return true;
@@ -572,7 +573,10 @@ Hash get_tx_tree_hash(const std::vector<Hash>& tx_hashes) {
 Hash get_tx_tree_hash(const Block& b) {
   std::vector<Hash> txs_ids;
   Hash h = NULL_HASH;
-  getObjectHash(b.baseTransaction, h);
+  bool r = getObjectHash(b.baseTransaction, h);
+
+  assert(r && "failed to get object hash in get_tx_tree_hash");
+
   txs_ids.push_back(h);
   for (auto& th : b.transactionHashes) {
     txs_ids.push_back(th);
