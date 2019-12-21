@@ -277,14 +277,14 @@ namespace CryptoNote {
     typedef boost::multi_index_container<
       SpentKeyImage,
       boost::multi_index::indexed_by<
-      boost::multi_index::ordered_non_unique<
-      boost::multi_index::tag<BlockIndexTag>,
-      BOOST_MULTI_INDEX_MEMBER(SpentKeyImage, uint32_t, blockIndex)
-      >,
-      boost::multi_index::hashed_unique<
-      boost::multi_index::tag<KeyImageTag>,
-      BOOST_MULTI_INDEX_MEMBER(SpentKeyImage, Crypto::KeyImage, keyImage)
-      >
+        boost::multi_index::ordered_non_unique<
+          boost::multi_index::tag<BlockIndexTag>,
+          BOOST_MULTI_INDEX_MEMBER(SpentKeyImage, uint32_t, blockIndex)
+        >,
+        boost::multi_index::hashed_unique<
+          boost::multi_index::tag<KeyImageTag>,
+          BOOST_MULTI_INDEX_MEMBER(SpentKeyImage, Crypto::KeyImage, keyImage)
+        >
       >
     > SpentKeyImagesContainer;
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
