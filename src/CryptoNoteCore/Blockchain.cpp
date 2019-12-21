@@ -1309,7 +1309,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     if (!(current_diff)) { logger(ERROR, BRIGHT_RED) << "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!"; return false; }
     Crypto::Hash proof_of_work = NULL_HASH;
     // Always check PoW for alternative blocks
-    if (!m_currency.checkProofOfWork(m_cn_context, bei.bl, current_diff, proof_of_work)) {
+    if (!m_currency.checkProofOfWork(m_pow_ctx, bei.bl, current_diff, proof_of_work)) {
       logger(INFO, BRIGHT_RED) <<
         "Block with id: " << id
         << ENDL << " for alternative chain, have not enough proof of work: " << proof_of_work
@@ -2119,7 +2119,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
       return false;
     }
   } else {
-    if (!m_currency.checkProofOfWork(m_cn_context, blockData, currentDifficulty, proof_of_work)) {
+    if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, currentDifficulty, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
         "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << currentDifficulty;
       bvc.m_verification_failed = true;

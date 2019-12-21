@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016, The Karbowanec developers
+// Copyright (c) 2016-2018, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -291,7 +291,8 @@ namespace CryptoNote {
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
     std::recursive_mutex m_blockchain_lock; // TODO: add here reader/writer lock
-    Crypto::cn_context m_cn_context;
+    cn_pow_hash_v2 m_pow_ctx;
+
     Tools::ObserverManager<IBlockchainStorageObserver> m_observerManager;
 
     SpentKeyImagesContainer spentKeyImages;
