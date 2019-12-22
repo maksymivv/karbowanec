@@ -425,12 +425,12 @@ bool Blockchain::haveTransaction(const Crypto::Hash &id) {
 }
 
 bool Blockchain::have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   return  checkIfSpent(key_im);
 }
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIndex) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   auto it = spentKeyImages.get<KeyImageTag>().find(keyImage);
   if (it == spentKeyImages.get<KeyImageTag>().end()) {
     return false;
@@ -440,7 +440,7 @@ bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIn
 }
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (spentKeyImages.get<KeyImageTag>().count(keyImage) != 0) {
     return true;
   }
@@ -449,7 +449,7 @@ bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage) {
 }
 
 uint32_t Blockchain::getCurrentBlockchainHeight() {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   return static_cast<uint32_t>(m_blocks.size());
 }
 
@@ -1761,23 +1761,21 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
             return false;
           }
         }
-      }
-      else if (txin.type() == typeid(MultisignatureInput)) {
+      } else if (txin.type() == typeid(MultisignatureInput)) {
         if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
           if (!validateInput(::boost::get<MultisignatureInput>(txin), transactionHash, tx_prefix_hash, tx.signatures[inputIndex])) {
             return false;
           }
         }
-      }
-      else {
+      } else {
         logger(INFO, BRIGHT_WHITE) <<
           "Transaction << " << transactionHash << " contains input of unsupported type.";
         return false;
       }
 
       return true;
-
     }));
+
     inputIndex++;
   }
 
@@ -1824,7 +1822,7 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height)
 }
 
 bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   struct outputs_visitor {
     std::vector<const Crypto::PublicKey *>& m_results_collector;
     Blockchain& m_bch;
