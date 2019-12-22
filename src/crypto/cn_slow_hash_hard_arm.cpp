@@ -338,7 +338,7 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t l
 		al0 ^= cl;
 		idx0 = al0;
 
-		if(POW_VER > 0)
+		if(POW_VER > 0 && POW_VER < 3)
 		{
 			int64_t n = scratchpad_ptr(idx0).as_qword(0);
 			int32_t d = scratchpad_ptr(idx0).as_dword(2);
@@ -575,4 +575,5 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash_3(const void* in, size_t
 template class cn_v1_hash_t;
 template class cn_v2_hash_t;
 template class cn_v3_hash_t;
+template class cn_v4_hash_t;
 #endif
