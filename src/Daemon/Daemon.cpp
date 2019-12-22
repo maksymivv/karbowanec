@@ -18,6 +18,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <thread>
+
 #include "version.h"
 
 #include <boost/filesystem.hpp>
@@ -260,7 +262,10 @@ int main(int argc, char* argv[])
     }
     CryptoNote::Currency currency = currencyBuilder.currency();
     System::Dispatcher dispatcher;
-    CryptoNote::Core m_core(currency, nullptr, logManager, dispatcher, command_line::get_arg(vm, arg_enable_blockchain_indexes));
+
+    uint32_t transactionValidationThreads = std::thread::hardware_concurrency();
+
+    CryptoNote::Core m_core(currency, nullptr, logManager, dispatcher, command_line::get_arg(vm, arg_enable_blockchain_indexes), transactionValidationThreads);
 
 	bool disable_checkpoints = command_line::get_arg(vm, arg_disable_checkpoints);
 	if (!disable_checkpoints) {

@@ -21,6 +21,7 @@
 #include "PaymentGateService.h"
 
 #include <future>
+#include <thread>
 
 #include "Common/SignalHandler.h"
 #include "InProcessNode/InProcessNode.h"
@@ -169,7 +170,10 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   log(Logging::INFO) << "Starting Payment Gate with local node";
 
   CryptoNote::Currency currency = currencyBuilder.currency();
-  CryptoNote::Core core(currency, NULL, logger, *dispatcher, false);
+
+  uint32_t transactionValidationThreads = std::thread::hardware_concurrency();
+
+  CryptoNote::Core core(currency, NULL, logger, *dispatcher, false, transactionValidationThreads);
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, NULL, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);

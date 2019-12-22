@@ -23,6 +23,8 @@
 #include <numeric>
 #include <cstdio>
 #include <cmath>
+#include <future>
+#include <thread>
 #include <boost/foreach.hpp>
 #include "Common/Math.h"
 #include "Common/int-util.h"
@@ -331,7 +333,7 @@ private:
 };
 
 
-Blockchain::Blockchain(const Currency& currency, tx_memory_pool& tx_pool, ILogger& logger, bool blockchainIndexesEnabled) :
+Blockchain::Blockchain(const Currency& currency, tx_memory_pool& tx_pool, ILogger& logger, bool blockchainIndexesEnabled, const uint32_t transactionValidationThreads) :
 logger(logger, "Blockchain"),
 m_currency(currency),
 m_tx_pool(tx_pool),
@@ -345,7 +347,8 @@ m_paymentIdIndex(blockchainIndexesEnabled),
 m_timestampIndex(blockchainIndexesEnabled),
 m_generatedTransactionsIndex(blockchainIndexesEnabled),
 m_orphanBlocksIndex(blockchainIndexesEnabled),
-m_blockchainIndexesEnabled(blockchainIndexesEnabled) {
+m_blockchainIndexesEnabled(blockchainIndexesEnabled),
+m_transactionValidationThreadPool(transactionValidationThreads) {
   m_outputs.set_deleted_key(0);
 }
 
@@ -1733,43 +1736,60 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
   }
 
   Crypto::Hash transactionHash = getObjectHash(tx);
+
+  std::vector<std::future<bool>> validationResults;
+
   for (const auto& txin : tx.inputs) {
-    assert(inputIndex < tx.signatures.size());
-    if (txin.type() == typeid(KeyInput)) {
+    /* Validate each input on a separate thread in thread pool */
+    validationResults.emplace_back(
+      m_transactionValidationThreadPool.enqueue([txin, tx_prefix_hash, tx, inputIndex, pmax_used_block_height, transactionHash, this] {
+      assert(inputIndex < tx.signatures.size());
+      if (txin.type() == typeid(KeyInput)) {
+        const KeyInput& in_to_key = boost::get<KeyInput>(txin);
+        if (!(!in_to_key.outputIndexes.empty())) { logger(ERROR, BRIGHT_RED) << "empty in_to_key.outputIndexes in transaction with id " << getObjectHash(tx); return false; }
 
-      const KeyInput& in_to_key = boost::get<KeyInput>(txin);
-      if (!(!in_to_key.outputIndexes.empty())) { logger(ERROR, BRIGHT_RED) << "empty in_to_key.outputIndexes in transaction with id " << getObjectHash(tx); return false; }
+        if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
+          logger(DEBUGGING) <<
+            "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
+          return false;
+        }
 
-      if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
-        logger(DEBUGGING) <<
-          "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
+        if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
+          if (!check_tx_input(in_to_key, tx_prefix_hash, tx.signatures[inputIndex], pmax_used_block_height)) {
+            logger(INFO, BRIGHT_WHITE) <<
+              "Failed to check input in transaction " << transactionHash;
+            return false;
+          }
+        }
+      }
+      else if (txin.type() == typeid(MultisignatureInput)) {
+        if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
+          if (!validateInput(::boost::get<MultisignatureInput>(txin), transactionHash, tx_prefix_hash, tx.signatures[inputIndex])) {
+            return false;
+          }
+        }
+      }
+      else {
+        logger(INFO, BRIGHT_WHITE) <<
+          "Transaction << " << transactionHash << " contains input of unsupported type.";
         return false;
       }
 
-      if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
-        if (!check_tx_input(in_to_key, tx_prefix_hash, tx.signatures[inputIndex], pmax_used_block_height)) {
-          logger(INFO, BRIGHT_WHITE) <<
-            "Failed to check input in transaction " << transactionHash;
-          return false;
-        }
-      }
+      return true;
 
-      ++inputIndex;
-    } else if (txin.type() == typeid(MultisignatureInput)) {
-      if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
-        if (!validateInput(::boost::get<MultisignatureInput>(txin), transactionHash, tx_prefix_hash, tx.signatures[inputIndex])) {
-          return false;
-        }
-      }
-      ++inputIndex;
-    } else {
-      logger(INFO, BRIGHT_WHITE) <<
-        "Transaction << " << transactionHash << " contains input of unsupported type.";
-      return false;
+    }));
+    inputIndex++;
+  }
+
+  bool valid = true;
+
+  for (auto && result : validationResults) {
+    if (!result.get()) {
+      valid = false;
     }
   }
 
-  return true;
+  return valid;
 }
 
 bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
@@ -1805,7 +1825,6 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height)
 
 bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-
   struct outputs_visitor {
     std::vector<const Crypto::PublicKey *>& m_results_collector;
     Blockchain& m_bch;

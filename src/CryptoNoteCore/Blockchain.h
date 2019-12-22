@@ -32,6 +32,7 @@
 #include <boost/multi_index/random_access_index.hpp>
 
 #include "Common/ObserverManager.h"
+#include "Common/ThreadPool.h"
 #include "Common/Util.h"
 #include "CryptoNoteCore/BlockIndex.h"
 #include "CryptoNoteCore/Checkpoints.h"
@@ -61,9 +62,10 @@ namespace CryptoNote {
   struct COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS_outs_for_amount;
 
   using CryptoNote::BlockInfo;
+
   class Blockchain : public CryptoNote::ITransactionValidator {
   public:
-    Blockchain(const Currency& currency, tx_memory_pool& tx_pool, Logging::ILogger& logger, bool blockchainIndexesEnabled);
+    Blockchain(const Currency& currency, tx_memory_pool& tx_pool, Logging::ILogger& logger, bool blockchainIndexesEnabled, uint32_t transactionValidationThreads);
 
     bool addObserver(IBlockchainStorageObserver* observer);
     bool removeObserver(IBlockchainStorageObserver* observer);
@@ -302,6 +304,7 @@ namespace CryptoNote {
 
     std::string m_config_folder;
     Checkpoints m_checkpoints;
+    Tools::ThreadPool m_transactionValidationThreadPool;
 
     typedef SwappedVector<BlockEntry> Blocks;
     typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
