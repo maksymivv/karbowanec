@@ -1779,15 +1779,15 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
     inputIndex++;
   }
 
-  bool valid = true;
-
   for (auto && result : validationResults) {
     if (!result.get()) {
-      valid = false;
+      logger(INFO, BRIGHT_WHITE) <<
+        "Invalid input in transaction " << transactionHash;
+      return false;
     }
   }
 
-  return valid;
+  return true;
 }
 
 bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
