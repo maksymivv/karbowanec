@@ -801,7 +801,7 @@ void Core::update_block_template_and_resume_mining() {
   if (update_miner_block_template()) {
     m_miner->resume();
     logger(DEBUGGING) << "updated block template and resumed mining";
-  } 
+  }
   else {
     logger(ERROR) << "updating block template failed, mining not resumed";
     m_miner->stop();

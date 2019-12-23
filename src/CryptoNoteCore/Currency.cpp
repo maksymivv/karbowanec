@@ -178,7 +178,7 @@ namespace CryptoNote {
 		size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
 		medianSize = std::max(medianSize, blockGrantedFullRewardZone);
 		if (currentBlockSize > UINT64_C(2) * medianSize) {
-			logger(INFO) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
+			logger(DEBUGGING) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
 			return false;
 		}
 
@@ -464,11 +464,13 @@ namespace CryptoNote {
 
     minimumFee = static_cast<uint64_t>(minFee);
 
-    // Make all insignificant digits zero for easy reading
-    uint64_t i = 1000000000;
-    while (i > 1) {
-      if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
-      else { i /= 10; }
+    if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+      // Make all insignificant digits zero
+      uint64_t i = 1000000000;
+      while (i > 1) {
+        if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
+        else { i /= 10; }
+      }
     }
 
     return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
@@ -804,7 +806,7 @@ namespace CryptoNote {
 
 		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
 		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
-		uint64_t L(0), next_D, i, this_timestamp(0), previous_timestamp(0), avg_D;
+		uint64_t L(0), avg_D, next_D, i, this_timestamp(0), previous_timestamp(0);
 
 		previous_timestamp = timestamps[0] - T;
 		for (i = 1; i <= N; i++) {
@@ -967,7 +969,6 @@ namespace CryptoNote {
 		difficultyWindow(parameters::DIFFICULTY_WINDOW);
 		difficultyLag(parameters::DIFFICULTY_LAG);
 		difficultyCut(parameters::DIFFICULTY_CUT);
-		averageDifficultyWindow(CryptoNote::parameters::AVERAGE_DIFFICULTY_WINDOW);
 
 		maxBlockSizeInitial(parameters::MAX_BLOCK_SIZE_INITIAL);
 		maxBlockSizeGrowthSpeedNumerator(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR);
