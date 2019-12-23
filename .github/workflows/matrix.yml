@@ -85,7 +85,7 @@ jobs:
       - name: Prepare and Build (aarch64)
         if: matrix.build_name == 'aarch64'
         run: |
-          source scripts/prep-aarch64.sh
+          source utils/prep-aarch64.sh
           mkdir build && cd build
           cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
           make -j2
