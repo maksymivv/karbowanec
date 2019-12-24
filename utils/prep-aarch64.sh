@@ -53,7 +53,7 @@ if [ ! -f $TOOLCHAIN_DIR/boost_1_62_0/stage/lib/libboost_system.a ]; then
   echo "Complete"
   echo "using gcc : aarch64 : ${TOOLCHAIN_DIR}/gcc-arm-8.2-2018.08-x86_64-aarch64-linux-gnu/bin/aarch64-linux-gnu-g++ ; " >> tools/build/user-config.jam
   echo -n "Building Boost 1.62... "
-  ./b2 toolset=gcc-aarch64 --with-system --with-filesystem --with-thread --with-date_time --with-chrono --with-regex --with-serialization --with-program_options --with-coroutine >/dev/null
+  ./b2 toolset=gcc-aarch64 --with-chrono --with-date_time --with-filesystem --with-program_options --with-regex --with-serialization --with-system --with-thread --with-coroutine --with-atomic >/dev/null
   cd $TOOLCHAIN_DIR
   echo "Complete"
 else
