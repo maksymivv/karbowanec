@@ -305,24 +305,16 @@ inline uint8x16_t _mm_set_epi64x(const uint64_t a, const uint64_t b)
 #define _MM_SHUFFLE(fp3,fp2,fp1,fp0) \
  (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | (fp0))
 
-#define _mm_shuffle_epi32_default(a, imm) \
-({ \
-    int32x4_t ret; \
-    ret = vmovq_n_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), (imm) & 0x3)); \
-    ret = vsetq_lane_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), ((imm) >> 2) & 0x3), ret, 1); \
-    ret = vsetq_lane_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), ((imm) >> 4) & 0x3), ret, 2); \
-    ret = vsetq_lane_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), ((imm) >> 6) & 0x3), ret, 3); \
-    vreinterpretq_m128i_s32(ret); \
-})
+#define __m128i int16x8_t
 
-static inline float64x2_t vcvtq_f64_s64(int64x2_t a)
+inline __m128i _mm_shuffle_epi32_default(__m128i a, /*__constrange(0, 255)*/ int imm)
 {
-  float64x2_t result;
-  __asm__("scvtf %0.2d, %1.2d"
-    : "=w"(result)
-    : "w"(a)
-    : /* No clobbers */);
-  return result;
+  __m128i ret;
+  ret[0] = a[imm & 0x3];
+  ret[1] = a[(imm >> 2) & 0x3];
+  ret[2] = a[(imm >> 4) & 0x03];
+  ret[3] = a[(imm >> 6) & 0x03];
+  return ret;
 }
 
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
@@ -350,13 +342,14 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t l
 		cx = vaesmcq_u8(vaeseq_u8(cx, zero)) ^ ax0;
 		if (POW_VER == 3)
 		{
-			while ((vheor_s32(cx) & 0xf) != 0)
+			int32x4_t _cx = vreinterpretq_s32_u8(cx);
+			while ((vheor_s32(_cx) & 0xf) != 0)
 			{
 				cx = cx ^ bx0;
-				float64x2_t da = vcvtq_f64_s64(cx);
-				float64x2_t db = vcvtq_f64_s64(_mm_shuffle_epi32_default(cx, _MM_SHUFFLE(0, 1, 2, 3)));
-				da = vmulq_f32(da, db);
-				cx = vaesmcq_u8(vaeseq_u8(vld1q_dup_u64(da), zero)), ax0);
+				float64x2_t da = vcvtq_f64_s64(vreinterpretq_s64_u8(cx));
+				float64x2_t db = vcvtq_f64_s64(vreinterpretq_s64_s16(_mm_shuffle_epi32_default(vreinterpretq_s16_u8(cx), _MM_SHUFFLE(0, 1, 2, 3))));
+				da = vmulq_f64(da, db);
+				cx = vaesmcq_u8(vaeseq_u8(vreinterpretq_u8_f64(da), zero)) ^ ax0;
 			}
 			cx = vaesmcq_u8(vaeseq_u8(cx, zero)) ^ ax0;
 		}

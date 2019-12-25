@@ -31,6 +31,11 @@ struct float32x4_t
 	float v[4];
 };
 
+struct float64x2_t
+{
+  float v[2];
+};
+
 struct int32x4_t
 {
 	int32_t v[4];
@@ -220,4 +225,8 @@ inline uint32_t vheor_s32(const int32x4_t& a)
 	int32_t r;
 	r = a.v[0] ^ a.v[1] ^ a.v[2] ^ a.v[3];
 	return (uint32_t)r;
+}
+
+inline float64x2_t vmulq_f64(float64x2_t __a, float64x2_t __b) {
+  return __a * __b;
 }

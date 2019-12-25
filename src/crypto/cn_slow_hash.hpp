@@ -183,6 +183,10 @@ public:
 
 	void hash(const void* in, size_t len, void* out)
 	{
+		bool arm_hw_hash = false;
+#ifdef HAS_ARM_HW
+		arm_hw_hash = true;
+#endif
 		if(POW_VER == 2)
 		{
 			if(hw_check_aes() && !check_override())
@@ -192,7 +196,7 @@ public:
 		}
 		else
 		{
-			if(hw_check_aes() && !check_override())
+			if((hw_check_aes() && !check_override()) || arm_hw_hash)
 				hardware_hash(in, len, out);
 			else
 				software_hash(in, len, out);
