@@ -315,16 +315,6 @@ inline uint8x16_t _mm_set_epi64x(const uint64_t a, const uint64_t b)
     vreinterpretq_m128i_s32(ret); \
 })
 
-//static inline __attribute__((gnu_inline)) float64x2_t vcvtq_f64_s64(int64x2_t a)
-//{
-//  float64x2_t result;
-//  __asm__("scvtf %0.2d, %1.2d"
-//    : "=w"(result)
-//    : "w"(a)
-//    : /* No clobbers */);
-//  return result;
-//}
-
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t len, void* out)
 {
@@ -350,13 +340,13 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t l
 		cx = vaesmcq_u8(vaeseq_u8(cx, zero)) ^ ax0;
 		if (POW_VER == 3)
 		{
-			while ((vheor_s32(cx) & 0xf) != 0)
+			while ((vheor_s32(vreinterpretq_u8_s32(cx)) & 0xf) != 0)
 			{
 				cx = cx ^ bx0;
 				float64x2_t da = vcvtq_f64_s64(cx);
 				float64x2_t db = vcvtq_f64_s64(_mm_shuffle_epi32_default(cx, _MM_SHUFFLE(0, 1, 2, 3)));
 				da = vmulq_f32(da, db);
-				cx = vaesmcq_u8(vaeseq_u8(vld1q_dup_u64(da), zero)), ax0);
+				cx = vaesmcq_u8(vaeseq_u8(vld1q_dup_u64(da), zero)) ^ ax0;
 			}
 			cx = vaesmcq_u8(vaeseq_u8(cx, zero)) ^ ax0;
 		}
