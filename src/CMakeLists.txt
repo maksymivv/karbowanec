@@ -51,6 +51,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
   endif()
 endif()
 
+if (ARM)
+  list(REMOVE_ITEM Crypto "${CMAKE_SOURCE_DIR}/src/crypto/cn_slow_hash_soft.cpp")
+endif()
+
 add_library(BlockchainExplorer ${BlockchainExplorer})
 add_library(CryptoNoteProtocol ${CryptoNoteProtocol})
 add_library(Common ${Common})

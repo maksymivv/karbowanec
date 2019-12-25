@@ -295,6 +295,36 @@ inline uint8x16_t _mm_set_epi64x(const uint64_t a, const uint64_t b)
 	return vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(b), vcreate_u64(a)));
 }
 
+#define vreinterpretq_s32_m128i(x) \
+	(x)
+
+#define vreinterpretq_m128i_s32(x) \
+	(x)
+
+/* Create a selector for use with the SHUFPS instruction.  */
+#define _MM_SHUFFLE(fp3,fp2,fp1,fp0) \
+ (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | (fp0))
+
+#define _mm_shuffle_epi32_default(a, imm) \
+({ \
+    int32x4_t ret; \
+    ret = vmovq_n_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), (imm) & 0x3)); \
+    ret = vsetq_lane_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), ((imm) >> 2) & 0x3), ret, 1); \
+    ret = vsetq_lane_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), ((imm) >> 4) & 0x3), ret, 2); \
+    ret = vsetq_lane_s32(vgetq_lane_s32(vreinterpretq_s32_m128i(a), ((imm) >> 6) & 0x3), ret, 3); \
+    vreinterpretq_m128i_s32(ret); \
+})
+
+static inline float64x2_t vcvtq_f64_s64(int64x2_t a)
+{
+  float64x2_t result;
+  __asm__("scvtf %0.2d, %1.2d"
+    : "=w"(result)
+    : "w"(a)
+    : /* No clobbers */);
+  return result;
+}
+
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t len, void* out)
 {
@@ -316,8 +346,20 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t l
 	{
 		uint8x16_t cx;
 		cx = vld1q_u8(scratchpad_ptr(idx0).as_byte());
-
-		cx = vaesmcq_u8(vaeseq_u8(cx, zero)) ^ _mm_set_epi64x(ah0, al0);
+		uint8x16_t ax0 = _mm_set_epi64x(ah0, al0);
+		cx = vaesmcq_u8(vaeseq_u8(cx, zero)) ^ ax0;
+		if (POW_VER == 3)
+		{
+			while ((vheor_s32(cx) & 0xf) != 0)
+			{
+				cx = cx ^ bx0;
+				float64x2_t da = vcvtq_f64_s64(cx);
+				float64x2_t db = vcvtq_f64_s64(_mm_shuffle_epi32_default(cx, _MM_SHUFFLE(0, 1, 2, 3)));
+				da = vmulq_f32(da, db);
+				cx = vaesmcq_u8(vaeseq_u8(vld1q_dup_u64(da), zero)), ax0);
+			}
+			cx = vaesmcq_u8(vaeseq_u8(cx, zero)) ^ ax0;
+		}
 
 		vst1q_u8(scratchpad_ptr(idx0).as_byte(), bx0 ^ cx);
 
@@ -338,7 +380,7 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t l
 		al0 ^= cl;
 		idx0 = al0;
 
-		if(POW_VER > 0)
+		if(POW_VER > 0 && POW_VER < 3)
 		{
 			int64_t n = scratchpad_ptr(idx0).as_qword(0);
 			int32_t d = scratchpad_ptr(idx0).as_dword(2);
@@ -575,4 +617,5 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash_3(const void* in, size_t
 template class cn_v1_hash_t;
 template class cn_v2_hash_t;
 template class cn_v3_hash_t;
+template class cn_v4_hash_t;
 #endif
