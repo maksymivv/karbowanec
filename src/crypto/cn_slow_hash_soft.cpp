@@ -476,6 +476,7 @@ inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t* hi)
 #endif
 #endif
 
+#if !defined(__arm__) || !defined(__aarch64__)
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash(const void* in, size_t len, void* out)
 {
@@ -619,6 +620,7 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash(const void* in, size_t l
 		break;
 	}
 }
+#endif
 
 template class cn_v1_hash_t;
 template class cn_v2_hash_t;

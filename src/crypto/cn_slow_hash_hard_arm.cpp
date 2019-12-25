@@ -301,22 +301,6 @@ inline uint8x16_t _mm_set_epi64x(const uint64_t a, const uint64_t b)
 #define vreinterpretq_m128i_s32(x) \
 	(x)
 
-/* Create a selector for use with the SHUFPS instruction.  */
-#define _MM_SHUFFLE(fp3,fp2,fp1,fp0) \
- (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | (fp0))
-
-#define __m128i int16x8_t
-
-inline __m128i _mm_shuffle_epi32_default(__m128i a, /*__constrange(0, 255)*/ int imm)
-{
-  __m128i ret;
-  ret[0] = a[imm & 0x3];
-  ret[1] = a[(imm >> 2) & 0x3];
-  ret[2] = a[(imm >> 4) & 0x03];
-  ret[3] = a[(imm >> 6) & 0x03];
-  return ret;
-}
-
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t len, void* out)
 {

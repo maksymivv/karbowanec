@@ -29,6 +29,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__arm__) || defined(__aarch64__)
+/* Create a selector for use with the SHUFPS instruction.  */
+#define _MM_SHUFFLE(fp3,fp2,fp1,fp0) \
+ (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | (fp0))
+
+#define __m128i int16x8_t
+
+inline __m128i _mm_shuffle_epi32_default(__m128i a, /*__constrange(0, 255)*/ int imm)
+{
+  __m128i ret;
+  ret[0] = a[imm & 0x3];
+  ret[1] = a[(imm >> 2) & 0x3];
+  ret[2] = a[(imm >> 4) & 0x03];
+  ret[3] = a[(imm >> 6) & 0x03];
+  return ret;
+}
+#endif
 
 // Macros are for template instantiations
 // Cryptonight
