@@ -51,7 +51,7 @@ inline void vrot_si32<0>(int32x4_t& r)
 {
 }
 
-inline uint32_t vheor_s32(const int32x4_t& v)
+inline uint32_t vheor_s32(int32x4_t& v)
 {
 	int32x4_t v0 = veorq_s32(v, vrev64q_s32(v));
 	int32x2_t vf = veor_s32(vget_high_s32(v0), vget_low_s32(v0));
