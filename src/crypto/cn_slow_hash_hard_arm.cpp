@@ -169,17 +169,10 @@ inline uint32_t sub_word(uint32_t key)
     (saes_sbox[(key >> 8) & 0xff] << 8) | saes_sbox[key & 0xff];
 }
 
-#if defined(__clang__) || defined(__arm__) || defined(__aarch64__)
 inline uint32_t rotr(uint32_t value, uint32_t amount)
 {
   return (value >> amount) | (value << ((32 - amount) & 31));
 }
-#else
-inline uint32_t rotr(uint32_t value, uint32_t amount)
-{
-  return _rotr(value, amount);
-}
-#endif
 
 // sl_xor(a1 a2 a3 a4) = a1 (a2^a1) (a3^a2^a1) (a4^a3^a2^a1)
 inline void sl_xor(aesdata& x)
@@ -487,11 +480,6 @@ inline void sl_xor(aeskeydata& x)
 	x.x1 ^= x.x0;
 	x.x2 ^= x.x1;
 	x.x3 ^= x.x2;
-}
-
-inline uint32_t rotr(uint32_t value, uint32_t amount)
-{
-	return (value >> amount) | (value << ((32 - amount) & 31));
 }
 
 template <uint8_t rcon>
