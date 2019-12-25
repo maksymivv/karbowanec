@@ -315,17 +315,15 @@ inline uint8x16_t _mm_set_epi64x(const uint64_t a, const uint64_t b)
     vreinterpretq_m128i_s32(ret); \
 })
 
-/*
-static inline __attribute__((gnu_inline)) float64x2_t vcvtq_f64_s64(int64x2_t a)
-{
-  float64x2_t result;
-  __asm__("scvtf %0.2d, %1.2d"
-    : "=w"(result)
-    : "w"(a)
-    : /* No clobbers */);
-  return result;
-}
-*/
+//static inline __attribute__((gnu_inline)) float64x2_t vcvtq_f64_s64(int64x2_t a)
+//{
+//  float64x2_t result;
+//  __asm__("scvtf %0.2d, %1.2d"
+//    : "=w"(result)
+//    : "w"(a)
+//    : /* No clobbers */);
+//  return result;
+//}
 
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t len, void* out)
