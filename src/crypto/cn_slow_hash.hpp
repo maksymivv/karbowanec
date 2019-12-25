@@ -30,6 +30,7 @@
 #include <string.h>
 
 #if defined(__arm__) || defined(__aarch64__)
+#include <arm_neon.h>
 /* Create a selector for use with the SHUFPS instruction.  */
 #define _MM_SHUFFLE(fp3,fp2,fp1,fp0) \
  (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | (fp0))
