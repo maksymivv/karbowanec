@@ -32,6 +32,7 @@
 #if defined(__arm__) || defined(__aarch64__)
 #include <arm_neon.h>
 #include "sse2neon.h"
+typedef float64x2_t __m128d;
 #endif
 
 // Macros are for template instantiations

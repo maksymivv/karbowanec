@@ -698,12 +698,6 @@ inline uint8x16_t _mm_set_epi64x(const uint64_t a, const uint64_t b)
 	return vreinterpretq_u8_u64(vcombine_u64(vcreate_u64(b), vcreate_u64(a)));
 }
 
-#define vreinterpretq_s32_m128i(x) \
-	(x)
-
-#define vreinterpretq_m128i_s32(x) \
-	(x)
-
 template <size_t MEMORY, size_t ITER, size_t POW_VER>
 void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t len, void* out)
 {
@@ -734,7 +728,7 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::hardware_hash(const void* in, size_t l
 			{
 				cx = cx ^ bx0;
 				float64x2_t da = vcvtq_f64_s64(vreinterpretq_s64_u8(cx));
-				float64x2_t db = vcvtq_f64_s64(vreinterpretq_s64_s16(_mm_shuffle_epi32_default(vreinterpretq_s16_u8(cx), _MM_SHUFFLE(0, 1, 2, 3))));
+				float64x2_t db = vcvtq_f64_s64(vreinterpretq_s64_s32(_mm_shuffle_epi32_default(vreinterpretq_s32_u8(cx), _MM_SHUFFLE(0, 1, 2, 3))));
 				da = vmulq_f64(da, db);
 				cx = vaesmcq_u8(vaeseq_u8(vreinterpretq_u8_f64(da), zero)) ^ ax0;
 			}
