@@ -31,21 +31,7 @@
 
 #if defined(__arm__) || defined(__aarch64__)
 #include <arm_neon.h>
-/* Create a selector for use with the SHUFPS instruction.  */
-#define _MM_SHUFFLE(fp3,fp2,fp1,fp0) \
- (((fp3) << 6) | ((fp2) << 4) | ((fp1) << 2) | (fp0))
-
-#define __m128i int16x8_t
-
-inline __m128i _mm_shuffle_epi32_default(__m128i a, /*__constrange(0, 255)*/ int imm)
-{
-  __m128i ret;
-  ret[0] = a[imm & 0x3];
-  ret[1] = a[(imm >> 2) & 0x3];
-  ret[2] = a[(imm >> 4) & 0x03];
-  ret[3] = a[(imm >> 6) & 0x03];
-  return ret;
-}
+#include "sse2neon.h"
 #endif
 
 // Macros are for template instantiations
@@ -201,10 +187,6 @@ public:
 
 	void hash(const void* in, size_t len, void* out)
 	{
-		bool arm_hw_hash = false;
-#ifdef HAS_ARM_HW
-		arm_hw_hash = true;
-#endif
 		if(POW_VER == 2)
 		{
 			if(hw_check_aes() && !check_override())
@@ -214,7 +196,7 @@ public:
 		}
 		else
 		{
-			if((hw_check_aes() && !check_override()) || arm_hw_hash)
+			if((hw_check_aes() && !check_override()))
 				hardware_hash(in, len, out);
 			else
 				software_hash(in, len, out);
