@@ -27,8 +27,6 @@
 #include "saes_data.h"
 
 #ifdef HAS_ARM_HW
-extern const uint8_t saes_sbox[256];
-
 struct aesdata
 {
   uint64_t v64x0;
