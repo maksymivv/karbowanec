@@ -24,6 +24,7 @@
 #include "keccak.h"
 #include "aux_hash.h"
 #include "cn_slow_hash.hpp"
+#include "saes_data.h"
 
 #ifdef HAS_ARM_HW
 extern const uint8_t saes_sbox[256];
