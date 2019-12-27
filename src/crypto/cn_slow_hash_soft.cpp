@@ -511,8 +511,8 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash(const void* in, size_t l
 				__m128i cx_xmm = _mm_set_epi64x(cx.v64x1, cx.v64x0);
 				cx_xmm = _mm_xor_si128(cx_xmm, bx_xmm);
 #if defined(__arm__) || defined(__aarch64__)
-        __m128d da = _mm_cvtepi32_ps(cx_xmm);
-        __m128d db = _mm_cvtepi32_ps(_mm_shuffle_epi32_default(cx_xmm, _MM_SHUFFLE(0, 1, 2, 3)));
+        __m128 da = _mm_cvtepi32_ps(cx_xmm);
+        __m128 db = _mm_cvtepi32_ps(_mm_shuffle_epi32_default(cx_xmm, _MM_SHUFFLE(0, 1, 2, 3)));
         da = _mm_mul_ps(da, db);
         __m128i dx = _mm_castps_si128(da);
 #else
@@ -568,8 +568,8 @@ void cn_slow_hash<MEMORY, ITER, POW_VER>::software_hash(const void* in, size_t l
 				__m128i bx_xmm = _mm_set_epi64x(bx.v64x1, bx.v64x0);
 				bx_xmm = _mm_xor_si128(bx_xmm, cx_xmm);
 #if defined(__arm__) || defined(__aarch64__)
-        __m128d da = _mm_cvtepi32_ps(bx_xmm);
-        __m128d db = _mm_cvtepi32_ps(_mm_shuffle_epi32(bx_xmm, _MM_SHUFFLE(0, 1, 2, 3)));
+        __m128 da = _mm_cvtepi32_ps(bx_xmm);
+        __m128 db = _mm_cvtepi32_ps(_mm_shuffle_epi32(bx_xmm, _MM_SHUFFLE(0, 1, 2, 3)));
         da = _mm_mul_ps(da, db);
         __m128i dx = _mm_castps_si128(da);
 #else
