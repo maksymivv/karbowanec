@@ -411,7 +411,6 @@ inline void sl_xor(aeskeydata& x)
 template <uint8_t rcon>
 inline void soft_aes_genkey_sub(aeskeydata& xout0, aeskeydata& xout2)
 {
-	uint32_t tmp;
 	sl_xor(xout0);
 	xout0 ^= rotr(sub_word(xout2.x3), 8) ^ rcon;
 	sl_xor(xout2);
