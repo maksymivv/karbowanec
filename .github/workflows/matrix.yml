@@ -116,6 +116,64 @@ jobs:
           name: ${{ steps.before_deploy.outputs.artifact_name }}
           path: ./build/src/${{ steps.before_deploy.outputs.binary_path }}
 
+  # Build on qemu-emulated aarch64 Ubuntu
+  build_native_aarch64:
+    runs-on: ubuntu-18.04
+    name: Build on native aarch64
+          - build_name: 'aarch64'
+            label: aarch64
+            deployable: true
+    steps:
+    - uses: actions/checkout@v1
+    - uses: uraimo/run-on-arch-action@v1.0.5
+      id: aarch64-build-on-qemu-aarch64
+      with:
+        architecture: aarch64
+        distribution: ubuntu18.04
+        run: |
+          apt-get update
+          apt-get install -y cmake gcc g++ libboost-all-dev libssl-dev
+          mkdir build-aarch64 && cd build-aarch64
+          cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
+          make -j2
+		  
+      # Prepare for deploy
+      - name: Prepare for Deploy
+        id: before_deploy
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          if [[ "${TAG:5:4}" == "tags" ]]; then export TAG=${TAG:10}; else export TAG=${COMMIT_SHA::8}; fi
+          cd build-aarch64/src
+          TARGETS="karbowanecd simplewallet greenwallet walletd optimizer miner"
+          rm -rf karbowanec-${TAG}
+          mkdir karbowanec-${TAG}
+          cp ${TARGETS} karbowanec-${TAG}/
+          cp ../../LICENSE karbowanec-${TAG}/
+          tar cvfz karbowanec-${LABEL}-${TAG}.tar.gz karbowanec-${TAG}/
+          echo ::set-output name=binary_path::karbowanec-${TAG}
+          echo ::set-output name=artifact_name::karbowanec-${LABEL}-${TAG}
+          echo ::set-output name=file_name::karbowanec-${LABEL}-${TAG}.tar.gz
+
+      # Upload to GH Release
+      - name: Upload to GH Release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./build-aarch64/src/${{ steps.before_deploy.outputs.file_name }}
+          asset_name: ${{ steps.before_deploy.outputs.file_name }}
+          asset_content_type: application/gzip
+
+      # Upload to GH Actions Artifacts
+      - name: Upload To GH Artifacts
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: ${{ steps.before_deploy.outputs.artifact_name }}
+          path: ./build-aarch64/src/${{ steps.before_deploy.outputs.binary_path }}
+
   # Mac builds on Catalina VM
   macos_build:
     name: macOS
