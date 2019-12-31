@@ -135,7 +135,7 @@ jobs:
           mkdir build-aarch64 && cd build-aarch64
           cmake -DARCH=default -DCMAKE_BUILD_TYPE=Release -DSTATIC=true ..
           make -j2
-		  
+
       # Prepare for deploy
       - name: Prepare for Deploy
         id: before_deploy
