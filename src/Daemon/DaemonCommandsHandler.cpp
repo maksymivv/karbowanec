@@ -403,7 +403,7 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string> &args) {
 
   uint64_t stake_amount = CryptoNote::parameters::MINIMUM_STAKE;
   if (args.size() > 2) {
-    bool ok = m_core.currency().parseAmount(args[3], stake_amount);
+    bool ok = m_core.currency().parseAmount(args[2], stake_amount);
     stake_amount = (ok && CryptoNote::parameters::MINIMUM_STAKE <= stake_amount) ? stake_amount : CryptoNote::parameters::MINIMUM_STAKE;
   }
 
