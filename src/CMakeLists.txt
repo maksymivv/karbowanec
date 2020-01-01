@@ -133,6 +133,7 @@ add_dependencies(P2P version)
 add_dependencies(Rpc version)
 add_dependencies(PaymentGate version)
 add_dependencies(CryptoNoteCore version)
+add_dependencies(InProcessNode version)
 
 set_property(TARGET Daemon PROPERTY OUTPUT_NAME "krbcoind")
 set_property(TARGET SimpleWallet PROPERTY OUTPUT_NAME "simplewallet")

@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -60,7 +61,18 @@ public:
   virtual uint64_t getLastLocalBlockTimestamp() const override;
   virtual uint64_t getMinimalFee() const override;
   virtual uint64_t getNextDifficulty() const override;
+  virtual uint64_t getNextReward() const override;
+  virtual uint64_t getAlreadyGeneratedCoins() const override;
   virtual BlockHeaderInfo getLastLocalBlockHeaderInfo() const override;
+  virtual uint64_t getTransactionsCount() const override;
+  virtual uint64_t getTransactionsPoolSize() const override;
+  virtual uint64_t getAltBlocksCount() const override;
+  virtual uint64_t getOutConnectionsCount() const override;
+  virtual uint64_t getIncConnectionsCount() const override;
+  virtual uint64_t getRpcConnectionsCount() const override;
+  virtual uint64_t getWhitePeerlistSize() const override;
+  virtual uint64_t getGreyPeerlistSize() const override;
+  virtual std::string getNodeVersion() const override;
 
   virtual void getFeeAddress() override;
   virtual std::string feeAddress() const override;
@@ -83,7 +95,9 @@ public:
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void getPoolTransactions(uint64_t timestampBegin, uint64_t timestampEnd, uint32_t transactionsNumberLimit, std::vector<TransactionDetails>& transactions, uint64_t& transactionsNumberWithinTimestamps, const Callback& callback) override;
+  virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) override;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override;
+  virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) override;
 
   virtual bool getStake(uint64_t& stake) override;
   virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
@@ -138,7 +152,13 @@ private:
   void getTransactionsByPaymentIdAsync(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback);
   std::error_code doGetTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions);
 
+  void getBlockTimestampAsync(uint32_t height, uint64_t& timestamp, const Callback& callback);
+  std::error_code doGetBlockTimestampAsync(uint32_t height, uint64_t& timestamp);
+
   void isSynchronizedAsync(bool& syncStatus, const Callback& callback);
+
+  void getConnectionsAsync(std::vector<p2pConnection>& connections, const Callback& callback);
+  std::error_code doGetConnections(std::vector<p2pConnection>& connections);
 
   void workerFunc();
   bool doShutdown();

@@ -22,6 +22,7 @@
 
 #include <crypto/random.h>
 
+#include <stdexcept>
 #include <unordered_map>
 
 template <typename T>

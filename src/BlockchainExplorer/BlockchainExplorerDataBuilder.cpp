@@ -115,7 +115,7 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   if (block.baseTransaction.inputs.front().type() != typeid(BaseInput) && blockDetails.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5)
     return false;
   blockDetails.height = block.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5 ? block.blockIndex : boost::get<BaseInput>(block.baseTransaction.inputs.front()).blockIndex;
-  blockDetails.depth = m_core.get_current_blockchain_height() - blockDetails.height - 1;
+  blockDetails.depth = m_core.getCurrentBlockchainHeight() - blockDetails.height - 1;
 
   Crypto::Hash tmpHash = m_core.getBlockIdByHeight(blockDetails.height);
   blockDetails.isOrphaned = hash != tmpHash;

@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016-2019, Zawy
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -26,8 +26,8 @@
 #include "../Common/int-util.h"
 #include "../Common/Math.h"
 #include "../Common/StringTools.h"
+#include "../Common/FormatTools.h"
 #include "crypto/crypto.h"
-
 #include "Account.h"
 #include "CryptoNoteBasicImpl.h"
 #include "CryptoNoteFormatUtils.h"
@@ -385,58 +385,15 @@ namespace CryptoNote {
 	}
 
 	std::string Currency::formatAmount(uint64_t amount) const {
-		std::string s = std::to_string(amount);
-		if (s.size() < m_numberOfDecimalPlaces + 1) {
-			s.insert(0, m_numberOfDecimalPlaces + 1 - s.size(), '0');
-		}
-		s.insert(s.size() - m_numberOfDecimalPlaces, ".");
-		return s;
+		return Common::Format::formatAmount(amount);
 	}
 
 	std::string Currency::formatAmount(int64_t amount) const {
-		std::string s = formatAmount(static_cast<uint64_t>(std::abs(amount)));
-
-		if (amount < 0) {
-			s.insert(0, "-");
-		}
-
-		return s;
+    return Common::Format::formatAmount(amount);
 	}
 
 	bool Currency::parseAmount(const std::string& str, uint64_t& amount) const {
-		std::string strAmount = str;
-		boost::algorithm::trim(strAmount);
-
-		size_t pointIndex = strAmount.find_first_of('.');
-		size_t fractionSize;
-		if (std::string::npos != pointIndex) {
-			fractionSize = strAmount.size() - pointIndex - 1;
-			while (m_numberOfDecimalPlaces < fractionSize && '0' == strAmount.back()) {
-				strAmount.erase(strAmount.size() - 1, 1);
-				--fractionSize;
-			}
-			if (m_numberOfDecimalPlaces < fractionSize) {
-				return false;
-			}
-			strAmount.erase(pointIndex, 1);
-		}
-		else {
-			fractionSize = 0;
-		}
-
-		if (strAmount.empty()) {
-			return false;
-		}
-
-		if (!std::all_of(strAmount.begin(), strAmount.end(), ::isdigit)) {
-			return false;
-		}
-
-		if (fractionSize < m_numberOfDecimalPlaces) {
-			strAmount.append(m_numberOfDecimalPlaces - fractionSize, '0');
-		}
-
-		return Common::fromString(strAmount, amount);
+		return Common::Format::parseAmount(str, amount);
 	}
 
   // Copyright (c) 2017-2018 Zawy 
@@ -780,65 +737,62 @@ namespace CryptoNote {
 		return next_D;
 	}
 
-	difficulty_type Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion,
-		std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulativeDifficulties) const {
+  difficulty_type Currency::nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion,
+    std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulativeDifficulties) const {
 
-		// LWMA-1 difficulty algorithm 
-		// Copyright (c) 2017-2018 Zawy, MIT License
-		// See commented link below for required config file changes. Fix FTL and MTP.
-		// https://github.com/zawy12/difficulty-algorithms/issues/3
+    // LWMA-1 difficulty algorithm 
+    // Copyright (c) 2017-2018 Zawy, MIT License
+    // See commented link below for required config file changes. Fix FTL and MTP.
+    // https://github.com/zawy12/difficulty-algorithms/issues/3
 
-		// reset difficulty for new epoch
-		if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-			//return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR ??;
-			return 10000;
-		}
+    // reset difficulty for new epoch
+    if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
+      return 10000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
+    }
+    size_t count = difficultyBlocksCountByBlockVersion(blockMajorVersion);
+    if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 + count) {
+      uint32_t offset = count - (height - upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5));
+      timestamps.erase(timestamps.begin(), timestamps.begin() + offset);
+      cumulativeDifficulties.erase(cumulativeDifficulties.begin(), cumulativeDifficulties.begin() + offset);
+    }
 
-		// skip to reset difficulty for hardfork block 5
-		size_t count = difficultyBlocksCountByBlockVersion(blockMajorVersion);
-		if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 + count) {
-			uint32_t offset = count - (height - upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5));
-			timestamps.erase(timestamps.begin(), timestamps.begin() + offset);
-			cumulativeDifficulties.erase(cumulativeDifficulties.begin(), cumulativeDifficulties.begin() + offset);
-		}
+    assert(timestamps.size() == cumulativeDifficulties.size());
 
-		assert(timestamps.size() == cumulativeDifficulties.size());
+    const int64_t T = static_cast<int64_t>(m_difficultyTarget);
+    uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
+    uint64_t L(0), avg_D, next_D, i, this_timestamp(0), previous_timestamp(0);
 
-		const int64_t T = static_cast<int64_t>(m_difficultyTarget);
-		uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
-		uint64_t L(0), avg_D, next_D, i, this_timestamp(0), previous_timestamp(0);
+    previous_timestamp = timestamps[0] - T;
+    for (i = 1; i <= N; i++) {
+      // Safely prevent out-of-sequence timestamps
+      if (timestamps[i] > previous_timestamp) { this_timestamp = timestamps[i]; }
+      else { this_timestamp = previous_timestamp + 1; }
+      L += i * std::min<uint64_t>(6 * T, this_timestamp - previous_timestamp);
+      previous_timestamp = this_timestamp;
+    }
+    if (L < N * N * T / 20) { L = N * N * T / 20; }
+    avg_D = (cumulativeDifficulties[N] - cumulativeDifficulties[0]) / N;
 
-		previous_timestamp = timestamps[0] - T;
-		for (i = 1; i <= N; i++) {
-			// Safely prevent out-of-sequence timestamps
-			if (timestamps[i] > previous_timestamp) { this_timestamp = timestamps[i]; }
-			else { this_timestamp = previous_timestamp + 1; }
-			L += i * std::min<uint64_t>(6 * T, this_timestamp - previous_timestamp);
-			previous_timestamp = this_timestamp;
-		}
-		if (L < N * N * T / 20) { L = N * N * T / 20; }
-		avg_D = (cumulativeDifficulties[N] - cumulativeDifficulties[0]) / N;
+    // Prevent round off error for small D and overflow for large D.
+    if (avg_D > 2000000 * N * N * T) {
+      next_D = (avg_D / (200 * L)) * (N * (N + 1) * T * 99);
+    }
+    else { next_D = (avg_D * N * (N + 1) * T * 99) / (200 * L); }
 
-		// Prevent round off error for small D and overflow for large D.
-		if (avg_D > 2000000 * N * N * T) {
-			next_D = (avg_D / (200 * L)) * (N * (N + 1) * T * 99);
-		}
-		else { next_D = (avg_D * N * (N + 1) * T * 99) / (200 * L); }
+    // Optional. Make all insignificant digits zero for easy reading.
+    i = 1000000000;
+    while (i > 1) {
+      if (next_D > i * 100) { next_D = ((next_D + i / 2) / i) * i; break; }
+      else { i /= 10; }
+    }
 
-		// Optional. Make all insignificant digits zero for easy reading.
-		i = 1000000000;
-		while (i > 1) {
-			if (next_D > i * 100) { next_D = ((next_D + i / 2) / i) * i; break; }
-			else { i /= 10; }
-		}
+    // minimum limit
+    if (!isTestnet() && next_D < 1000000) {
+      //next_D = 1000000;
+    }
 
-		// minimum limit
-		if (!isTestnet() && next_D < 1000000) {
-			//next_D = 1000000;
-		}
-
-		return next_D;
-	}
+    return next_D;
+  }
 
 	bool Currency::checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic,
 		Crypto::Hash& proofOfWork) const {

@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers, The Monero developers
 // Copyright (c) 2018, Ryo Currency Project
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -210,7 +210,9 @@ public:
     if (s.type() == ISerializer::OUTPUT) {
       writeSequence<Blockchain::SpentKeyImage>(m_bs.spentKeyImages.begin(), m_bs.spentKeyImages.end(), "spent_key_images", s);
     } else {
-      readSequence<Blockchain::SpentKeyImage>(std::inserter(m_bs.spentKeyImages, m_bs.spentKeyImages.end()), "spent_key_images", s);
+      Blockchain::SpentKeyImagesContainer restoredSpentKeyImages;
+      readSequence<Blockchain::SpentKeyImage>(std::inserter(restoredSpentKeyImages, restoredSpentKeyImages.end()), "spent_key_images", s);
+      m_bs.spentKeyImages = std::move(restoredSpentKeyImages);
     }
 
     logger(INFO) << operation << "outputs...";

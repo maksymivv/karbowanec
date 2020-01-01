@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -114,6 +114,7 @@ public:
   virtual bool scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pair<Crypto::Hash, size_t>>& outputReferences) = 0;
   virtual bool getBlockDifficulty(uint32_t height, difficulty_type& difficulty) = 0;
   virtual bool getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) = 0;
+  virtual bool getBlockTimestamp(uint32_t height, uint64_t& timestamp) = 0;
   virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window) = 0;
   virtual difficulty_type getAvgDifficulty(uint32_t height) = 0;
   virtual bool getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) = 0;
@@ -128,11 +129,14 @@ public:
   virtual uint64_t getMinimalFeeForHeight(uint32_t height) = 0;
   virtual uint64_t getMinimalFee() = 0;
   virtual uint64_t getNextBlockDifficulty() = 0;
+  virtual uint64_t getTotalGeneratedAmount() = 0;
   virtual bool check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_context& tvc, uint32_t height) = 0;
-  
-  virtual uint32_t get_current_blockchain_height() = 0;
+  virtual size_t getPoolTransactionsCount() = 0;
+  virtual size_t getBlockchainTotalTransactions() = 0;
+  virtual uint32_t getCurrentBlockchainHeight() = 0;
   virtual uint8_t getBlockMajorVersionForHeight(uint32_t height) = 0;
   virtual uint8_t getCurrentBlockMajorVersion() = 0;
+  virtual size_t getAlternativeBlocksCount() = 0;
 
   virtual std::unique_ptr<IBlock> getBlock(const Crypto::Hash& blocksId) = 0;
   virtual bool handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& txHash, size_t blobSize, tx_verification_context& tvc, bool keptByBlock, uint32_t height) = 0;

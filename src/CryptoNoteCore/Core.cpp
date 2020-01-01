@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -113,7 +113,7 @@ bool Core::handle_command_line(const boost::program_options::variables_map& vm) 
   return true;
 }
 
-uint32_t Core::get_current_blockchain_height() {
+uint32_t Core::getCurrentBlockchainHeight() {
   return m_blockchain.getCurrentBlockchainHeight();
 }
 
@@ -147,7 +147,7 @@ bool Core::get_alternative_blocks(std::list<Block>& blocks) {
   return m_blockchain.getAlternativeBlocks(blocks);
 }
 
-size_t Core::get_alternative_blocks_count() {
+size_t Core::getAlternativeBlocksCount() {
   return m_blockchain.getAlternativeBlocksCount();
 }
 
@@ -272,7 +272,7 @@ bool Core::handle_incoming_tx(const BinaryArray& tx_blob, tx_verification_contex
   Crypto::Hash blockId;
   uint32_t blockHeight;
   bool ok = getBlockContainingTx(tx_hash, blockId, blockHeight);
-  if (!ok) blockHeight = this->get_current_blockchain_height();
+  if (!ok) blockHeight = this->getCurrentBlockchainHeight();
   return handleIncomingTransaction(tx, tx_hash, tx_blob.size(), tvc, keeped_by_block, blockHeight);
 }
 
@@ -330,16 +330,16 @@ bool Core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
   const uint64_t fee = inputs_amount - outputs_amount;
   bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
   bool enough = true;
-  if (!isFusionTransaction && !m_checkpoints.is_in_checkpoint_zone(get_current_blockchain_height())) {
+  if (!isFusionTransaction && !m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
     if (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4) {
-      if (fee < m_currency.minimumFee()) {
-        logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.minimumFee();
+      if (fee < CryptoNote::parameters::MINIMUM_FEE_V1) {
+        logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(CryptoNote::parameters::MINIMUM_FEE_V1);
         enough = false;
       }
     } else {
       uint64_t min = getMinimalFeeForHeight(height);
       if (fee < (min - min * 20 / 100)) {
-        logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << min;
+        logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(min);
         enough = false;
       }
     }
@@ -451,7 +451,7 @@ bool Core::check_tx_inputs_keyimages_diff(const Transaction& tx) {
   return true;
 }
 
-size_t Core::get_blockchain_total_transactions() {
+size_t Core::getBlockchainTotalTransactions() {
   return m_blockchain.getTotalTransactions();
 }
 
@@ -917,7 +917,7 @@ Crypto::Hash Core::get_tail_id() {
   return m_blockchain.getTailId();
 }
 
-size_t Core::get_pool_transactions_count() {
+size_t Core::getPoolTransactionsCount() {
   return m_mempool.get_transactions_count();
 }
 
@@ -1217,6 +1217,11 @@ bool Core::scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pa
   return m_blockchain.scanOutputKeysForIndexes(txInToKey, vi);
 }
 
+bool Core::getBlockTimestamp(uint32_t height, uint64_t& timestamp) {
+  timestamp = m_blockchain.getBlockTimestamp(height);
+  return true;
+}
+
 bool Core::getBlockDifficulty(uint32_t height, difficulty_type& difficulty) {
   difficulty = m_blockchain.blockDifficulty(height);
   return true;
@@ -1342,7 +1347,7 @@ difficulty_type Core::getAvgDifficulty(uint32_t height) {
 }
 
 uint64_t Core::getMinimalFee() {
-  return getMinimalFeeForHeight(get_current_blockchain_height() - 1);
+  return getMinimalFeeForHeight(getCurrentBlockchainHeight() - 1);
 }
 
 uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
@@ -1386,7 +1391,7 @@ bool Core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
   }
 
   // is in checkpoint zone
-  if (!m_blockchain.isInCheckpointZone(get_current_blockchain_height())) {
+  if (!m_blockchain.isInCheckpointZone(getCurrentBlockchainHeight())) {
     if (blobSize > m_currency.maxTransactionSizeLimit() && getCurrentBlockMajorVersion() >= BLOCK_MAJOR_VERSION_4) {
       logger(INFO) << "Transaction verification failed: too big size " << blobSize << " of transaction " << txHash << ", rejected";
       tvc.m_verification_failed = true;
