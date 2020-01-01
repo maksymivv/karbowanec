@@ -407,6 +407,19 @@ uint64_t NodeRpcProxy::getNextReward() const {
   return m_nextReward.load(std::memory_order_relaxed);
 }
 
+bool NodeRpcProxy::getStake(uint64_t& stake) {
+  stake = m_nextStake.load(std::memory_order_relaxed);
+
+  return true;
+}
+
+bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
+  stake = m_nextStake.load(std::memory_order_relaxed);
+  blockReward = m_nextReward.load(std::memory_order_relaxed);
+
+  return true;
+};
+
 uint64_t NodeRpcProxy::getAlreadyGeneratedCoins() const {
   return m_alreadyGeneratedCoins.load(std::memory_order_relaxed);
 }
@@ -682,20 +695,6 @@ void NodeRpcProxy::isSynchronized(bool& syncStatus, const Callback& callback) {
   // TODO NOT IMPLEMENTED
   callback(std::error_code());
 }
-
-bool NodeRpcProxy::getStake(uint64_t& stake) {
-  stake = m_nextStake;
-
-  return true;
-}
-
-bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
-  stake = m_nextStake;
-  blockReward = m_nextReward;
-
-  return true;
-};
-
 
 std::error_code NodeRpcProxy::doRelayTransaction(const CryptoNote::Transaction& transaction) {
   COMMAND_RPC_SEND_RAW_TRANSACTION::request req;

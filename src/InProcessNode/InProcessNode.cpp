@@ -476,6 +476,22 @@ uint64_t InProcessNode::getAlreadyGeneratedCoins() const {
   return core.getTotalGeneratedAmount();
 }
 
+bool InProcessNode::getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+  return core.getStake(blockMajorVersion, fee, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
+};
+
+bool InProcessNode::getStake(uint64_t& stake) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+  }
+  return core.getStake(stake);
+}
+
 BlockHeaderInfo InProcessNode::getLastLocalBlockHeaderInfo() const {
   std::unique_lock<std::mutex> lock(mutex);
   if (state != INITIALIZED) {
@@ -1200,14 +1216,6 @@ void InProcessNode::isSynchronized(bool& syncStatus, const Callback& callback) {
 void InProcessNode::isSynchronizedAsync(bool& syncStatus, const Callback& callback) {
   syncStatus = protocol.isSynchronized();
   callback(std::error_code());
-}
-
-bool InProcessNode::getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
-  return core.getStake(blockMajorVersion, fee, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
-};
-
-bool InProcessNode::getStake(uint64_t& stake) {
-  return core.getStake(stake);
 }
 
 void InProcessNode::getConnections(std::vector<p2pConnection>& connections, const Callback& callback) {
