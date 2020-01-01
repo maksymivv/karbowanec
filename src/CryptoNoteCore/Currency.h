@@ -174,7 +174,7 @@ public:
 
   uint64_t nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const;
   uint64_t calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& actualStake) const;
-  uint64_t calculateStakeDepositAmount(uint64_t& stake, uint64_t& term) const;
+  uint64_t calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& actualTerm) const;
   difficulty_type calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const;
 
   bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;

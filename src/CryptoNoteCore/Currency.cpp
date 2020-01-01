@@ -482,9 +482,9 @@ namespace CryptoNote {
     return static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(actualStake) * static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM));
   }
 
-  uint64_t Currency::calculateStakeDepositAmount(uint64_t& stake, uint64_t& term) const {
+  uint64_t Currency::calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& actualTerm) const {
     // S = Sb * Tb / T
-    return static_cast<uint64_t>(static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM) / static_cast<double>(term) * static_cast<double>(stake));
+    return static_cast<uint64_t>(static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM) / static_cast<double>(actualTerm) * static_cast<double>(baseStake));
   }
 
   difficulty_type Currency::calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const {
