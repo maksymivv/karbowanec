@@ -462,18 +462,6 @@ namespace CryptoNote {
     stakes.push_back(interStake);
     uint64_t adjustedStake = Common::medianValue(stakes);
 
-    // Output info for debugging and checkout
-    logger(DEBUGGING, BRIGHT_BLUE) << "Base Stake: " << formatAmount(supplyStake);
-    logger(DEBUGGING, BRIGHT_BLUE) << "Int. Stake: " << formatAmount(interStake);
-    logger(DEBUGGING, BRIGHT_BLUE) << "Adj. Stake: " << formatAmount(adjustedStake);
-
-    // Make all insignificant digits zero
-    uint64_t i = 1000000000;
-    while (i > 1) {
-      if (adjustedStake > i * 100) { adjustedStake = ((adjustedStake + i / 2) / i) * i; break; }
-      else { i /= 10; }
-    }
-
     return adjustedStake;
   }
 
