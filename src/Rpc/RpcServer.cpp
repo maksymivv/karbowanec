@@ -666,12 +666,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   // calculate stake stats (only when stake hardfork is active)
   uint64_t totalStake = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {  
-    uint32_t blocks_count = m_core.currency().expectedNumberOfBlocksPerDay();
-    uint64_t first_cum_stake = 0;
-    m_core.getCumulativeStake(index - blocks_count, first_cum_stake);
-    uint64_t last_cum_stake = 0;
-    m_core.getCumulativeStake(index, last_cum_stake);
-    totalStake = last_cum_stake - first_cum_stake;
+    // TODO: get deposits actually locked in coinbase txs
   }
   res.total_coins_locked = totalStake;
   res.status = CORE_RPC_STATUS_OK;

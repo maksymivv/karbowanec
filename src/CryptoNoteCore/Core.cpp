@@ -576,7 +576,7 @@ bool Core::requestStakeTransaction(uint64_t& baseStake,
     }
 
     // convenience log balance and stake
-    logger(INFO) << "Wallet balance: " << m_currency.formatAmount(res.balance);
+    logger(INFO) << "Available wallet balance: " << m_currency.formatAmount(res.balance);
     logger(INFO) << "Current stake: " << m_currency.formatAmount(req.stake);
 
     BinaryArray tx_blob;

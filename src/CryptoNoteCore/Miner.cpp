@@ -130,6 +130,8 @@ namespace CryptoNote
       return false;
     }
 
+    logger(INFO) << "Got block template. Difficulty for stake " << m_currency.formatAmount(m_stake_amount) << " is " << di;
+
     set_block_template(bl, di);
     return true;
   }
