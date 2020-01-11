@@ -143,12 +143,32 @@ void Core::getTransactions(const std::vector<Crypto::Hash>& txs_ids, std::list<T
   m_blockchain.getTransactions(txs_ids, txs, missed_txs, checkTxPool);
 }
 
+bool Core::getTransaction(const Crypto::Hash& id, Transaction& tx, bool checkTxPool) {
+  std::vector<Crypto::Hash> txs_ids;
+  std::list<Transaction> txs;
+  std::list<Crypto::Hash> missed_txs;
+
+  txs_ids.push_back(id);
+  m_blockchain.getTransactions(txs_ids, txs, missed_txs, checkTxPool);
+
+  if (missed_txs.empty() && !txs.empty() && txs.size() == 1) {
+    tx = txs.front();
+    return true;
+  }
+
+  return false;
+}
+
 bool Core::get_alternative_blocks(std::list<Block>& blocks) {
   return m_blockchain.getAlternativeBlocks(blocks);
 }
 
 size_t Core::getAlternativeBlocksCount() {
   return m_blockchain.getAlternativeBlocksCount();
+}
+
+bool Core::getblockEntry(uint32_t height, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp) {
+  return m_blockchain.getblockEntry(static_cast<size_t>(height), block_cumulative_size, difficulty, already_generated_coins, reward, transactions_count, timestamp);
 }
 
 std::time_t Core::getStartTime() const {
@@ -944,6 +964,14 @@ std::vector<Transaction> Core::getPoolTransactions() {
   return result;
 }
 
+bool Core::getPoolTransaction(const Crypto::Hash& tx_hash, Transaction& transaction) {
+  if (!m_mempool.have_tx(tx_hash)) {
+    return false;
+  }
+
+  return m_mempool.getTransaction(tx_hash, transaction);
+}
+
 std::list<CryptoNote::tx_memory_pool::TransactionDetails> Core::getMemoryPool() const {
   //std::list<CryptoNote::tx_memory_pool::TransactionDetails> txs;
   //m_mempool.getMemoryPool(txs);
@@ -997,7 +1025,7 @@ bool Core::update_miner_block_template() {
 
 bool Core::on_idle() {
   if (!m_starter_message_showed) {
-    logger(INFO) << ENDL << "**********************************************************************" << ENDL
+    std::cout << ENDL << "**********************************************************************" << ENDL
       << "The daemon will start synchronizing with the network. It may take up to several hours." << ENDL
       << ENDL
       << "You can set the level of process detailization* through \"set_log <level>\" command*, where <level> is between 0 (no details) and 4 (very verbose)." << ENDL
@@ -1005,7 +1033,7 @@ bool Core::on_idle() {
       << "Use \"help\" command to see the list of available commands." << ENDL
       << ENDL
       << "Note: in case you need to interrupt the process, use \"exit\" command. Otherwise, the current progress won't be saved." << ENDL
-      << "**********************************************************************";
+      << "**********************************************************************" << ENDL;
     m_starter_message_showed = true;
   }
 
@@ -1497,6 +1525,10 @@ bool Core::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
 
 bool Core::isOutputUnlocked(uint64_t unlock_time, uint32_t height) {
   return m_blockchain.is_output_unlocked(unlock_time, height);
+}
+
+bool Core::isInCheckpointZone(uint32_t height) const {
+  return m_checkpoints.is_in_checkpoint_zone(height);
 }
 
 bool Core::addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) {
