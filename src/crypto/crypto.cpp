@@ -102,7 +102,6 @@ namespace Crypto {
   }
 
   void crypto_ops::generate_hd_child_keys(const SecretKey &master_view, const SecretKey &master_sec, const uint32_t &key_num, PublicKey &child_pub, SecretKey &child_sec) {
-    lock_guard<mutex> lock(random_lock);
     ge_p3 point;
     uint8_t master_keys[64];
     memcpy(master_keys, &reinterpret_cast<const unsigned char &>(master_sec), sizeof(master_sec));
