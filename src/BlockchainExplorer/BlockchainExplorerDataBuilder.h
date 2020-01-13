@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2019, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -44,10 +45,10 @@ public:
 
 private:
   bool getMixin(const Transaction& transaction, uint64_t& mixin);
-  bool fillTxExtra(const std::vector<uint8_t>& rawExtra, TransactionExtraDetails& extraDetails);
+  bool fillTxExtra(const std::vector<uint8_t>& rawExtra, TransactionExtraDetails2& extraDetails);
   size_t median(std::vector<size_t>& v);
 
-  CryptoNote::ICore& core;
+  CryptoNote::ICore& m_core;
   CryptoNote::ICryptoNoteProtocolQuery& protocol;
 };
 }

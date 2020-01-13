@@ -1,5 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2018, Karbo developers
+// Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2019 The Cash2 developers
+// Copyright (c) 2018-2019 The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -46,6 +48,19 @@ struct Save {
 struct Reset {
   struct Request {
     std::string viewSecretKey;
+    uint32_t scanHeight = std::numeric_limits<uint32_t>::max();
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct Export {
+  struct Request {
+    std::string fileName;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
@@ -67,6 +82,20 @@ struct GetViewKey {
   };
 };
 
+struct GetMnemonicSeed {
+  struct Request {
+    std::string address;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string mnemonicSeed;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
 struct GetStatus {
   struct Request {
     void serialize(CryptoNote::ISerializer& serializer);
@@ -75,11 +104,11 @@ struct GetStatus {
   struct Response {
     uint32_t blockCount;
     uint32_t knownBlockCount;
-	uint32_t localDaemonBlockCount;
+    uint32_t localDaemonBlockCount;
     std::string lastBlockHash;
     uint32_t peerCount;
     uint64_t minimalFee;
-	std::string version;
+    std::string version;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
@@ -114,17 +143,46 @@ struct GetAddresses {
   };
 };
 
+struct GetAddressesCount {
+  struct Request {
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    size_t addresses_count;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
 struct CreateAddress {
   struct Request {
     std::string spendSecretKey;
     std::string spendPublicKey;
-	bool reset;
+    uint32_t scanHeight = std::numeric_limits<uint32_t>::max();
+    bool reset;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
 
   struct Response {
     std::string address;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct CreateAddressList {
+  struct Request {
+    std::vector<std::string> spendSecretKeys;
+    std::vector<uint32_t> scanHeights;
+    bool reset;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::vector<std::string> addresses;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
@@ -285,6 +343,52 @@ struct GetUnconfirmedTransactionHashes {
 
   struct Response {
     std::vector<std::string> transactionHashes;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct GetTransactionSecretKey {
+  struct Request {
+    std::string transactionHash;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string transactionSecretKey;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct GetTransactionProof {
+  struct Request {
+    std::string transactionHash;
+    std::string destinationAddress;
+    std::string transactionSecretKey;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string transactionProof;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct GetReserveProof {
+  struct Request {
+    std::string address;
+	std::string message;
+	uint64_t amount = 0;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string reserveProof;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };

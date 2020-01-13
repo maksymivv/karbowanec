@@ -34,6 +34,8 @@
 
 #include <Logging/LoggerRef.h>
 
+#define CURRENCY_PROTOCOL_MAX_OBJECT_REQUEST_COUNT 500
+
 namespace System {
   class Dispatcher;
 }
@@ -48,6 +50,18 @@ namespace CryptoNote
   {
   public:
 
+
+    struct parsed_block_entry
+    {
+      Block block;
+      std::vector<BinaryArray> txs;
+
+      void serialize(ISerializer& s) {
+        KV_MEMBER(block);
+        KV_MEMBER(txs);
+      }
+    };
+
     CryptoNoteProtocolHandler(const Currency& currency, System::Dispatcher& dispatcher, ICore& rcore, IP2pEndpoint* p_net_layout, Logging::ILogger& log);
 
     virtual bool addObserver(ICryptoNoteProtocolObserver* observer) override;
@@ -57,6 +71,7 @@ namespace CryptoNote
     // ICore& get_core() { return m_core; }
     virtual bool isSynchronized() const override { return m_synchronized; }
     void log_connections();
+    virtual bool getConnections(std::vector<CryptoNoteConnectionContext>& connections) const override;
 
     // Interface t_payload_net_handler, where t_payload_net_handler is template argument of nodetool::node_server
     void stop();
@@ -80,7 +95,9 @@ namespace CryptoNote
     int handle_response_get_objects(int command, NOTIFY_RESPONSE_GET_OBJECTS::request& arg, CryptoNoteConnectionContext& context);
     int handle_request_chain(int command, NOTIFY_REQUEST_CHAIN::request& arg, CryptoNoteConnectionContext& context);
     int handle_response_chain_entry(int command, NOTIFY_RESPONSE_CHAIN_ENTRY::request& arg, CryptoNoteConnectionContext& context);
-    int handleRequestTxPool(int command, NOTIFY_REQUEST_TX_POOL::request& arg, CryptoNoteConnectionContext& context);
+    int handle_request_tx_pool(int command, NOTIFY_REQUEST_TX_POOL::request& arg, CryptoNoteConnectionContext& context);
+    int handle_notify_new_lite_block(int command, NOTIFY_NEW_LITE_BLOCK::request &arg, CryptoNoteConnectionContext &context);
+    int handle_notify_missing_txs(int command, NOTIFY_MISSING_TXS::request &arg, CryptoNoteConnectionContext &context);
 
     //----------------- i_cryptonote_protocol ----------------------------------
     virtual void relay_block(NOTIFY_NEW_BLOCK::request& arg) override;
@@ -92,10 +109,11 @@ namespace CryptoNote
     bool on_connection_synchronized();
     void updateObservedHeight(uint32_t peerHeight, const CryptoNoteConnectionContext& context);
     void recalculateMaxObservedHeight(const CryptoNoteConnectionContext& context);
-    int processObjects(CryptoNoteConnectionContext& context, const std::vector<block_complete_entry>& blocks);
+    int processObjects(CryptoNoteConnectionContext& context, const std::vector<parsed_block_entry>& blocks);
     Logging::LoggerRef logger;
 
   private:
+    int doPushLiteBlock(NOTIFY_NEW_LITE_BLOCK::request block, CryptoNoteConnectionContext &context, std::vector<BinaryArray> missingTxs);
 
     System::Dispatcher& m_dispatcher;
     ICore& m_core;
@@ -105,6 +123,7 @@ namespace CryptoNote
     IP2pEndpoint* m_p2p;
     std::atomic<bool> m_synchronized;
     std::atomic<bool> m_stop;
+    std::recursive_mutex m_sync_lock;
 
     mutable std::mutex m_observedHeightMutex;
     uint32_t m_observedHeight;

@@ -39,7 +39,21 @@ public:
   virtual uint32_t getKnownBlockCount() const override { return 0; }
   virtual uint64_t getLastLocalBlockTimestamp() const override { return 0; }
   virtual uint32_t getNodeHeight() const override { return 0; }
-  virtual uint64_t getMinimalFee() const override{ return 0; }
+  virtual uint64_t getMinimalFee() const override { return 0; }
+  virtual uint64_t getNextDifficulty() const override { return 0; }
+  virtual uint64_t getNextReward() const override { return 0; }
+  virtual uint64_t getAlreadyGeneratedCoins() const override { return 0; }
+  virtual uint64_t getTransactionsCount() const { return 0; }
+  virtual uint64_t getTransactionsPoolSize() const { return 0; }
+  virtual uint64_t getAltBlocksCount() const { return 0; }
+  virtual uint64_t getOutConnectionsCount() const { return 0; }
+  virtual uint64_t getIncConnectionsCount() const { return 0; }
+  virtual uint64_t getRpcConnectionsCount() const { return 0;return 0; }
+  virtual uint64_t getWhitePeerlistSize() const { return 0; }
+  virtual uint64_t getGreyPeerlistSize() const { return 0; }
+  virtual std::string getNodeVersion() const { return ""; }
+
+  virtual void getFeeAddress() override { }
 
   virtual CryptoNote::BlockHeaderInfo getLastLocalBlockHeaderInfo() const override { return CryptoNote::BlockHeaderInfo(); }
 
@@ -74,6 +88,9 @@ public:
   virtual void getBlocks(uint64_t timestampBegin, uint64_t timestampEnd, uint32_t blocksNumberLimit, std::vector<CryptoNote::BlockDetails>& blocks, uint32_t& blocksNumberWithinTimestamps,
     const Callback& callback) override { }
 
+  virtual void getBlock(const uint32_t blockHeight, CryptoNote::BlockDetails &block,
+    const Callback& callback) override { }
+
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<CryptoNote::TransactionDetails>& transactions,
     const Callback& callback) override { }
 
@@ -86,7 +103,13 @@ public:
   virtual void getMultisignatureOutputByGlobalIndex(uint64_t amount, uint32_t gindex, CryptoNote::MultisignatureOutput& out,
     const Callback& callback) override { }
 
+  void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) { }
+
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override { }
+
+  virtual void getConnections(std::vector<CryptoNote::p2pConnection>& connections, const Callback& callback) override { }
+
+  virtual std::string feeAddress() const override { return std::string(); }
 
 };
 
