@@ -299,7 +299,7 @@ namespace CryptoNote {
 
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
-    std::recursive_mutex m_blockchain_lock; // TODO: add here reader/writer lock
+    mutable std::recursive_mutex m_blockchain_lock; // TODO: add here reader/writer lock
     cn_pow_hash_v2 m_pow_ctx;
 
     Tools::ObserverManager<IBlockchainStorageObserver> m_observerManager;
