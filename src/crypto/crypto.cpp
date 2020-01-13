@@ -81,25 +81,6 @@ namespace Crypto {
     ge_scalarmult_base(&point, reinterpret_cast<unsigned char*>(&sec));
     ge_p3_tobytes(reinterpret_cast<unsigned char*>(&pub), &point);
   }
- 
-  SecretKey crypto_ops::generate_m_keys(PublicKey &pub, SecretKey &sec, const SecretKey& recovery_key, bool recover) {
-    ge_p3 point;
-    SecretKey rng;
-    if (recover)
-    {
-      rng = recovery_key;
-    }
-    else
-    {
-      random_scalar(reinterpret_cast<EllipticCurveScalar&>(rng));
-    }
-    sec = rng;
-    sc_reduce32(reinterpret_cast<unsigned char*>(&sec)); // reduce in case second round of keys (sendkeys)
-    ge_scalarmult_base(&point, reinterpret_cast<unsigned char*>(&sec));
-    ge_p3_tobytes(reinterpret_cast<unsigned char*>(&pub), &point);
-
-    return rng;
-  }
 
   void crypto_ops::generate_hd_child_keys(const SecretKey &master_view, const SecretKey &master_sec, const uint32_t &key_num, PublicKey &child_pub, SecretKey &child_sec) {
     ge_p3 point;
