@@ -84,18 +84,18 @@ namespace Crypto {
 
   void crypto_ops::generate_hd_child_keys(const SecretKey &master_view, const SecretKey &master_sec, const uint32_t &key_num, PublicKey &child_pub, SecretKey &child_sec) {
     ge_p3 point;
-    uint8_t master_keys[64];
-    memcpy(master_keys, &reinterpret_cast<const unsigned char &>(master_sec), sizeof(master_sec));
-    memcpy(master_keys + sizeof(master_sec), &reinterpret_cast<const unsigned char &>(master_view), sizeof(master_view));
-
-    Hash chain_code = cn_fast_hash(master_keys, sizeof(master_keys));
-
-    uint8_t child_first[sizeof(master_keys) + sizeof(chain_code) + sizeof(key_num)];
-    memcpy(child_first, master_keys, sizeof(master_keys));
-    memcpy(child_first + sizeof(master_keys), reinterpret_cast<unsigned char*>(&chain_code), sizeof(chain_code));
-    memcpy(child_first + sizeof(master_keys) + sizeof(chain_code), &key_num, sizeof(key_num));
-
-    hash_to_scalar(reinterpret_cast<char *>(&child_first), sizeof(child_first), reinterpret_cast<EllipticCurveScalar&>(child_sec));
+    child_sec = master_sec;
+    std::vector<uint8_t> _key_num(8);
+    std::memcpy(_key_num.data(), &key_num, sizeof(key_num));
+    for (uint32_t i = 0; i < key_num; i++) {
+      std::vector<uint8_t> seed;
+      std::copy(std::begin(child_sec.data), std::end(child_sec.data), std::back_inserter(seed));
+      std::copy(std::begin(master_view.data), std::end(master_view.data), std::back_inserter(seed));
+      std::copy(_key_num.begin(), _key_num.end(), std::back_inserter(seed));
+    
+      hash_to_scalar(seed.data(), sizeof(seed), reinterpret_cast<EllipticCurveScalar&>(child_sec));
+    }
+    
     ge_scalarmult_base(&point, reinterpret_cast<unsigned char*>(&child_sec));
     ge_p3_tobytes(reinterpret_cast<unsigned char*>(&child_pub), &point);
   }
