@@ -437,7 +437,7 @@ std::error_code TransfersConsumer::createTransfers(
       assert(out.key == reinterpret_cast<const PublicKey&>(in_ephemeral.publicKey));
 
       std::unordered_set<Crypto::Hash>::iterator it = transactions_hash_seen.find(txHash);
-	  if (it == transactions_hash_seen.end()) {
+      if (it == transactions_hash_seen.end()) {
         std::unordered_set<Crypto::PublicKey>::iterator key_it = public_keys_seen.find(out.key);
         if (key_it != public_keys_seen.end()) {
           m_logger(ERROR, BRIGHT_RED) << "Failed to process transaction " << Common::podToHex(txHash) << ": duplicate output key is found!";
@@ -448,7 +448,7 @@ std::error_code TransfersConsumer::createTransfers(
           return std::error_code();
         }
         temp_keys.push_back(out.key);
-	  }
+      }
       info.amount = amount;
       info.outputKey = out.key;
 
