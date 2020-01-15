@@ -296,6 +296,7 @@ namespace CryptoNote {
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
     typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
+    typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<Crypto::Hash, uint64_t>>> locked_outputs_container; // unlock_time (height), Crypto::Hash - tx hash and amount
 
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
@@ -308,6 +309,7 @@ namespace CryptoNote {
     size_t m_current_block_cumul_sz_limit;
     blocks_ext_by_hash m_alternative_chains; // Crypto::Hash -> block_extended_info
     outputs_container m_outputs;
+    locked_outputs_container m_locked_outputs;
 
     std::string m_config_folder;
     Checkpoints m_checkpoints;
