@@ -142,6 +142,7 @@ public:
   const Block& genesisBlock() const { return m_genesisBlock; }
   const Crypto::Hash& genesisBlockHash() const { return m_genesisBlockHash; }
 
+  uint64_t calculateReward(uint64_t alreadyGeneratedCoins) const;
   bool getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins, uint64_t fee,
     uint64_t& reward, int64_t& emissionChange) const;
   size_t maxBlockCumulativeSize(uint64_t height) const;
@@ -172,7 +173,7 @@ public:
   difficulty_type nextDifficultyV4(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
 
-  uint64_t nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const;
+  uint64_t calculateStake(uint64_t& alreadyGeneratedCoins) const;
   uint64_t calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& actualStake) const;
   uint64_t calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& actualTerm) const;
   difficulty_type calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const;

@@ -292,7 +292,7 @@ void NodeRpcProxy::updateBlockchainStatus() {
     m_minimalFee.store(getInfoResp.min_fee, std::memory_order_relaxed);
     m_nodeHeight.store(getInfoResp.height, std::memory_order_relaxed);
     m_nextDifficulty.store(getInfoResp.difficulty, std::memory_order_relaxed);
-    m_nextStake.store(getInfoResp.next_stake, std::memory_order_relaxed);
+    m_nextStake.store(getInfoResp.base_stake, std::memory_order_relaxed);
     m_nextReward.store(getInfoResp.next_reward, std::memory_order_relaxed);
     m_transactionsCount.store(getInfoResp.transactions_count, std::memory_order_relaxed);
     m_transactionsPoolSize.store(getInfoResp.transactions_pool_size, std::memory_order_relaxed);
@@ -407,18 +407,9 @@ uint64_t NodeRpcProxy::getNextReward() const {
   return m_nextReward.load(std::memory_order_relaxed);
 }
 
-bool NodeRpcProxy::getStake(uint64_t& stake) {
-  stake = m_nextStake.load(std::memory_order_relaxed);
-
-  return true;
+uint64_t NodeRpcProxy::getBaseStake() const {
+  return m_nextStake.load(std::memory_order_relaxed);
 }
-
-bool NodeRpcProxy::getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) {
-  stake = m_nextStake.load(std::memory_order_relaxed);
-  blockReward = m_nextReward.load(std::memory_order_relaxed);
-
-  return true;
-};
 
 uint64_t NodeRpcProxy::getAlreadyGeneratedCoins() const {
   return m_alreadyGeneratedCoins.load(std::memory_order_relaxed);

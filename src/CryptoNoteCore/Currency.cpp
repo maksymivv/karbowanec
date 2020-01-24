@@ -154,26 +154,33 @@ namespace CryptoNote {
 		return m_upgradeHeightV5;
 	}
 
+  uint64_t Currency::calculateReward(uint64_t alreadyGeneratedCoins) const {
+    // assert(alreadyGeneratedCoins <= m_moneySupply);
+    assert(m_emissionSpeedFactor > 0 && m_emissionSpeedFactor <= 8 * sizeof(uint64_t));
+
+    uint64_t baseReward = (m_moneySupply - alreadyGeneratedCoins) >> m_emissionSpeedFactor;
+
+    // Tail emission
+    if (alreadyGeneratedCoins + CryptoNote::parameters::TAIL_EMISSION_REWARD >= m_moneySupply || baseReward < CryptoNote::parameters::TAIL_EMISSION_REWARD)
+    {
+      // flat rate tail emission reward,
+      // inflation slowly diminishing in relation to supply
+      //baseReward = CryptoNote::parameters::TAIL_EMISSION_REWARD;
+
+      // Friedman's k-percent rule,
+      // inflation 2% of total coins in circulation per year
+      const uint64_t blocksInOneYear = expectedNumberOfBlocksPerDay() * 365;
+      uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
+      baseReward = twoPercentOfEmission / blocksInOneYear;
+    }
+
+    return baseReward;
+  }
+
 	bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
 		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
-		// assert(alreadyGeneratedCoins <= m_moneySupply);
-		assert(m_emissionSpeedFactor > 0 && m_emissionSpeedFactor <= 8 * sizeof(uint64_t));
-
-		uint64_t baseReward = (m_moneySupply - alreadyGeneratedCoins) >> m_emissionSpeedFactor;
-
-		// Tail emission
-		if (alreadyGeneratedCoins + CryptoNote::parameters::TAIL_EMISSION_REWARD >= m_moneySupply || baseReward < CryptoNote::parameters::TAIL_EMISSION_REWARD)
-		{
-			// flat rate tail emission reward
-			//baseReward = CryptoNote::parameters::TAIL_EMISSION_REWARD;
-
-			// Friedman's k-percent rule
-			// inflation 2% of total coins in circulation
-			// estimated tail reward ~1.52 KRB
-			const uint64_t blocksInOneYear = expectedNumberOfBlocksPerDay() * 365;
-			uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
-			baseReward = twoPercentOfEmission / blocksInOneYear;
-		}
+		
+    uint64_t baseReward = calculateReward(alreadyGeneratedCoins);
 
 		size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
 		medianSize = std::max(medianSize, blockGrantedFullRewardZone);
@@ -446,11 +453,11 @@ namespace CryptoNote {
     return ret;
   }
 
-  uint64_t Currency::nextStake(uint64_t& reward, uint64_t fee, uint64_t& alreadyGeneratedCoins) const {
+  uint64_t Currency::calculateStake(uint64_t& alreadyGeneratedCoins) const {
     // calculate supply based stake
     uint64_t supplyStake = alreadyGeneratedCoins / CryptoNote::parameters::STAKE_BASE_TERM / CryptoNote::parameters::STAKE_EMISSION_FRACTION;
     
-    uint64_t baseReward = reward - fee; // exclude fees
+    uint64_t baseReward = calculateReward(alreadyGeneratedCoins);
 
     // caclulate profitable stake based on reward
     uint64_t interStake = CryptoNote::parameters::STAKE_INTEREST_FACTOR * baseReward * CryptoNote::parameters::EXPECTED_NUMBER_OF_BLOCKS_PER_DAY / CryptoNote::parameters::STAKE_BASE_TERM;

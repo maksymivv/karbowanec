@@ -69,6 +69,7 @@ public:
   virtual uint64_t getMinimalFee() const override;
   virtual uint64_t getNextDifficulty() const override;
   virtual uint64_t getNextReward() const override;
+  virtual uint64_t getBaseStake() const override;
   virtual uint64_t getAlreadyGeneratedCoins() const override;
   virtual uint32_t getNodeHeight() const override;
   virtual BlockHeaderInfo getLastLocalBlockHeaderInfo() const override;
@@ -103,9 +104,6 @@ public:
   virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) override;
 
   virtual std::string feeAddress() const override;
-
-  virtual bool getStake(uint64_t& stake) override;
-  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) override;
 
   unsigned int rpcTimeout() const { return m_rpcTimeout; }
   void rpcTimeout(unsigned int val) { m_rpcTimeout = val; }

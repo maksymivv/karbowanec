@@ -1230,7 +1230,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     minerReward = outputsAmount - inputsAmount; // the difference between inputs and outputs (of stake) is miner reward
 
     // calculate basic stake
-    baseStake = m_currency.nextStake(reward, fee, alreadyGeneratedCoins);
+    baseStake = m_currency.calculateStake(alreadyGeneratedCoins);
 
     // check that stake deposit terms are long enough for given stake deposit amount
     transactionStake = lockedAmount - minerReward;

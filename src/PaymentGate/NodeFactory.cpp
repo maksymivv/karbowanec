@@ -49,7 +49,7 @@ public:
   virtual uint64_t getAltBlocksCount() const { return 0; }
   virtual uint64_t getOutConnectionsCount() const { return 0; }
   virtual uint64_t getIncConnectionsCount() const { return 0; }
-  virtual uint64_t getRpcConnectionsCount() const { return 0;return 0; }
+  virtual uint64_t getRpcConnectionsCount() const { return 0; }
   virtual uint64_t getWhitePeerlistSize() const { return 0; }
   virtual uint64_t getGreyPeerlistSize() const { return 0; }
   virtual std::string getNodeVersion() const { return ""; }
@@ -112,9 +112,8 @@ public:
 
   virtual std::string feeAddress() const override { return std::string(); }
 
-  virtual bool getStake(uint64_t& stake) { return true; };
-  virtual bool getStake(const uint32_t height, uint64_t& stake) { return true; };
-  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) { return true; };
+  virtual uint64_t getBaseStake() const { return 0; };
+
   virtual bool prepareBlockTemplate(CryptoNote::Block& b, uint64_t& fee, const CryptoNote::AccountPublicAddress& adr, CryptoNote::difficulty_type& diffic, uint32_t& height, const CryptoNote::BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) { return true; };
 };
 

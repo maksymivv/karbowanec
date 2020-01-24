@@ -139,7 +139,6 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/getconnections", { jsonMethod<COMMAND_RPC_GET_CONNECTIONS>(&RpcServer::on_get_connections), true } },
   { "/getpeers", { jsonMethod<COMMAND_RPC_GET_PEER_LIST>(&RpcServer::on_get_peer_list), true } },
 
-
   // json rpc
   { "/json_rpc", { std::bind(&RpcServer::processJsonRpcRequest, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), true } }
 };
@@ -659,23 +658,29 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   uint64_t fee = 0;
   std::vector<size_t> blocksSizes;
   if (!m_core.getBackwardBlocksSizes(index, blocksSizes, parameters::CRYPTONOTE_REWARD_BLOCKS_WINDOW)) {
-    return false;
+    throw JsonRpc::JsonRpcError{
+     CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't getBackwardBlocksSizes" };
   }
   uint64_t sizeMedian = Common::medianValue(blocksSizes);
-  if (!m_core.getStake(res.block_major_version, fee, sizeMedian, res.already_generated_coins, 0, res.next_stake, res.next_reward)) {
+  uint64_t nextReward = 0;
+  int64_t emissionChange = 0;
+  if (!m_core.getBlockReward(res.block_major_version, sizeMedian, 0, res.already_generated_coins, 0, nextReward, emissionChange)) {
     throw JsonRpc::JsonRpcError{
-     CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get stake." };
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins for prev. block." };
   }
+  res.next_reward = nextReward;
+
+  res.base_stake = m_core.getBaseStake();
 
   // calculate stake stats (only when stake hardfork is active)
   uint64_t totalStake = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
     // on prev. height stakes are unlocked so we don't count them anymore
-    uint64_t prev_cum_stake = 0;
-    m_core.getCumulativeStake(index - 1, prev_cum_stake);
-    uint64_t last_cum_stake = 0;
-    m_core.getCumulativeStake(index, last_cum_stake);
-    totalStake = last_cum_stake - prev_cum_stake;
+    uint64_t prev_cumul_stake = 0;
+    m_core.getCumulativeStake(index - 1, prev_cumul_stake);
+    uint64_t last_cumul_stake = 0;
+    m_core.getCumulativeStake(index, last_cumul_stake);
+    totalStake = last_cumul_stake - prev_cumul_stake;
   }
   res.total_coins_locked = totalStake;
   res.status = CORE_RPC_STATUS_OK;

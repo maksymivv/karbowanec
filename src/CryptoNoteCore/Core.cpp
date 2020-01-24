@@ -498,51 +498,16 @@ bool Core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
   return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block);
 }
 
-bool Core::getStake(uint8_t blockMajorVersion,
-              uint64_t fee,
-              size_t& medianSize,
-              uint64_t& alreadyGeneratedCoins,
-              size_t currentBlockSize,
-              uint64_t& stake,
-              uint64_t& blockReward) {
-  int64_t emissionChange;
-  if (!getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
-    logger(ERROR) << "Error getting block reward for stake calculation";
-    return false;
-  }
-  stake = m_currency.nextStake(blockReward, fee, alreadyGeneratedCoins);
-
-  return true;
-}
-
-bool Core::getStake(const uint32_t height, uint64_t& stake) {
-  uint8_t blockMajorVersion = getBlockMajorVersionForHeight(height);
-  std::vector<size_t> blocksSizes;
-  if (!getBackwardBlocksSizes(height - 1, blocksSizes, parameters::CRYPTONOTE_REWARD_BLOCKS_WINDOW)) {
-    return false;
-  }
-  uint64_t sizeMedian = Common::medianValue(blocksSizes);
+bool Core::getBaseStake(const uint32_t height, uint64_t& stake) {
   uint64_t alreadyGeneratedCoins = m_blockchain.getCoinsInCirculation(height - 1);
-  uint64_t blockReward;
-  int64_t emissionChange;
-  if (!getBlockReward(blockMajorVersion, sizeMedian, 0, alreadyGeneratedCoins, 0, blockReward, emissionChange)) {
-    logger(ERROR) << "Error getting block reward for stake calculation";
-    return false;
-  }
-
-  stake = m_currency.nextStake(blockReward, 0, alreadyGeneratedCoins);
+  stake = m_currency.calculateStake(alreadyGeneratedCoins);
 
   return true;
 }
 
-bool Core::getStake(uint64_t& stake) {
-  uint8_t blockMajorVersion = getCurrentBlockMajorVersion();
-  size_t medianSize = m_blockchain.getCurrentCumulativeBlocksizeLimit() / 2;
+uint64_t Core::getBaseStake() {
   uint64_t alreadyGeneratedCoins = m_blockchain.getCoinsInCirculation();
-  size_t currentBlockSize = 0;
-  uint64_t blockReward;
-
-  return getStake(blockMajorVersion, 0, medianSize, alreadyGeneratedCoins, currentBlockSize, stake, blockReward);
+  return m_currency.calculateStake(alreadyGeneratedCoins);
 }
 
 bool Core::requestStakeTransaction(uint64_t& baseStake,
@@ -711,13 +676,14 @@ bool Core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddres
   }
 
   if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    // calculate stake
-    uint64_t baseStake = 0;
     uint64_t blockReward = 0;
-    if (!getStake(b.majorVersion, fee, median_size, already_generated_coins, txs_size, baseStake, blockReward)) {
-      logger(ERROR) << "Failed to calculate stake";
+    int64_t emissionChange = 0;
+    if (!getBlockReward(b.majorVersion, median_size, txs_size, already_generated_coins, fee, blockReward, emissionChange)) {
+      logger(ERROR) << "Error getting block reward, block size size too big";
       return false;
     }
+
+    uint64_t baseStake = m_currency.calculateStake(already_generated_coins);
 
     // adjust difficulty
     diffic = m_currency.calculateStakeDifficulty(diffic, baseStake, wantedStake);

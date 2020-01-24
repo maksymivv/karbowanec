@@ -142,6 +142,7 @@ public:
   virtual uint64_t getMinimalFee() const = 0;
   virtual uint64_t getNextDifficulty() const = 0;
   virtual uint64_t getNextReward() const = 0;
+  virtual uint64_t getBaseStake() const = 0;
   virtual uint64_t getAlreadyGeneratedCoins() const = 0;
   virtual uint64_t getLastLocalBlockTimestamp() const = 0;
   virtual uint32_t getNodeHeight() const = 0;
@@ -177,8 +178,6 @@ public:
   virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) = 0;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) = 0;
   virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) = 0;
-  virtual bool getStake(uint64_t& stake) = 0;
-  virtual bool getStake(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, uint64_t& alreadyGeneratedCoins, size_t currentBlockSize, uint64_t& stake, uint64_t& blockReward) = 0;
 };
 
 }
