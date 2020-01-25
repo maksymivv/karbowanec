@@ -74,6 +74,7 @@ public:
 
   virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
 
+  virtual uint64_t getActualStake(uint32_t height) = 0;
   virtual uint64_t getBaseStake() = 0;
   virtual bool getBaseStake(const uint32_t height, uint64_t& stake) = 0;
   virtual bool getCumulativeStake(const uint32_t height, uint64_t& cumulative_stake) = 0;

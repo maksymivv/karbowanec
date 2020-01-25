@@ -669,9 +669,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins for prev. block." };
   }
   res.next_reward = nextReward;
-
   res.base_stake = m_core.getBaseStake();
-
   // calculate stake stats (only when stake hardfork is active)
   uint64_t totalStake = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
@@ -1015,16 +1013,20 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     size_t blokBlobSize = getObjectBinarySize(blk);
     size_t minerTxBlobSize = getObjectBinarySize(blk.baseTransaction);
     difficulty_type blockDiff;
-    m_core.getBlockDifficulty(static_cast<uint32_t>(i), blockDiff);
-
+    m_core.getBlockDifficulty(i, blockDiff);
     block_short_response block_short;
     block_short.timestamp = blk.timestamp;
     block_short.height = i;
     block_short.hash = Common::podToHex(block_hash);
     block_short.cumulative_size = blokBlobSize + tx_cumulative_block_size - minerTxBlobSize;
     block_short.transactions_count = blk.transactionHashes.size() + 1;
-    block_short.difficulty = blockDiff;
+    block_short.base_difficulty = blockDiff;
     block_short.min_fee = m_core.getMinimalFeeForHeight(i);
+    uint64_t baseStake;
+    m_core.getBaseStake(i, baseStake);
+    block_short.base_stake = baseStake;
+    block_short.actual_stake = m_core.getActualStake(i);
+    block_short.actual_difficulty = m_core.currency().calculateStakeDifficulty(blockDiff, baseStake, block_short.actual_stake);
 
     res.blocks.push_back(block_short);
 

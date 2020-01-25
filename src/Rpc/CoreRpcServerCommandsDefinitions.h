@@ -593,10 +593,11 @@ struct block_short_response {
   std::string hash;
   uint64_t transactions_count;
   uint64_t cumulative_size;
-  difficulty_type difficulty;
+  difficulty_type base_difficulty;
+  difficulty_type actual_difficulty;
   uint64_t min_fee;
   uint64_t actual_stake;
-  uint64_t minimal_stake;
+  uint64_t base_stake;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(timestamp)
@@ -604,10 +605,11 @@ struct block_short_response {
     KV_MEMBER(hash)
     KV_MEMBER(cumulative_size)
     KV_MEMBER(transactions_count)
-    KV_MEMBER(difficulty)
+    KV_MEMBER(base_difficulty)
+    KV_MEMBER(actual_difficulty)
     KV_MEMBER(min_fee)
     KV_MEMBER(actual_stake)
-    KV_MEMBER(minimal_stake)
+    KV_MEMBER(base_stake)
   }
 };
 

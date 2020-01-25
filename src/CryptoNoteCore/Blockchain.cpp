@@ -1739,6 +1739,13 @@ uint64_t Blockchain::blockCumulativeStake(size_t i) {
   return m_blocks[i].bl.majorVersion < BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks[i].cumulative_stake;
 }
 
+uint64_t Blockchain::blockActualStake(size_t i) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::blockCumulativeStake()"; return false; }
+
+  return (m_blocks[i].bl.majorVersion < BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks[i].cumulative_stake) - (m_blocks[i - 1].bl.majorVersion < BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks[i - 1].cumulative_stake);
+}
+
 bool Blockchain::getblockEntry(size_t i, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::get_block_entry()"; return false; }

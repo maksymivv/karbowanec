@@ -498,6 +498,10 @@ bool Core::add_new_tx(const Transaction& tx, const Crypto::Hash& tx_hash, size_t
   return m_mempool.add_tx(tx, tx_hash, blob_size, tvc, keeped_by_block);
 }
 
+uint64_t Core::getActualStake(uint32_t height) {
+  return m_blockchain.blockActualStake(height);
+}
+
 bool Core::getBaseStake(const uint32_t height, uint64_t& stake) {
   uint64_t alreadyGeneratedCoins = m_blockchain.getCoinsInCirculation(height - 1);
   stake = m_currency.calculateStake(alreadyGeneratedCoins);

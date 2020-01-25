@@ -71,6 +71,7 @@ namespace CryptoNote {
      bool set_genesis_block(const Block& b);
      bool deinit();
 
+     virtual uint64_t getActualStake(uint32_t height) override;
      virtual uint64_t getBaseStake() override;
      virtual bool getBaseStake(const uint32_t height, uint64_t& stake) override;
      virtual bool getCumulativeStake(const uint32_t height, uint64_t& cumulative_stake) override;
