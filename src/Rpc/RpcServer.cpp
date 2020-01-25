@@ -1022,11 +1022,17 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     block_short.transactions_count = blk.transactionHashes.size() + 1;
     block_short.base_difficulty = blockDiff;
     block_short.min_fee = m_core.getMinimalFeeForHeight(i);
-    uint64_t baseStake;
-    m_core.getBaseStake(i, baseStake);
+    uint64_t baseStake = 0;
+    uint64_t actualtake = 0;
+    difficulty_type actualDiff = blockDiff;
+    if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+      m_core.getBaseStake(i, baseStake);
+      actualtake = m_core.getActualStake(i);
+      actualDiff = m_core.currency().calculateStakeDifficulty(blockDiff, baseStake, block_short.actual_stake);
+    }
     block_short.base_stake = baseStake;
-    block_short.actual_stake = m_core.getActualStake(i);
-    block_short.actual_difficulty = m_core.currency().calculateStakeDifficulty(blockDiff, baseStake, block_short.actual_stake);
+    block_short.actual_stake = actualtake;
+    block_short.actual_difficulty = actualDiff;
 
     res.blocks.push_back(block_short);
 
