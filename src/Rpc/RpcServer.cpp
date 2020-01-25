@@ -1028,7 +1028,7 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     if (blk.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
       m_core.getBaseStake(i, baseStake);
       actualtake = m_core.getActualStake(i);
-      actualDiff = m_core.currency().calculateStakeDifficulty(blockDiff, baseStake, block_short.actual_stake);
+      actualDiff = m_core.currency().calculateStakeDifficulty(blockDiff, baseStake, actualtake);
     }
     block_short.base_stake = baseStake;
     block_short.actual_stake = actualtake;
