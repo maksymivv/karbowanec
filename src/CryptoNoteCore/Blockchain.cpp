@@ -2398,7 +2398,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   block.already_generated_coins = already_generated_coins + emissionChange;
   if (m_blocks.size() > 0) {
     block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
-    block.cumulative_stake += m_blocks.back().cumulative_stake;
+    block.cumulative_stake += m_blocks.back().bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks.back().cumulative_stake;
   }
 
   pushBlock(block);
