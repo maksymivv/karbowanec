@@ -671,16 +671,11 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.next_reward = nextReward;
   res.base_stake = m_core.getBaseStake();
   // calculate stake stats (only when stake hardfork is active)
-  uint64_t totalStake = 0;
+  uint64_t totalLocked = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    // on prev. height stakes are unlocked so we don't count them anymore
-    uint64_t prev_cumul_stake = 0;
-    m_core.getCumulativeStake(index - 1, prev_cumul_stake);
-    uint64_t last_cumul_stake = 0;
-    m_core.getCumulativeStake(index, last_cumul_stake);
-    totalStake = last_cumul_stake - prev_cumul_stake;
+    
   }
-  res.total_coins_locked = totalStake;
+  res.total_coins_locked = totalLocked;
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }
