@@ -605,14 +605,12 @@ void Blockchain::rebuildCache() {
       }
     }
 
+    // store locked anount once as one sum, not individual outputs (excluding reward) to reduce space
+    // TODO: consider including reward
     if (block.bl.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-      for (uint64_t i = 0; i < block.bl.baseTransaction.outputs.size(); ++i) {
-        TransactionOutput o = block.bl.baseTransaction.outputs[i];
-        uint64_t u = block.bl.baseTransaction.outputUnlockTimes[i];
-        if (u != 0) {
-          m_locked_amounts[u].push_back(std::make_pair<>(blockHash, o.amount));
-        }
-      }
+      uint64_t block_stake = block.cumulative_stake - (m_blocks[b - 1].bl.majorVersion < BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks[b - 1].cumulative_stake);
+      uint64_t u = block.bl.baseTransaction.unlockTime; // it's same as individual unlock times for each stake output, so can be used here
+      m_locked_amounts[u].push_back(std::make_pair<>(blockHash, block_stake));
     }
   }
 
@@ -1264,6 +1262,14 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     if (std::adjacent_find(unlockTimes.begin(), unlockTimes.end(), std::not_equal_to<>()) != unlockTimes.end()) {
       logger(ERROR, BRIGHT_RED) << "Unlock times mismatch in coibase stake transaction";
       return false;
+    }
+
+    // make sure all unlockTime is equal to common stake unlock times
+    for (const auto& u : unlockTimes) {
+      if (u != b.baseTransaction.unlockTime) {
+        logger(ERROR, BRIGHT_RED) << "Wrong unlockTime in coibase stake transaction";
+        return false;
+      }
     }
 
     // check that deposit amount + reward is enough for given deposit terms
@@ -2420,14 +2426,10 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     block.cumulative_stake += m_blocks.back().bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks.back().cumulative_stake;
   }
 
-  // push miner tx to locked stake amounts index
+  // push locked stake to index
   if (blockData.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    for (uint64_t i = 0; i < blockData.baseTransaction.outputs.size(); ++i) {
-      TransactionOutput o = blockData.baseTransaction.outputs[i];
-      uint64_t u = blockData.baseTransaction.outputUnlockTimes[i];
-      if (u != 0)
-        m_locked_amounts[u].push_back(std::make_pair<>(blockHash, o.amount));
-    }
+    uint64_t u = blockData.baseTransaction.unlockTime; // it's same as individual unlock times for each stake output, so can be used here
+    m_locked_amounts[u].push_back(std::make_pair<>(blockHash, blockStake));
   }
 
   pushBlock(block);
