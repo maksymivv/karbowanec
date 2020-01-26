@@ -221,6 +221,9 @@ public:
     logger(INFO) << operation << "multi-signature outputs...";
     s(m_bs.m_multisignatureOutputs, "multisig_outputs");
 
+    logger(INFO) << operation << "locked outputs...";
+    s(m_bs.m_locked_outputs, "locked_outputs");
+
     auto dur = std::chrono::steady_clock::now() - start;
 
     logger(INFO) << "Serialization time: " << std::chrono::duration_cast<std::chrono::milliseconds>(dur).count() << "ms";
@@ -565,6 +568,7 @@ void Blockchain::rebuildCache() {
   m_transactionMap.clear();
   spentKeyImages.clear();
   m_outputs.clear();
+  m_locked_outputs.clear();
   m_multisignatureOutputs.clear();
   for (uint32_t b = 0; b < m_blocks.size(); ++b) {
     if (b % 1000 == 0) {
@@ -598,6 +602,8 @@ void Blockchain::rebuildCache() {
           MultisignatureOutputUsage usage = { transactionIndex, o, false };
           m_multisignatureOutputs[out.amount].push_back(usage);
         }
+        uint64_t u = transaction.tx.outputUnlockTimes[o];
+        m_locked_outputs[u].push_back(std::make_pair(transactionHash, out.amount));
       }
     }
   }
@@ -637,6 +643,7 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
   spentKeyImages.clear();
   m_alternative_chains.clear();
   m_outputs.clear();
+  m_locked_outputs.clear();
 
   m_paymentIdIndex.clear();
   m_timestampIndex.clear();
@@ -2519,6 +2526,8 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       MultisignatureOutputUsage outputUsage = { transactionIndex, output, false };
       amountOutputs.push_back(outputUsage);
     }
+    uint64_t u = transaction.tx.outputUnlockTimes[output];
+    m_locked_outputs[u].push_back(std::make_pair(transactionHash, transaction.tx.outputs[output].amount));
   }
 
   m_paymentIdIndex.add(transaction.tx);
@@ -2596,6 +2605,25 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
       if (amountOutputs->second.empty()) {
         m_multisignatureOutputs.erase(amountOutputs);
       }
+    }
+
+    auto lockedOutputs = m_locked_outputs.find(transaction.outputUnlockTimes[outputIndex]);
+    if (lockedOutputs == m_locked_outputs.end()) {
+      logger(ERROR, BRIGHT_RED) <<
+        "Blockchain consistency broken - cannot find specific unlock time in locked outputs map.";
+      continue;
+    }
+
+    if (lockedOutputs->second.empty()) {
+      logger(ERROR, BRIGHT_RED) <<
+        "Blockchain consistency broken - locked output array for specific unlock time is empty.";
+      continue;
+    }
+
+    int i = 0;
+    for (auto& it = lockedOutputs->second.begin(); it != lockedOutputs->second.end(); ++it, ++i) {
+      if (lockedOutputs->second[i].first == transactionHash)
+          lockedOutputs->second.erase(it);
     }
   }
 
