@@ -63,7 +63,7 @@ bool operator<(const Crypto::KeyImage& keyImage1, const Crypto::KeyImage& keyIma
 }
 }
 
-#define CURRENT_BLOCKCACHE_STORAGE_ARCHIVE_VER 2
+#define CURRENT_BLOCKCACHE_STORAGE_ARCHIVE_VER 3
 #define CURRENT_BLOCKCHAININDICES_STORAGE_ARCHIVE_VER 2
 
 namespace CryptoNote {
@@ -221,9 +221,9 @@ public:
     logger(INFO) << operation << "multi-signature outputs...";
     s(m_bs.m_multisignatureOutputs, "multisig_outputs");
 
-    logger(INFO) << operation << "locked outputs...";
-    s(m_bs.m_locked_outputs, "locked_outputs");
-
+    //logger(INFO) << operation << "locked stake amounts...";
+    s(m_bs.m_locked_amounts, "locked_amounts");
+    
     auto dur = std::chrono::steady_clock::now() - start;
 
     logger(INFO) << "Serialization time: " << std::chrono::duration_cast<std::chrono::milliseconds>(dur).count() << "ms";
@@ -568,7 +568,7 @@ void Blockchain::rebuildCache() {
   m_transactionMap.clear();
   spentKeyImages.clear();
   m_outputs.clear();
-  m_locked_outputs.clear();
+  m_locked_amounts.clear();
   m_multisignatureOutputs.clear();
   for (uint32_t b = 0; b < m_blocks.size(); ++b) {
     if (b % 1000 == 0) {
@@ -602,8 +602,16 @@ void Blockchain::rebuildCache() {
           MultisignatureOutputUsage usage = { transactionIndex, o, false };
           m_multisignatureOutputs[out.amount].push_back(usage);
         }
-        uint64_t u = transaction.tx.outputUnlockTimes[o];
-        m_locked_outputs[u].push_back(std::make_pair(transactionHash, out.amount));
+      }
+    }
+
+    if (block.bl.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+      for (uint64_t i = 0; i < block.bl.baseTransaction.outputs.size(); ++i) {
+        TransactionOutput o = block.bl.baseTransaction.outputs[i];
+        uint64_t u = block.bl.baseTransaction.outputUnlockTimes[i];
+        if (u != 0) {
+          m_locked_amounts[u].push_back(std::make_pair<>(blockHash, o.amount));
+        }
       }
     }
   }
@@ -643,7 +651,7 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
   spentKeyImages.clear();
   m_alternative_chains.clear();
   m_outputs.clear();
-  m_locked_outputs.clear();
+  m_locked_amounts.clear();
 
   m_paymentIdIndex.clear();
   m_timestampIndex.clear();
@@ -2373,6 +2381,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
     bvc.m_verification_failed = true;
     popTransactions(block, minerTransactionHash);
+
     return false;
   }
 
@@ -2385,6 +2394,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
       logger(ERROR, BRIGHT_RED) <<
         "CHECKPOINT VALIDATION FAILED";
       bvc.m_verification_failed = true;
+      popTransactions(block, minerTransactionHash);
       return false;
     }
   }
@@ -2392,7 +2402,9 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     if (!m_currency.checkProofOfWork(m_pow_ctx, blockData, adjDifficulty, proof_of_work)) {
       logger(INFO, BRIGHT_WHITE) <<
         "Block " << blockHash << ", has too weak proof of work: " << proof_of_work << ", expected difficulty: " << adjDifficulty;
+
       bvc.m_verification_failed = true;
+      popTransactions(block, minerTransactionHash);
       return false;
     }
   }
@@ -2406,6 +2418,16 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   if (m_blocks.size() > 0) {
     block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
     block.cumulative_stake += m_blocks.back().bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks.back().cumulative_stake;
+  }
+
+  // push miner tx to locked stake amounts index
+  if (blockData.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    for (uint64_t i = 0; i < blockData.baseTransaction.outputs.size(); ++i) {
+      TransactionOutput o = blockData.baseTransaction.outputs[i];
+      uint64_t u = blockData.baseTransaction.outputUnlockTimes[i];
+      if (u != 0)
+        m_locked_amounts[u].push_back(std::make_pair<>(blockHash, o.amount));
+    }
   }
 
   pushBlock(block);
@@ -2526,8 +2548,6 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       MultisignatureOutputUsage outputUsage = { transactionIndex, output, false };
       amountOutputs.push_back(outputUsage);
     }
-    uint64_t u = transaction.tx.outputUnlockTimes[output];
-    m_locked_outputs[u].push_back(std::make_pair(transactionHash, transaction.tx.outputs[output].amount));
   }
 
   m_paymentIdIndex.add(transaction.tx);
@@ -2605,25 +2625,6 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
       if (amountOutputs->second.empty()) {
         m_multisignatureOutputs.erase(amountOutputs);
       }
-    }
-
-    auto lockedOutputs = m_locked_outputs.find(transaction.outputUnlockTimes[outputIndex]);
-    if (lockedOutputs == m_locked_outputs.end()) {
-      logger(ERROR, BRIGHT_RED) <<
-        "Blockchain consistency broken - cannot find specific unlock time in locked outputs map.";
-      continue;
-    }
-
-    if (lockedOutputs->second.empty()) {
-      logger(ERROR, BRIGHT_RED) <<
-        "Blockchain consistency broken - locked output array for specific unlock time is empty.";
-      continue;
-    }
-
-    int i = 0;
-    for (auto& it = lockedOutputs->second.begin(); it != lockedOutputs->second.end(); ++it, ++i) {
-      if (lockedOutputs->second[i].first == transactionHash)
-          lockedOutputs->second.erase(it);
     }
   }
 
@@ -2765,6 +2766,21 @@ void Blockchain::removeLastBlock() {
   Crypto::Hash blockHash = getBlockIdByHeight(m_blocks.back().height);
   m_timestampIndex.remove(m_blocks.back().bl.timestamp, blockHash);
   m_generatedTransactionsIndex.remove(m_blocks.back().bl);
+
+  // remove this block's locked amounts
+  for (const auto& u : m_blocks.back().bl.baseTransaction.outputUnlockTimes) {
+    if (u != 0) {
+      auto lockedOutputs = m_locked_amounts.find(u);
+      if (!lockedOutputs->second.empty()) {
+        int i = 0;
+        for (auto& it = lockedOutputs->second.begin(); it != lockedOutputs->second.end(); ++it, ++i) {
+          if (lockedOutputs->second[i].first == blockHash) {
+            lockedOutputs->second.erase(it);
+          }
+        }
+      }
+    }
+  }
 
   m_blocks.pop_back();
   m_blockIndex.pop();
@@ -2944,6 +2960,19 @@ bool Blockchain::getBlockIdsByTimestamp(uint64_t timestampBegin, uint64_t timest
 bool Blockchain::getTransactionIdsByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   return m_paymentIdIndex.find(paymentId, transactionHashes);
+}
+
+uint64_t Blockchain::getLockedAmount(const uint32_t start_height) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  uint64_t total_amount_locked = 0;
+  for (auto const& it : m_locked_amounts) {
+    if (it.first > start_height) {
+      for (auto const& a : it.second) {
+        total_amount_locked += a.second;
+      }
+    }
+  }
+  return total_amount_locked;
 }
 
 bool Blockchain::loadTransactions(const Block& block, std::vector<Transaction>& transactions) {

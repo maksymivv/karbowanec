@@ -75,6 +75,7 @@ namespace CryptoNote {
      virtual uint64_t getBaseStake() override;
      virtual bool getBaseStake(const uint32_t height, uint64_t& stake) override;
      virtual bool getCumulativeStake(const uint32_t height, uint64_t& cumulative_stake) override;
+     virtual uint64_t getLockedAmount(const uint32_t start_height) override;
 
      // ICore
      virtual size_t addChain(const std::vector<const IBlock*>& chain) override;

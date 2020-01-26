@@ -78,6 +78,7 @@ public:
   virtual uint64_t getBaseStake() = 0;
   virtual bool getBaseStake(const uint32_t height, uint64_t& stake) = 0;
   virtual bool getCumulativeStake(const uint32_t height, uint64_t& cumulative_stake) = 0;
+  virtual uint64_t getLockedAmount(const uint32_t start_heigh) = 0;
 
   virtual bool isOutputUnlocked(uint64_t unlock_time, uint32_t height) = 0;
   virtual bool handle_block_found(Block& b) = 0;

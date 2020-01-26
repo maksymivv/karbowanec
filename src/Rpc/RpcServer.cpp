@@ -673,7 +673,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   // calculate stake stats (only when stake hardfork is active)
   uint64_t totalLocked = 0;
   if (res.block_major_version >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    
+    totalLocked = m_core.getLockedAmount(index);
   }
   res.total_coins_locked = totalLocked;
   res.status = CORE_RPC_STATUS_OK;

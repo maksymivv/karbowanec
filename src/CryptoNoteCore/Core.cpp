@@ -1235,6 +1235,10 @@ bool Core::getCumulativeStake(uint32_t height, uint64_t& cumulative_stake) {
   return true;
 }
 
+uint64_t Core::getLockedAmount(const uint32_t start_height) {
+  return m_blockchain.getLockedAmount(start_height);
+}
+
 bool Core::getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) {
   return m_blockchain.getBlockContainingTransaction(txId, blockId, blockHeight);
 }
