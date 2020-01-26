@@ -1028,6 +1028,7 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     block_short.base_stake = baseStake;
     block_short.actual_stake = actualtake;
     block_short.actual_difficulty = actualDiff;
+    block_short.unlock_time = blk.baseTransaction.unlockTime;
 
     res.blocks.push_back(block_short);
 

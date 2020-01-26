@@ -598,6 +598,7 @@ struct block_short_response {
   uint64_t min_fee;
   uint64_t actual_stake;
   uint64_t base_stake;
+  uint64_t unlock_time;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(timestamp)
@@ -610,6 +611,7 @@ struct block_short_response {
     KV_MEMBER(min_fee)
     KV_MEMBER(actual_stake)
     KV_MEMBER(base_stake)
+    KV_MEMBER(unlock_time)
   }
 };
 
