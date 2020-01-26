@@ -96,6 +96,7 @@ public:
   virtual void getTransactions(const std::vector<Crypto::Hash>& transactionHashes, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<TransactionDetails>& transactions, const Callback& callback) override;
   virtual void getPoolTransactions(uint64_t timestampBegin, uint64_t timestampEnd, uint32_t transactionsNumberLimit, std::vector<TransactionDetails>& transactions, uint64_t& transactionsNumberWithinTimestamps, const Callback& callback) override;
+  virtual void getBlockReward(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange, const Callback& callback) override;
   virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) override;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override;
   virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) override;
@@ -152,6 +153,9 @@ private:
 
   void getBlockTimestampAsync(uint32_t height, uint64_t& timestamp, const Callback& callback);
   std::error_code doGetBlockTimestampAsync(uint32_t height, uint64_t& timestamp);
+
+  void getBlockRewardAsync(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange, const Callback& callback);
+  std::error_code InProcessNode::doGetBlockRewardAsync(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange);
 
   void isSynchronizedAsync(bool& syncStatus, const Callback& callback);
 

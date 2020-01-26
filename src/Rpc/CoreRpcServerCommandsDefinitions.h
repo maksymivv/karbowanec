@@ -1240,4 +1240,34 @@ struct COMMAND_RPC_GET_STATS_BY_HEIGHTS_RANGE {
   };
 };
 
+struct COMMAND_RPC_GET_BLOCK_REWARD {
+  struct request {
+    uint8_t block_major_version;
+    uint64_t fee = 0;
+    size_t median_size;
+    size_t block_size = 0;
+    uint64_t already_generated_coins;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(block_major_version)
+      KV_MEMBER(fee)
+      KV_MEMBER(median_size)
+      KV_MEMBER(block_size)
+      KV_MEMBER(already_generated_coins)
+    }
+  };
+
+  struct response {
+    uint64_t reward;
+    int64_t emission_change;
+    std::string status;
+
+    void serialize(ISerializer &s) {
+      KV_MEMBER(reward)
+      KV_MEMBER(emission_change)
+      KV_MEMBER(status)
+    }
+  };
+};
+
 }

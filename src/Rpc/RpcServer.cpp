@@ -193,6 +193,7 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "getblocktemplate", { makeMemberMethod(&RpcServer::on_getblocktemplate), true } },
       { "getblockheaderbyhash", { makeMemberMethod(&RpcServer::on_get_block_header_by_hash), true } },
       { "getblockheaderbyheight", { makeMemberMethod(&RpcServer::on_get_block_header_by_height), true } },
+      { "getblockreward", { makeMemberMethod(&RpcServer::on_get_block_reward), true } },
       { "getblocktimestamp", { makeMemberMethod(&RpcServer::on_get_block_timestamp_by_height), true } },
       { "getblockbyheight", { makeMemberMethod(&RpcServer::on_get_block_details_by_height), true } },
       { "getblockbyhash", { makeMemberMethod(&RpcServer::on_get_block_details_by_hash), true } },
@@ -1332,6 +1333,20 @@ bool RpcServer::on_get_block_header_by_height(const COMMAND_RPC_GET_BLOCK_HEADER
   bool is_orphaned = block_hash != tmp_hash;
   fill_block_header_response(blk, is_orphaned, req.height, block_hash, res.block_header);
   res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::on_get_block_reward(const COMMAND_RPC_GET_BLOCK_REWARD::request& req, COMMAND_RPC_GET_BLOCK_REWARD::response& res) {
+  uint64_t nextReward = 0;
+  int64_t emissionChange = 0;
+  if (!m_core.getBlockReward(req.block_major_version, req.median_size, req.block_size, req.already_generated_coins, req.fee, nextReward, emissionChange)) {
+    throw JsonRpc::JsonRpcError{
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins for prev. block." };
+  }
+  res.reward = nextReward;
+  res.emission_change = emissionChange;
+  res.status = CORE_RPC_STATUS_OK;
+
   return true;
 }
 

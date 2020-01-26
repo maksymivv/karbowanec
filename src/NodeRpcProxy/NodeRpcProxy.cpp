@@ -602,6 +602,35 @@ std::error_code NodeRpcProxy::doGetBlockTimestamp(uint32_t height, uint64_t& tim
   std::error_code ec = jsonRpcCommand("getblocktimestamp", req, rsp);
 
   timestamp = rsp.timestamp;
+
+  return ec;
+}
+
+void NodeRpcProxy::getBlockReward(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    callback(make_error_code(error::NOT_INITIALIZED));
+    return;
+  }
+
+  scheduleRequest(std::bind(&NodeRpcProxy::doGetBlockReward, this, blockMajorVersion, fee, medianSize, currentBlockSize, alreadyGeneratedCoins, std::ref(blockReward), std::ref(emissionChange)), callback);
+}
+
+std::error_code NodeRpcProxy::doGetBlockReward(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange) {
+  COMMAND_RPC_GET_BLOCK_REWARD::request req = AUTO_VAL_INIT(req);
+  COMMAND_RPC_GET_BLOCK_REWARD::response rsp = AUTO_VAL_INIT(rsp);
+
+  req.already_generated_coins = alreadyGeneratedCoins;
+  req.block_major_version = blockMajorVersion;
+  req.block_size = currentBlockSize;
+  req.fee = fee;
+  req.median_size = medianSize;
+  
+  std::error_code ec = jsonRpcCommand("getblockreward", req, rsp);
+
+  blockReward = rsp.reward;
+  emissionChange = rsp.emission_change;
+
   return ec;
 }
 

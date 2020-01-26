@@ -39,7 +39,7 @@ using namespace Common;
 namespace CryptoNote {
 
 namespace {
-  uint64_t getBlockReward(const Block& block) {
+  uint64_t get_block_reward(const Block& block) {
     uint64_t reward = 0;
     for (const TransactionOutput& out : block.baseTransaction.outputs) {
       reward += out.amount;
@@ -450,7 +450,7 @@ uint64_t InProcessNode::getNextDifficulty() const {
   return core.getNextBlockDifficulty();
 }
 
-uint64_t InProcessNode::getNextReward() const {
+uint64_t InProcessNode::getNextReward() const { // base reward, without fees and penalty
   std::unique_lock<std::mutex> lock(mutex);
   if (state != INITIALIZED) {
     throw std::system_error(make_error_code(CryptoNote::error::NOT_INITIALIZED));
@@ -602,7 +602,7 @@ void InProcessNode::updateLastLocalBlockHeaderInfo() {
   lastLocalBlockHeaderInfo.isAlternative = false;
   lastLocalBlockHeaderInfo.depth = 0;
   lastLocalBlockHeaderInfo.difficulty = difficulty;
-  lastLocalBlockHeaderInfo.reward = getBlockReward(block);
+  lastLocalBlockHeaderInfo.reward = get_block_reward(block);
 }
 
 void InProcessNode::resetLastLocalBlockHeaderInfo() {
@@ -764,6 +764,32 @@ void InProcessNode::getBlockTimestampAsync(uint32_t height, uint64_t& timestamp,
 
 std::error_code InProcessNode::doGetBlockTimestampAsync(uint32_t height, uint64_t& timestamp) {
   if (!core.getBlockTimestamp(height, timestamp)) {
+    return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
+  }
+
+  return std::error_code();
+}
+
+void InProcessNode::getBlockReward(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+
+  ioService.post([this, blockMajorVersion, fee, &medianSize, currentBlockSize, alreadyGeneratedCoins, &blockReward, &emissionChange, callback]() mutable {
+    this->getBlockRewardAsync(blockMajorVersion, fee, medianSize, currentBlockSize, alreadyGeneratedCoins, blockReward, emissionChange, callback);
+  });
+};
+
+void InProcessNode::getBlockRewardAsync(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange, const Callback& callback) {
+  std::error_code ec = doGetBlockRewardAsync(blockMajorVersion, fee, medianSize, currentBlockSize, alreadyGeneratedCoins, blockReward, emissionChange);
+  callback(ec);
+}
+
+std::error_code InProcessNode::doGetBlockRewardAsync(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange) {
+  if (!core.getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
     return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
   }
 
