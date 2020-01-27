@@ -474,7 +474,7 @@ namespace CryptoNote {
 
   uint64_t Currency::calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& actualStake) const {
     // T = Sb / S * Tb
-    return static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(actualStake) * static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM));
+    return std::max<uint64_t>(static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(actualStake) * static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM)), CryptoNote::parameters::STAKE_BASE_TERM);
   }
 
   uint64_t Currency::calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& actualTerm) const {
