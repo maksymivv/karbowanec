@@ -2391,7 +2391,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     return false;
   }
 
-  difficulty_type adjDifficulty = m_currency.calculateStakeDifficulty(currentDifficulty, baseStake, blockStake);
+  difficulty_type adjDifficulty = block.bl.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? currentDifficulty : m_currency.calculateStakeDifficulty(currentDifficulty, baseStake, blockStake);
 
   auto longhashTimeStart = std::chrono::steady_clock::now();
   Crypto::Hash proof_of_work = NULL_HASH;
