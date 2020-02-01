@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2019, Karbo developers
+// Copyright (c) 2016-2020, Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -22,6 +22,10 @@
 
 #include <CryptoTypes.h>
 #include "generic-ops.h"
+#include <boost/align/aligned_alloc.hpp>
+
+/* Standard Cryptonight */
+#define CN_PAGE_SIZE                    2097152
 
 namespace Crypto {
 
@@ -42,6 +46,33 @@ namespace Crypto {
     cn_fast_hash(data, length, reinterpret_cast<char *>(&h));
     return h;
   }
+
+  class cn_context {
+  public:
+
+    cn_context()
+    {
+        long_state = (uint8_t*)boost::alignment::aligned_alloc(4096, CN_PAGE_SIZE);
+        hash_state = (uint8_t*)boost::alignment::aligned_alloc(4096, 4096);
+    }
+
+    ~cn_context()
+    {
+        if(long_state != nullptr)
+            boost::alignment::aligned_free(long_state);
+        if(hash_state != nullptr)
+            boost::alignment::aligned_free(hash_state);
+    }
+
+    cn_context(const cn_context &) = delete;
+    void operator=(const cn_context &) = delete;
+
+     uint8_t* long_state = nullptr;
+     uint8_t* hash_state = nullptr;
+  };
+
+  void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash);
+  void cn_slow_hash_k(cn_context &context, const void *data, size_t length, Hash &hash);
 
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
     tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));

@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -120,8 +120,8 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   Crypto::Hash tmpHash = m_core.getBlockIdByHeight(blockDetails.height);
   blockDetails.isOrphaned = hash != tmpHash;
 
-  cn_pow_hash_v2 hash_ctx;
-  if (!get_block_longhash(hash_ctx, block, blockDetails.proofOfWork)) {
+  Crypto::cn_context context;
+  if (!get_block_longhash(context, block, blockDetails.proofOfWork)) {
     return false;
   }
 
