@@ -524,7 +524,7 @@ bool get_aux_block_header_hash(const Block& b, Hash& res) {
   return getObjectHash(blob, res);
 }
 
-bool get_block_longhash(cn_pow_hash_v2 &ctx, const Block& b, Hash& res) {
+bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   BinaryArray bd;
   if (b.majorVersion == BLOCK_MAJOR_VERSION_1 || b.majorVersion >= BLOCK_MAJOR_VERSION_4) {
     if (!get_block_hashing_blob(b, bd)) {
@@ -538,12 +538,10 @@ bool get_block_longhash(cn_pow_hash_v2 &ctx, const Block& b, Hash& res) {
     return false;
   }
   if (b.majorVersion <= BLOCK_MAJOR_VERSION_4) {
-	  cn_pow_hash_v1 ctx_v1 = cn_pow_hash_v1::make_borrowed(ctx);
-	  ctx_v1.hash(bd.data(), bd.size(), res.data);
+    cn_slow_hash(context, bd.data(), bd.size(), res);
   }
   else {
-      cn_pow_hash_v4 ctx_v4 = cn_pow_hash_v4::make_borrowed_v4(ctx);
-      ctx_v4.hash(bd.data(), bd.size(), res.data);
+    cn_slow_hash_k(context, bd.data(), bd.size(), res);
   }
 
   return true;
