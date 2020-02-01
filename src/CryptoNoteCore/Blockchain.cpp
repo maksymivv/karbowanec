@@ -2770,16 +2770,12 @@ void Blockchain::removeLastBlock() {
   m_generatedTransactionsIndex.remove(m_blocks.back().bl);
 
   // remove this block's locked amounts
-  for (const auto& u : m_blocks.back().bl.baseTransaction.outputUnlockTimes) {
-    if (u != 0) {
-      auto lockedOutputs = m_locked_amounts.find(u);
-      if (!lockedOutputs->second.empty()) {
-        int i = 0;
-        for (auto& it = lockedOutputs->second.begin(); it != lockedOutputs->second.end(); ++it, ++i) {
-          if (lockedOutputs->second[i].first == blockHash) {
-            lockedOutputs->second.erase(it);
-          }
-        }
+  auto l = m_locked_amounts.find(m_blocks.back().bl.baseTransaction.unlockTime);
+  if (!l->second.empty()) {
+    int i = 0;
+    for (auto& it = l->second.begin(); it != l->second.end(); ++it, ++i) {
+      if (l->second[i].first == blockHash) {
+        l->second.erase(it);
       }
     }
   }
