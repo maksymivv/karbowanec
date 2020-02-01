@@ -2756,6 +2756,8 @@ void Blockchain::rollbackBlockchainTo(uint32_t height) {
 }
 
 void Blockchain::removeLastBlock() {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+
   if (m_blocks.empty()) {
     logger(ERROR, BRIGHT_RED) <<
       "Attempt to pop block from empty blockchain.";
@@ -2771,15 +2773,21 @@ void Blockchain::removeLastBlock() {
 
   // remove this block's locked amounts
   auto l = m_locked_amounts.find(m_blocks.back().bl.baseTransaction.unlockTime);
-  if (!l->second.empty()) {
-    int i = 0;
-    for (auto& it = l->second.begin(); it != l->second.end(); ++it, ++i) {
-      if (l->second[i].first == blockHash) {
-        l->second.erase(it);
-      }
+  if (l != m_locked_amounts.end()) {
+    auto v = l->second;
+    if (!v.empty()) {
+      auto it = std::remove_if(
+        v.begin(),
+        v.end(),
+        [blockHash](std::pair<Crypto::Hash, uint64_t> const& data) {
+        if (data.first == blockHash) return true;
+        else return false;
+      });
+
+      v.erase(it, v.end());
     }
   }
-
+    
   m_blocks.pop_back();
   m_blockIndex.pop();
 
