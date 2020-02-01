@@ -222,18 +222,6 @@ namespace CryptoNote {
       }
     };
 
-    /*typedef std::pair<Crypto::Hash, uint64_t> locked_tx_amount;
-
-    struct LockedAmount {
-      uint32_t blockIndex;
-      locked_tx_amount txAmount;
-
-      void serialize(ISerializer& s) {
-        s(blockIndex, "block_index");
-        s(txAmount, "tx_amount");
-      }
-    };*/
-
     void rollbackBlockchainTo(uint32_t height);
     bool have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im);
 
@@ -312,20 +300,6 @@ namespace CryptoNote {
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
     typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<Crypto::Hash, uint64_t>>> locked_amounts_container; // unlock_time (height), Crypto::Hash - block hash and amount
-
-    /*typedef boost::multi_index_container<
-      LockedAmount,
-      boost::multi_index::indexed_by<
-        boost::multi_index::ordered_unique<
-          boost::multi_index::tag<BlockIndexTag>,
-          BOOST_MULTI_INDEX_MEMBER(LockedAmount, uint32_t, blockIndex)
-        >,
-        boost::multi_index::hashed_unique<
-          boost::multi_index::tag<LockedAmountTag>,
-          BOOST_MULTI_INDEX_MEMBER(LockedAmount, locked_tx_amount, txAmount)
-        >
-      >
-    > locked_outputs_container;*/
 
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
