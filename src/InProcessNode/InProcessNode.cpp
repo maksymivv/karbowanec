@@ -1249,4 +1249,14 @@ std::error_code InProcessNode::doGetConnections(std::vector<p2pConnection>& conn
   return std::error_code();
 }
 
+void InProcessNode::bindNode(std::string nodeHost, unsigned short nodePort, const Callback& callback) {
+  std::unique_lock<std::mutex> lock(mutex);
+  if (state != INITIALIZED) {
+    lock.unlock();
+    callback(make_error_code(CryptoNote::error::NOT_INITIALIZED));
+    return;
+  }
+  // do nothing...
+}
+
 } //namespace CryptoNote

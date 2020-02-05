@@ -177,6 +177,7 @@ public:
   virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) = 0;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) = 0;
   virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) = 0;
+  virtual void bindNode(std::string nodeHost, unsigned short nodePort, const Callback& callback) = 0;
 };
 
 }

@@ -101,14 +101,15 @@ public:
   virtual void getBlockTimestamp(uint32_t height, uint64_t& timestamp, const Callback& callback) override;
   virtual void isSynchronized(bool& syncStatus, const Callback& callback) override;
   virtual void getConnections(std::vector<p2pConnection>& connections, const Callback& callback) override;
+  virtual void bindNode(std::string nodeHost, unsigned short nodePort, const Callback& callback) override;
 
   virtual std::string feeAddress() const override;
 
   unsigned int rpcTimeout() const { return m_rpcTimeout; }
   void rpcTimeout(unsigned int val) { m_rpcTimeout = val; }
 
-  const std::string m_nodeHost;
-  const unsigned short m_nodePort;
+  std::string m_nodeHost;
+  unsigned short m_nodePort;
 
 private:
   void resetInternalState();

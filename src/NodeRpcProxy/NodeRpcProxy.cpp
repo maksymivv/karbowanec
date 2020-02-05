@@ -883,6 +883,16 @@ std::error_code NodeRpcProxy::doGetTransactions(const std::vector<Crypto::Hash>&
   return ec;
 }
 
+void NodeRpcProxy::bindNode(std::string nodeHost, unsigned short nodePort, const Callback& callback) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  if (m_state != STATE_INITIALIZED) {
+    return;
+  }
+
+  m_nodeHost = nodeHost;
+  m_nodePort = nodePort;
+}
+
 void NodeRpcProxy::scheduleRequest(std::function<std::error_code()>&& procedure, const Callback& callback) {
   // callback is located on stack, so copy it inside binder
   class Wrapper {

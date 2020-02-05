@@ -112,6 +112,8 @@ public:
 
   virtual std::string feeAddress() const override { return std::string(); }
 
+  virtual void bindNode(std::string nodeHost, unsigned short nodePort, const Callback& callback) override { }
+
 };
 
 
