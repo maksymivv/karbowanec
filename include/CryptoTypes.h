@@ -1,4 +1,5 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2018, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -18,8 +19,18 @@
 #pragma once
 
 #include <cstdint>
+#include <crypto/crypto-util.h>
 
 namespace Crypto {
+
+#pragma pack(push, 1)
+struct EllipticCurvePoint {
+  uint8_t data[32];
+};
+
+struct EllipticCurveScalar {
+  uint8_t data[32];
+};
 
 struct Hash {
   uint8_t data[32];
@@ -31,6 +42,7 @@ struct PublicKey {
 
 struct SecretKey {
   uint8_t data[32];
+  ~SecretKey() { sodium_memzero(data, sizeof(data)); }
 };
 
 struct KeyDerivation {
@@ -44,5 +56,11 @@ struct KeyImage {
 struct Signature {
   uint8_t data[64];
 };
+#pragma pack(pop)
 
-}
+static_assert(sizeof(EllipticCurvePoint) == 32 && sizeof(EllipticCurveScalar) == 32, "Invalid structure size");
+
+static_assert(sizeof(Hash) == 32 && sizeof(PublicKey) == 32 && sizeof(SecretKey) == 32 && sizeof(KeyDerivation) == 32 &&
+  sizeof(KeyImage) == 32 && sizeof(Signature) == 64, "Invalid structure size");
+
+} // namespace Crypto

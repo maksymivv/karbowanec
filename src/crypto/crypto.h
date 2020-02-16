@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2017, The Monero Project
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -32,14 +32,6 @@
 #include "random.h"
 
 namespace Crypto {
-
-struct EllipticCurvePoint {
-  uint8_t data[32];
-};
-
-struct EllipticCurveScalar {
-  uint8_t data[32];
-};
 
   class crypto_ops {
     crypto_ops();
@@ -238,9 +230,11 @@ struct EllipticCurveScalar {
     const Signature *sig) {
     return check_ring_signature(prefix_hash, image, pubs.data(), pubs.size(), sig);
   }
-
 }
 
+CRYPTO_MAKE_HASHABLE(EllipticCurveScalar)
+CRYPTO_MAKE_HASHABLE(EllipticCurvePoint)
+CRYPTO_MAKE_HASHABLE(KeyDerivation)
 CRYPTO_MAKE_HASHABLE(PublicKey)
 CRYPTO_MAKE_HASHABLE(KeyImage)
 CRYPTO_MAKE_COMPARABLE(Signature)

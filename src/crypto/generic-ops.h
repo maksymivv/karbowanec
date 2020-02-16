@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstring>
 #include <functional>
+#include "crypto-util.h"
 
 #define CRYPTO_MAKE_COMPARABLE(type) \
 namespace Crypto { \
