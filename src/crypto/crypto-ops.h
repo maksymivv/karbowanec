@@ -1,4 +1,26 @@
+// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2020, The Karbo developers
+//
+// This file is part of Karbo.
+//
+// Karbo is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Karbo is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
+
 #pragma once
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 /* From fe.h */
 
@@ -49,6 +71,7 @@ typedef ge_cached ge_dsmp[8];
 extern const ge_precomp ge_Bi[8];
 void ge_dsm_precomp(ge_dsmp r, const ge_p3 *s);
 void ge_double_scalarmult_base_vartime(ge_p2 *, const unsigned char *, const ge_p3 *, const unsigned char *);
+void ge_double_scalarmult_base_vartime3(ge_p3 *, const unsigned char *, const ge_p3 *, const unsigned char *);
 
 /* From ge_frombytes.c, modified */
 
@@ -101,8 +124,13 @@ void sc_reduce(unsigned char *);
 /* New code */
 
 void ge_scalarmult(ge_p2 *, const unsigned char *, const ge_p3 *);
+void ge_scalarmult3(ge_p3 *, const unsigned char *, const ge_p3 *);
 void ge_double_scalarmult_precomp_vartime(ge_p2 *, const unsigned char *, const ge_p3 *, const unsigned char *, const ge_dsmp);
+void ge_double_scalarmult_precomp_vartime3(ge_p3 *rr, const unsigned char *a, const ge_p3 *A, const unsigned char *b, const ge_dsmp Bi);
+int ge_check_subgroup_precomp_vartime(const ge_dsmp);
+void ge_mul8_p2(ge_p1p1 *, const ge_p2 *);
 void ge_mul8(ge_p1p1 *, const ge_p2 *);
+void ge_p3_mul8(ge_p1p1 *, const ge_p3 *);
 extern const fe fe_ma2;
 extern const fe fe_ma;
 extern const fe fe_fffb1;
@@ -115,5 +143,10 @@ void sc_reduce32(unsigned char *);
 void sc_add(unsigned char *, const unsigned char *, const unsigned char *);
 void sc_sub(unsigned char *, const unsigned char *, const unsigned char *);
 void sc_mulsub(unsigned char *, const unsigned char *, const unsigned char *, const unsigned char *);
+void sc_mul(unsigned char *, const unsigned char *, const unsigned char *);
 int sc_check(const unsigned char *);
 int sc_isnonzero(const unsigned char *); /* Doesn't normalize */
+
+#if defined(__cplusplus)
+}
+#endif

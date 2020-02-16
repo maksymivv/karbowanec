@@ -1,6 +1,6 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2018, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2017, The Monero Project
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -29,15 +29,11 @@
 
 #include "Common/Varint.h"
 #include "crypto.h"
+#include "crypto-ops.h"
 #include "hash.h"
 #include "random.h"
 
 namespace Crypto {
-
-  extern "C" {
-#include "crypto-ops.h"
-#include "random.h"
-  }
 
   static inline unsigned char *operator &(EllipticCurvePoint &point) {
     return &reinterpret_cast<unsigned char &>(point);
@@ -622,5 +618,127 @@ namespace Crypto {
     hash_to_scalar(buf, rs_comm_size(pubs_count), h);
     sc_sub(reinterpret_cast<unsigned char*>(&h), reinterpret_cast<unsigned char*>(&h), reinterpret_cast<unsigned char*>(&sum));
     return sc_isnonzero(reinterpret_cast<unsigned char*>(&h)) == 0;
+  }
+
+
+  PublicKey get_G() { return toBytes(G_p3); }  // 5866666666666666666666666666666666666666666666666666666666666666
+
+  PublicKey get_H() { return toBytes(P3_H); }  // 8b655970153799af2aeadc9ff1add0ea6c7251d54154cfa92c173a0dd39c1f94
+
+  bool P3::frombytes_vartime(const EllipticCurvePoint &other) {
+    ge_p3 p3_tmp;  // ge_frombytes_vartime returns random result if false
+    if (ge_frombytes_vartime(&p3_tmp, reinterpret_cast<const unsigned char*>(&other)) != 0)
+      return false;
+    p3 = p3_tmp;
+    return true;
+  }
+
+  bool P3::in_main_subgroup() const {
+    ge_dsmp image_dsm;
+    ge_dsm_precomp(image_dsm, &p3);
+    return ge_check_subgroup_precomp_vartime(image_dsm) == 0;
+  }
+
+  P3 P3::mul8() const {
+    ge_p1p1 p1;
+    ge_p3_mul8(&p1, &p3);
+    P3 result;
+    ge_p1p1_to_p3(&result.p3, &p1);
+    return result;
+  }
+
+  P3 operator-(const P3 &a, const P3 &b) {
+    ge_cached b_cached;
+    ge_p3_to_cached(&b_cached, &b.p3);
+    ge_p1p1 result_p1p1;
+    ge_sub(&result_p1p1, &a.p3, &b_cached);
+    P3 result;
+    ge_p1p1_to_p3(&result.p3, &result_p1p1);
+    return result;
+  }
+
+  P3 operator+(const P3 &a, const P3 &b) {
+    ge_cached b_cached;
+    ge_p3_to_cached(&b_cached, &b.p3);
+    ge_p1p1 result_p1p1;
+    ge_add(&result_p1p1, &a.p3, &b_cached);
+    P3 result;
+    ge_p1p1_to_p3(&result.p3, &result_p1p1);
+    return result;
+  }
+
+  P3 bytes_to_good_point_p3(const Hash &h) {
+    ge_p2 point_p2;
+    ge_fromfe_frombytes_vartime(&point_p2, h.data);
+    ge_p1p1 p1;
+    ge_mul8_p2(&p1, &point_p2);
+    ge_p3 p3;
+    ge_p1p1_to_p3(&p3, &p1);
+    return P3(p3);
+  }
+
+  // copy verbatim from common/Varint.hpp, we do not wish dependency
+  template<class T>
+  T uint_le_from_bytes(const unsigned char *buf, size_t si) {
+    static_assert(std::is_unsigned<T>::value, "works only with unsigned types");
+    T result = 0;
+    for (size_t i = si; i-- > 0;)
+      result = (result << 8) + buf[i];
+    return result;
+  }
+
+  template<class T>
+  void uint_le_to_bytes(unsigned char *buf, size_t si, T val) {
+    static_assert(std::is_unsigned<T>::value, "works only with unsigned types");
+    for (size_t i = 0; i != si; ++i) {
+      buf[i] = static_cast<unsigned char>(val);
+      val >>= 8;
+    }
+  }
+
+  SecretKey sc_from_uint64(uint64_t val) {
+    SecretKey result;
+    uint_le_to_bytes(result.data, 8, val);
+    return result;
+  }
+
+  static void sc_invert_helper(unsigned char * rr, const unsigned char * xx, uint8_t bits) {
+    for (unsigned i = 8; i-- > 0;) {
+      sc_mul(rr, rr, rr);
+      if (bits & (1U << i))
+        sc_mul(rr, rr, xx);
+    }
+  }
+
+  void sc_invert(unsigned char * rr, const unsigned char * xx) {
+    *rr = *xx; // first bit
+    for (int i = 0; i != 124; ++i) // 124 zero bits
+      sc_mul(rr, rr, rr);
+    for (int i = 15; i != 0; --i)
+      sc_invert_helper(rr, xx, L.data[i]);
+    sc_invert_helper(rr, xx, L.data[0] - 2); // inv(x) = x^(L-2)
+  }
+
+  bool key_isvalid(const EllipticCurvePoint &key) {
+    P3 point;
+    return point.frombytes_vartime(key);
+  }
+
+  bool key_in_main_subgroup(const EllipticCurvePoint &key) {
+    P3 point;
+    return point.frombytes_vartime(key) && point.in_main_subgroup();
+  }
+
+  bool p3_secret_key_to_public_key(const SecretKey &sec, PublicKey *pub) {
+    if (!sc_check(&sec))
+      return false;
+    *pub = toBytes(P3_G * sec);
+    return true;
+  }
+
+  bool keys_match(const SecretKey &secret_key, const PublicKey &expected_public_key) {
+    PublicKey pub;
+    bool r = p3_secret_key_to_public_key(secret_key, reinterpret_cast<PublicKey*>(&pub));
+    return r && expected_public_key == pub;
   }
 }
