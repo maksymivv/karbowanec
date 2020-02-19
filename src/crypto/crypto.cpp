@@ -1,6 +1,6 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2018, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2017, The Monero Project
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -29,15 +29,11 @@
 
 #include "Common/Varint.h"
 #include "crypto.h"
+#include "crypto-ops.h"
 #include "hash.h"
 #include "random.h"
 
 namespace Crypto {
-
-  extern "C" {
-#include "crypto-ops.h"
-#include "random.h"
-  }
 
   static inline unsigned char *operator &(EllipticCurvePoint &point) {
     return &reinterpret_cast<unsigned char &>(point);
@@ -623,4 +619,47 @@ namespace Crypto {
     sc_sub(reinterpret_cast<unsigned char*>(&h), reinterpret_cast<unsigned char*>(&h), reinterpret_cast<unsigned char*>(&sum));
     return sc_isnonzero(reinterpret_cast<unsigned char*>(&h)) == 0;
   }
+
+  // copy verbatim from common/Varint.hpp, we do not wish dependency
+  template<class T>
+  T uint_le_from_bytes(const unsigned char *buf, size_t si) {
+    static_assert(std::is_unsigned<T>::value, "works only with unsigned types");
+    T result = 0;
+    for (size_t i = si; i-- > 0;)
+      result = (result << 8) + buf[i];
+    return result;
+  }
+
+  template<class T>
+  void uint_le_to_bytes(unsigned char *buf, size_t si, T val) {
+    static_assert(std::is_unsigned<T>::value, "works only with unsigned types");
+    for (size_t i = 0; i != si; ++i) {
+      buf[i] = static_cast<unsigned char>(val);
+      val >>= 8;
+    }
+  }
+
+  SecretKey sc_from_uint64(uint64_t val) {
+    SecretKey result;
+    uint_le_to_bytes(result.data, 8, val);
+    return result;
+  }
+
+  static void sc_invert_helper(unsigned char * rr, const unsigned char * xx, uint8_t bits) {
+    for (unsigned i = 8; i-- > 0;) {
+      sc_mul(rr, rr, rr);
+      if (bits & (1U << i))
+        sc_mul(rr, rr, xx);
+    }
+  }
+
+  void sc_invert(unsigned char * rr, const unsigned char * xx) {
+    *rr = *xx; // first bit
+    for (int i = 0; i != 124; ++i) // 124 zero bits
+      sc_mul(rr, rr, rr);
+    for (int i = 15; i != 0; --i)
+      sc_invert_helper(rr, xx, L.data[i]);
+    sc_invert_helper(rr, xx, L.data[0] - 2); // inv(x) = x^(L-2)
+  }
+
 }

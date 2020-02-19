@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2018, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2017, The Monero Project
 // Copyright (c) 2016-2020, The Karbo developers
 //
@@ -28,10 +28,17 @@
 #include <CryptoTypes.h>
 
 #include "generic-ops.h"
+#include "crypto-ops.h"
+#include "crypto-util.h"
 #include "hash.h"
 #include "random.h"
 
 namespace Crypto {
+
+  class Error : public std::logic_error {
+  public:
+    explicit Error(const std::string &msg) : std::logic_error(msg) {}
+  };
 
   class crypto_ops {
     crypto_ops();
@@ -230,12 +237,78 @@ namespace Crypto {
     const Signature *sig) {
     return check_ring_signature(prefix_hash, image, pubs.data(), pubs.size(), sig);
   }
-}
 
-CRYPTO_MAKE_HASHABLE(EllipticCurveScalar)
-CRYPTO_MAKE_HASHABLE(EllipticCurvePoint)
-CRYPTO_MAKE_HASHABLE(KeyDerivation)
-CRYPTO_MAKE_HASHABLE(PublicKey)
-CRYPTO_MAKE_HASHABLE(KeyImage)
-CRYPTO_MAKE_COMPARABLE(Signature)
-CRYPTO_MAKE_COMPARABLE(SecretKey)
+
+  struct ScalarMulResult {
+    const EllipticCurveScalar &a;
+    const EllipticCurveScalar &b;
+    operator SecretKey() {
+      SecretKey result;
+      sc_mul(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&a), reinterpret_cast<const unsigned char*>(&b));
+      return result;
+    }
+  };
+  inline ScalarMulResult operator*(const EllipticCurveScalar &a, const EllipticCurveScalar &b) {
+    return ScalarMulResult{ a, b };
+  }
+  inline EllipticCurveScalar &operator*=(EllipticCurveScalar &a, const EllipticCurveScalar &b) {
+    a = ScalarMulResult{ a, b };
+    return a;
+  }
+
+  inline SecretKey operator-(const EllipticCurveScalar &c, const ScalarMulResult &ab) {
+    SecretKey result;
+    sc_mulsub(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&ab.a), reinterpret_cast<const unsigned char*>(&ab.b), reinterpret_cast<const unsigned char*>(&c));
+    return result;
+  }
+  inline EllipticCurveScalar &operator-=(EllipticCurveScalar &c, const ScalarMulResult &ab) {
+    c = c - ab;
+    return c;
+  }
+  inline SecretKey operator-(const EllipticCurveScalar &a, const EllipticCurveScalar &b) {
+    SecretKey result;
+    sc_sub(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&a), reinterpret_cast<const unsigned char*>(&b));
+    return result;
+  }
+  inline EllipticCurveScalar &operator-=(EllipticCurveScalar &a, const EllipticCurveScalar &b) {
+    a = a - b;
+    return a;
+  }
+  inline SecretKey operator+(const EllipticCurveScalar &a, const EllipticCurveScalar &b) {
+    SecretKey result;
+    sc_add(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&a), reinterpret_cast<const unsigned char*>(&b));
+    return result;
+  }
+  inline EllipticCurveScalar &operator+=(EllipticCurveScalar &a, const EllipticCurveScalar &b) {
+    a = a + b;
+    return a;
+  }
+
+  void sc_invert(unsigned char *, const unsigned char *);
+
+  inline SecretKey sc_invert(const unsigned char &sec) {
+    SecretKey result;
+    sc_invert(reinterpret_cast<unsigned char *>(&result), &sec);
+    return result;
+  }
+  SecretKey sc_from_uint64(uint64_t val);
+
+  inline void check_scalar(const EllipticCurveScalar &scalar) {
+    if (!sc_check(reinterpret_cast<const unsigned char*>(&scalar)))
+      throw Error("Secret Key Invalid");
+  }
+
+  static inline const KeyImage &EllipticCurveScalar2KeyImage(const EllipticCurveScalar &k) { return (const KeyImage&)k; }
+  static inline const PublicKey &EllipticCurveScalar2PublicKey(const EllipticCurveScalar &k) { return (const PublicKey&)k; }
+  static inline const SecretKey &EllipticCurveScalar2SecretKey(const EllipticCurveScalar &k) { return (const SecretKey&)k; }
+
+} // namespace Crypto
+
+CRYPTO_MAKE_COMPARABLE(Crypto::Hash, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::EllipticCurveScalar, sodium_compare)
+CRYPTO_MAKE_COMPARABLE(Crypto::EllipticCurvePoint, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::PublicKey, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::SecretKey, sodium_compare)
+CRYPTO_MAKE_COMPARABLE(Crypto::KeyDerivation, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::KeyImage, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::Signature, std::memcmp)
