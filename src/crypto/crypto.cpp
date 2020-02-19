@@ -814,6 +814,4 @@ namespace Crypto {
     check_scalar(view_secret_key);
     return ge_tobytes(ge_scalarmult(view_secret_key, spend_public_key_p3));
   }
-
-
 }
