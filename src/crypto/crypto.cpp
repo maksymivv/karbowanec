@@ -467,6 +467,110 @@ namespace Crypto {
     ge_p1p1_to_p3(&res, &point2);
   }
 
+
+  inline ge_p3 ge_frombytes_vartime(const EllipticCurvePoint &point) {
+    ge_p3 result_p3;
+    if (ge_frombytes_vartime(&result_p3, reinterpret_cast<const unsigned char*>(&point)) != 0)
+      throw Error("Public Key Invalid");
+    return result_p3;
+  }
+
+  static ge_p2 ge_scalarmult(const EllipticCurveScalar &sec, const ge_p3 &point_base) {
+    ge_p2 point2;
+    ge_scalarmult(&point2, reinterpret_cast<const unsigned char*>(&sec), &point_base);
+    return point2;
+  }
+
+  static ge_p2 ge_double_scalarmult_base_vartime(
+    const EllipticCurveScalar &a, const ge_p3 &A, const EllipticCurveScalar &b) {
+    ge_p2 tmp2;
+    ge_double_scalarmult_base_vartime(&tmp2, reinterpret_cast<const unsigned char*>(&a), &A, reinterpret_cast<const unsigned char*>(&b));
+    return tmp2;
+  }
+
+  static ge_p2 ge_double_scalarmult_precomp_vartime(
+    const EllipticCurveScalar &a, const ge_p3 &A, const EllipticCurveScalar &b, const ge_dsmp B) {
+    ge_p2 tmp2;
+    ge_double_scalarmult_precomp_vartime(&tmp2, reinterpret_cast<const unsigned char*>(&a), &A, reinterpret_cast<const unsigned char*>(&b), B);
+    return tmp2;
+  }
+
+  static bool ge_dsm_frombytes_vartime(ge_dsmp image_dsm, const EllipticCurvePoint &image) {
+    ge_p3 image_p3;
+    if (ge_frombytes_vartime(&image_p3, reinterpret_cast<const unsigned char*>(&image)) != 0)
+      return false;
+    ge_dsm_precomp(image_dsm, &image_p3);
+    return true;
+  }
+
+  static ge_p1p1 ge_mul8(const ge_p2 &p2) {
+    ge_p1p1 p1;
+    ge_mul8(&p1, &p2);
+    return p1;
+  }
+
+  static ge_p2 ge_p1p1_to_p2(const ge_p1p1 &p1) {
+    ge_p2 p2;
+    ge_p1p1_to_p2(&p2, &p1);
+    return p2;
+  }
+
+  static ge_p3 ge_p1p1_to_p3(const ge_p1p1 &p1) {
+    ge_p3 p3;
+    ge_p1p1_to_p3(&p3, &p1);
+    return p3;
+  }
+
+  static ge_p2 ge_p3_to_p2(const ge_p3 &p3) {
+    ge_p2 p2;
+    ge_p3_to_p2(&p2, &p3);
+    return p2;
+  }
+
+  static ge_cached ge_p3_to_cached(const ge_p3 &p3) {
+    ge_cached ca;
+    ge_p3_to_cached(&ca, &p3);
+    return ca;
+  }
+
+  static SecretKey random_scalar() {
+    uint8_t tmp[64]{};
+    Random::randomBytes(sizeof(tmp), tmp);
+    SecretKey result;
+    sc_reduce(tmp);
+    memcpy(&result, tmp, 32);
+    return result;
+  }
+
+  static ge_p3 hash_to_ec_p3(const PublicKey &key) {
+    ge_p2 point_p2;
+    const Hash h = cn_fast_hash(&key, sizeof(PublicKey));
+    ge_fromfe_frombytes_vartime(&point_p2, h.data);
+    return ge_p1p1_to_p3(ge_mul8(point_p2));
+  }
+
+  static PublicKey ge_tobytes(const ge_p3 &point3) {
+    PublicKey result;
+    ge_p3_tobytes(reinterpret_cast<unsigned char *>(&result), &point3);
+    return result;
+  }
+
+  static PublicKey ge_tobytes(const ge_p2 &point2) {
+    PublicKey result;
+    ge_tobytes(reinterpret_cast<unsigned char *>(&result), &point2);
+    return result;
+  }
+
+  SecretKey hash_to_scalar(const void *data, size_t length) {
+    Hash h = cn_fast_hash(data, length);
+    SecretKey result;
+    ecsc_reduce32(reinterpret_cast<unsigned char*>(&result), h.data);
+    return result;
+  }
+
+  PublicKey hash_to_ec(const PublicKey &key) { return ge_tobytes(hash_to_ec_p3(key)); }
+
+
   KeyImage crypto_ops::scalarmultKey(const KeyImage & P, const KeyImage & a) {
     ge_p3 A;
     ge_p2 R;
@@ -661,5 +765,18 @@ namespace Crypto {
       sc_invert_helper(rr, xx, L.data[i]);
     sc_invert_helper(rr, xx, L.data[0] - 2); // inv(x) = x^(L-2)
   }
+
+  SecretKey sc_invert(const unsigned char &sec) {
+    SecretKey result;
+    sc_invert(reinterpret_cast<unsigned char *>(&result), &sec);
+    return result;
+  }
+
+  SecretKey sc_invert(const EllipticCurveScalar &sec) {
+    SecretKey result;
+    sc_invert(reinterpret_cast<unsigned char *>(&result), reinterpret_cast<const unsigned char *>(&sec));
+    return result;
+  }
+
 
 }

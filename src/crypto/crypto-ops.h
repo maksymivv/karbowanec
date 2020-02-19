@@ -134,6 +134,7 @@ extern const fe fe_fffb4;
 void ge_fromfe_frombytes_vartime(ge_p2 *, const unsigned char *);
 void sc_0(unsigned char *);
 void sc_reduce32(unsigned char *);
+void ecsc_reduce32(unsigned char *, const unsigned char[32]);
 void sc_add(unsigned char *, const unsigned char *, const unsigned char *);
 void sc_sub(unsigned char *, const unsigned char *, const unsigned char *);
 void sc_mulsub(unsigned char *, const unsigned char *, const unsigned char *, const unsigned char *);

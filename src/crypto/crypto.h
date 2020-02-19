@@ -284,23 +284,42 @@ namespace Crypto {
     return a;
   }
 
-  void sc_invert(unsigned char *, const unsigned char *);
-
-  inline SecretKey sc_invert(const unsigned char &sec) {
-    SecretKey result;
-    sc_invert(reinterpret_cast<unsigned char *>(&result), &sec);
+  inline PublicKey toBytes(const ge_p3 &point3) {
+    PublicKey result;
+    ge_p3_tobytes(reinterpret_cast<unsigned char*>(&result), &point3);
     return result;
   }
-  SecretKey sc_from_uint64(uint64_t val);
+
+  inline PublicKey toBytes(const ge_p2 &point2) {
+    PublicKey result;
+    ge_tobytes(reinterpret_cast<unsigned char*>(&result), &point2);
+    return result;
+  }
+
+  template<typename T>
+  T toBytes(const ge_p3 &point3) {
+    T result;
+    ge_p3_tobytes(reinterpret_cast<unsigned char*>(&result), &point3);
+    return result;
+  }
 
   inline void check_scalar(const EllipticCurveScalar &scalar) {
     if (!sc_check(reinterpret_cast<const unsigned char*>(&scalar)))
       throw Error("Secret Key Invalid");
   }
 
+  void sc_invert(unsigned char *, const unsigned char *);
+  SecretKey sc_invert(const unsigned char &sec);
+  SecretKey sc_invert(const EllipticCurveScalar &sec);
+
+  SecretKey sc_from_uint64(uint64_t val);
+
   static inline const KeyImage &EllipticCurveScalar2KeyImage(const EllipticCurveScalar &k) { return (const KeyImage&)k; }
   static inline const PublicKey &EllipticCurveScalar2PublicKey(const EllipticCurveScalar &k) { return (const PublicKey&)k; }
   static inline const SecretKey &EllipticCurveScalar2SecretKey(const EllipticCurveScalar &k) { return (const SecretKey&)k; }
+
+  SecretKey hash_to_scalar(const void *data, size_t length);
+  PublicKey hash_to_ec(const PublicKey &key);
 
 } // namespace Crypto
 
