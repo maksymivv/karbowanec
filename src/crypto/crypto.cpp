@@ -749,6 +749,37 @@ namespace Crypto {
     return result;
   }
 
+  static uint64_t load_4(const unsigned char *in)
+  {
+    uint64_t result;
+    result = (uint64_t)in[0];
+    result |= ((uint64_t)in[1]) << 8;
+    result |= ((uint64_t)in[2]) << 16;
+    result |= ((uint64_t)in[3]) << 24;
+    return result;
+  }
+
+  static int64_t signum(int64_t a) {
+    return (a >> 63) - ((-a) >> 63);
+  }
+
+  bool sc_isvalid_vartime(const EllipticCurveScalar &s) {
+    int64_t s0 = load_4(s.data);
+    int64_t s1 = load_4(s.data + 4);
+    int64_t s2 = load_4(s.data + 8);
+    int64_t s3 = load_4(s.data + 12);
+    int64_t s4 = load_4(s.data + 16);
+    int64_t s5 = load_4(s.data + 20);
+    int64_t s6 = load_4(s.data + 24);
+    int64_t s7 = load_4(s.data + 28);
+    return ((signum(1559614444 - s0) + (signum(1477600026 - s1) << 1) + (signum(2734136534 - s2) << 2) + (signum(350157278 - s3) << 3) + (signum(-s4) << 4) + (signum(-s5) << 5) + (signum(-s6) << 6) + (signum(268435456 - s7) << 7)) >> 8) == 0;
+  }
+
+  void check_scalar(const EllipticCurveScalar &scalar) {
+    if (!sc_isvalid_vartime(scalar))
+      throw Error("Secret Key Invalid");
+  }
+
   static void sc_invert_helper(unsigned char * rr, const unsigned char * xx, uint8_t bits) {
     for (unsigned i = 8; i-- > 0;) {
       sc_mul(rr, rr, rr);
@@ -778,7 +809,7 @@ namespace Crypto {
     return result;
   }
 
-  PublicKey generate_address_s_v(const PublicKey &spend_public_key, const SecretKey &view_secret_key) {
+  PublicKey generate_unlinkable_address_view_public_key(const PublicKey &spend_public_key, const SecretKey &view_secret_key) {
     const ge_p3 spend_public_key_p3 = ge_frombytes_vartime(spend_public_key);
     check_scalar(view_secret_key);
     return ge_tobytes(ge_scalarmult(view_secret_key, spend_public_key_p3));

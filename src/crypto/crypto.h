@@ -132,6 +132,11 @@ namespace Crypto {
    * * The sender uses key derivation, the output index, and the receivers' "spend" key to derive an ephemeral public key.
    * * The receiver can either derive the public key (to check that the transaction is addressed to him) or the private key (to spend the money).
    */
+
+  // shared secret -
+  // tx_public_key * view_secret_key for receiver
+  // tx_secret_key * destination address' view public key for sender
+
   inline bool generate_key_derivation(const PublicKey &key1, const SecretKey &key2, KeyDerivation &derivation) {
     return crypto_ops::generate_key_derivation(key1, key2, derivation);
   }
@@ -303,25 +308,20 @@ namespace Crypto {
     return result;
   }
 
-  inline void check_scalar(const EllipticCurveScalar &scalar) {
-    if (!sc_check(reinterpret_cast<const unsigned char*>(&scalar)))
-      throw Error("Secret Key Invalid");
-  }
-
+  void check_scalar(const EllipticCurveScalar &scalar);
+  bool sc_isvalid_vartime(const struct cryptoEllipticCurveScalar &);
   void sc_invert(unsigned char *, const unsigned char *);
   SecretKey sc_invert(const unsigned char &sec);
   SecretKey sc_invert(const EllipticCurveScalar &sec);
-
   SecretKey sc_from_uint64(uint64_t val);
+  SecretKey hash_to_scalar(const void *data, size_t length);
+  PublicKey hash_to_ec(const PublicKey &key);
+
+  PublicKey generate_unlinkable_address_view_public_key(const PublicKey &spend_public_key, const SecretKey &view_secret_key);
 
   static inline const KeyImage &EllipticCurveScalar2KeyImage(const EllipticCurveScalar &k) { return (const KeyImage&)k; }
   static inline const PublicKey &EllipticCurveScalar2PublicKey(const EllipticCurveScalar &k) { return (const PublicKey&)k; }
   static inline const SecretKey &EllipticCurveScalar2SecretKey(const EllipticCurveScalar &k) { return (const SecretKey&)k; }
-
-  SecretKey hash_to_scalar(const void *data, size_t length);
-  PublicKey hash_to_ec(const PublicKey &key);
-
-  PublicKey generate_address_s_v(const PublicKey &spend_public_key, const SecretKey &view_secret_key);
 
 } // namespace Crypto
 
