@@ -753,9 +753,12 @@ void WalletGreen::initTransactionPool() {
 
 void WalletGreen::deleteOrphanTransactions(const std::unordered_set<Crypto::PublicKey>& deletedKeys) {
   for (auto spendPublicKey : deletedKeys) {
+
+    PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(spendPublicKey, m_viewSecretKey);
+
     AccountPublicAddress deletedAccountAddress;
     deletedAccountAddress.spendPublicKey = spendPublicKey;
-    deletedAccountAddress.viewPublicKey = m_viewPublicKey;
+    deletedAccountAddress.viewPublicKey = addressViewPublicKey;
     auto deletedAddressString = m_currency.accountAddressAsString(deletedAccountAddress);
 
     std::vector<size_t> deletedTransactions;
@@ -802,7 +805,10 @@ void WalletGreen::subscribeWallets() {
       const auto& wallet = *it;
 
       AccountSubscription sub;
-      sub.keys.address.viewPublicKey = m_viewPublicKey;
+
+      PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(wallet.spendPublicKey, m_viewSecretKey);
+
+      sub.keys.address.viewPublicKey = addressViewPublicKey;
       sub.keys.address.spendPublicKey = wallet.spendPublicKey;
       sub.keys.viewSecretKey = m_viewSecretKey;
       sub.keys.spendSecretKey = wallet.spendSecretKey;
@@ -956,7 +962,6 @@ AccountPublicAddress WalletGreen::getAccountPublicAddress(size_t index) const {
 
   const WalletRecord& wallet = m_walletsContainer.get<RandomAccessIndex>()[index];
 
-  // unlinkable aggregated address
   PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(wallet.spendPublicKey, m_viewSecretKey);
 
   return { wallet.spendPublicKey, addressViewPublicKey };
@@ -1203,19 +1208,23 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
     throw std::system_error(make_error_code(error::WRONG_PARAMETERS));
   }
 
+  PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(spendPublicKey, m_viewSecretKey);
+
   auto insertIt = index.find(spendPublicKey);
   if (insertIt != index.end()) {
     m_logger(ERROR, BRIGHT_RED) << "Failed to add wallet: address already exists, " <<
-      m_currency.accountAddressAsString(AccountPublicAddress{spendPublicKey, m_viewPublicKey});
+      m_currency.accountAddressAsString(AccountPublicAddress{spendPublicKey, addressViewPublicKey});
     throw std::system_error(make_error_code(error::ADDRESS_ALREADY_EXISTS));
   }
 
   m_containerStorage.push_back(encryptKeyPair(spendPublicKey, spendSecretKey, creationTimestamp));
   incNextIv();
 
+
+
   try {
     AccountSubscription sub;
-    sub.keys.address.viewPublicKey = m_viewPublicKey;
+    sub.keys.address.viewPublicKey = addressViewPublicKey;
     sub.keys.address.spendPublicKey = spendPublicKey;
     sub.keys.viewSecretKey = m_viewSecretKey;
     sub.keys.spendSecretKey = spendSecretKey;
@@ -1237,11 +1246,11 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
     m_logger(DEBUGGING) << "Wallet count " << m_walletsContainer.size();
 
     if (index.size() == 1) {
-      m_synchronizer.subscribeConsumerNotifications(m_viewPublicKey, this);
-      initBlockchain(m_viewPublicKey);
+      m_synchronizer.subscribeConsumerNotifications(addressViewPublicKey, this);
+      initBlockchain(addressViewPublicKey);
     }
 
-    auto address = m_currency.accountAddressAsString({ spendPublicKey, m_viewPublicKey });
+    auto address = m_currency.accountAddressAsString({ spendPublicKey, addressViewPublicKey });
     m_logger(DEBUGGING) << "Wallet added " << address << ", creation timestamp " << creationTimestamp;
     return address;
   } catch (const std::exception& e) {
@@ -2110,7 +2119,9 @@ bool WalletGreen::updateTransactionTransfers(size_t transactionId, const std::ve
   int64_t myInputsAmount = 0;
   int64_t myOutputsAmount = 0;
   for (auto containerAmount : containerAmountsList) {
-    AccountPublicAddress address{ getWalletRecord(containerAmount.container).spendPublicKey, m_viewPublicKey };
+    PublicKey spendPublicKey = getWalletRecord(containerAmount.container).spendPublicKey;
+    PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(spendPublicKey, m_viewSecretKey);
+    AccountPublicAddress address{ spendPublicKey, addressViewPublicKey };
     std::string addressString = m_currency.accountAddressAsString(address);
 
     updated |= updateAddressTransfers(transactionId, firstTransferIdx, addressString, initialTransfers[addressString].input, containerAmount.amounts.input);
@@ -3303,7 +3314,9 @@ void WalletGreen::updateBalance(CryptoNote::ITransfersContainer* container) {
       wallet.pendingBalance = pending;
     });
 
-    m_logger(INFO, BRIGHT_WHITE) << "Wallet balance updated, address " << m_currency.accountAddressAsString({ it->spendPublicKey, m_viewPublicKey }) <<
+    PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(it->spendPublicKey, m_viewSecretKey);
+
+    m_logger(INFO, BRIGHT_WHITE) << "Wallet balance updated, address " << m_currency.accountAddressAsString({ it->spendPublicKey, addressViewPublicKey }) <<
       ", actual " << m_currency.formatAmount(it->actualBalance) <<
       ", pending " << m_currency.formatAmount(it->pendingBalance);
     m_logger(INFO, BRIGHT_WHITE) << "Container balance updated, actual " << m_currency.formatAmount(m_actualBalance) <<
@@ -3764,7 +3777,7 @@ CryptoNote::AccountPublicAddress WalletGreen::getChangeDestination(const std::st
 
 bool WalletGreen::isMyAddress(const std::string& addressString) const {
   CryptoNote::AccountPublicAddress address = parseAccountAddressString(addressString);
-  return m_viewPublicKey == address.viewPublicKey && m_walletsContainer.get<KeysIndex>().count(address.spendPublicKey) != 0;
+  return /*m_viewPublicKey == address.viewPublicKey &&*/ m_walletsContainer.get<KeysIndex>().count(address.spendPublicKey) != 0;
 }
 
 void WalletGreen::deleteContainerFromUnlockTransactionJobs(const ITransfersContainer* container) {
