@@ -321,6 +321,8 @@ namespace Crypto {
   SecretKey hash_to_scalar(const void *data, size_t length);
   PublicKey hash_to_ec(const PublicKey &key);
 
+  PublicKey generate_address_s_v(const PublicKey &spend_public_key, const SecretKey &view_secret_key);
+
 } // namespace Crypto
 
 CRYPTO_MAKE_COMPARABLE(Crypto::Hash, std::memcmp)

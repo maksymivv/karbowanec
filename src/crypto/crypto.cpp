@@ -778,5 +778,11 @@ namespace Crypto {
     return result;
   }
 
+  PublicKey generate_address_s_v(const PublicKey &spend_public_key, const SecretKey &view_secret_key) {
+    const ge_p3 spend_public_key_p3 = ge_frombytes_vartime(spend_public_key);
+    check_scalar(view_secret_key);
+    return ge_tobytes(ge_scalarmult(view_secret_key, spend_public_key_p3));
+  }
+
 
 }
