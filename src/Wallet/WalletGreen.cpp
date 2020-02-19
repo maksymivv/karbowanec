@@ -955,7 +955,11 @@ AccountPublicAddress WalletGreen::getAccountPublicAddress(size_t index) const {
   }
 
   const WalletRecord& wallet = m_walletsContainer.get<RandomAccessIndex>()[index];
-  return { wallet.spendPublicKey, m_viewPublicKey };
+
+  // unlinkable aggregated address
+  PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(wallet.spendPublicKey, m_viewSecretKey);
+
+  return { wallet.spendPublicKey, addressViewPublicKey };
 }
 
 std::string WalletGreen::getAddress(size_t index) const {
