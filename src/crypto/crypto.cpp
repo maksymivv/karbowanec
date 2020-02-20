@@ -58,6 +58,15 @@ namespace Crypto {
     memcpy(&res, tmp, 32);
   }
 
+  SecretKey random_scalar() {
+    uint8_t tmp[64]{};
+    Random::randomBytes(sizeof(tmp), reinterpret_cast<unsigned char *>(&tmp));
+    SecretKey result;
+    sc_reduce(tmp);
+    memcpy(&result, tmp, 32);
+    return result;
+  }
+
   static inline void hash_to_scalar(const void *data, size_t length, EllipticCurveScalar &res) {
     cn_fast_hash(data, length, reinterpret_cast<Hash &>(res));
     sc_reduce32(reinterpret_cast<unsigned char*>(&res));
@@ -531,15 +540,6 @@ namespace Crypto {
     ge_cached ca;
     ge_p3_to_cached(&ca, &p3);
     return ca;
-  }
-
-  static SecretKey random_scalar() {
-    uint8_t tmp[64]{};
-    Random::randomBytes(sizeof(tmp), tmp);
-    SecretKey result;
-    sc_reduce(tmp);
-    memcpy(&result, tmp, 32);
-    return result;
   }
 
   static ge_p3 hash_to_ec_p3(const PublicKey &key) {
