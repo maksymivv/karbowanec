@@ -14,7 +14,7 @@ add_library(lmdb
   ${lmdb_sources})
 target_link_libraries(lmdb)
 
-set_property(TARGET lmdb APPEND PROPERTY COMPILE_FLAGS "-fPIC")
+set_property(TARGET lmdb APPEND PROPERTY COMPILE_FLAGS "-fPIC /MT")
 
 string(TOUPPER "${PROJECT_NAME}" setting_prefix)
 function(get_setting setting_name setting_type setting_description)
