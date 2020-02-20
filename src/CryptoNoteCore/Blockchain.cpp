@@ -329,8 +329,16 @@ private:
   Crypto::Hash m_lastBlockHash;
 };
 
+const std::string version_current = "1"; // increment when making incompatible changes to indexes
 
-Blockchain::Blockchain(const Currency& currency, tx_memory_pool& tx_pool, ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly) :
+// use suffixes so all keys related to the same block are close to each other in DB
+static const std::string BLOCK_PREFIX = "b";
+static const std::string BLOCK_SUFFIX = "b";
+static const std::string HEADER_PREFIX = "b";
+static const std::string HEADER_SUFFIX = "h";
+static const std::string TRANSACTION_PREFIX = "t";
+
+Blockchain::Blockchain(const Currency& currency, tx_memory_pool& tx_pool, ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly, const std::string& config_folder) :
 logger(logger, "Blockchain"),
 m_currency(currency),
 m_tx_pool(tx_pool),
@@ -345,9 +353,10 @@ m_timestampIndex(blockchainIndexesEnabled),
 m_generatedTransactionsIndex(blockchainIndexesEnabled),
 m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled),
-m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, m_config_folder + "/blockchain")
+m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain")
 {
   m_outputs.set_deleted_key(0);
+
 }
 
 bool Blockchain::addObserver(IBlockchainStorageObserver* observer) {
@@ -460,6 +469,43 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 
   m_config_folder = config_folder;
 
+  std::string version;
+  if (!m_db.get("$version", version)) {
+    DB::Cursor cur = m_db.begin(std::string{});
+    if (!cur.end())
+      throw std::runtime_error("Blockchain database format unknown version, please delete " + m_db.get_path());
+    version = version_current;
+    m_db.put("$version", version, false);
+  }
+  if (version != version_current)
+    return false;  // BlockChainState will upgrade DB, we must not continue or risk crashing
+
+  db_commit();
+
+  m_db.get("$version", version);
+  logger(INFO) << "Blockchain DB version: " << version;
+
+
+  /*
+  Hash stored_genesis_bid;
+  if (get_chain(0, &stored_genesis_bid)) {
+    if (stored_genesis_bid != m_genesis_bid)
+      throw std::runtime_error("Database starts with different genesis_block");
+    DB::Cursor cur2 = m_db.rbegin(TIP_CHAIN_PREFIX);
+    m_tip_height = cur2.end() ? -1 : common::integer_cast<Height>(common::read_varint_sqlite4(cur2.get_suffix()));
+    seria::from_binary(m_tip_bid, cur2.get_value_array());
+    api::BlockHeader tip_header = read_header(m_tip_bid);
+    m_tip_cumulative_difficulty = tip_header.cumulative_difficulty;
+    m_header_tip_window.push_back(tip_header);
+  }
+  BinaryArray cha;
+  if (m_db.get("internal_import_chain", cha)) {
+    seria::from_binary(m_internal_import_chain, cha);
+    m_log(logging::INFO) << "BlockChain continue internal import of blocks, count="
+      << m_internal_import_chain.size();
+  }
+  */
+
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
   }
@@ -557,6 +603,15 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     << Common::timeIntervalToString(timestamp_diff)
     << " time ago, current difficulty: " << getDifficultyForNextBlock();
   return true;
+}
+
+void Blockchain::db_commit() {
+  logger(INFO) << "Blockchain::db_commit started..."; // tip_height = " << m_tip_height
+    //<< " m_header_cache.size=" << m_header_cache.size();
+  m_db.commit_db_txn();
+  //m_header_cache.clear();  // Most simple cache policy ever
+  //m_archive.db_commit();
+  logger(INFO) << "BlockChain::db_commit finished...";
 }
 
 void Blockchain::rebuildCache() {

@@ -67,7 +67,7 @@ namespace CryptoNote {
   public:
     typedef Platform::DB DB;
     
-    Blockchain(const Currency& currency, tx_memory_pool& tx_pool, Logging::ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly);
+    Blockchain(const Currency& currency, tx_memory_pool& tx_pool, Logging::ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly, const std::string& config_folder);
 
     bool addObserver(IBlockchainStorageObserver* observer);
     bool removeObserver(IBlockchainStorageObserver* observer);

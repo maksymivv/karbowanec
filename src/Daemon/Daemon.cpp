@@ -29,6 +29,7 @@
 #include "Common/StringTools.h"
 #include "Common/PathTools.h"
 #include <Common/ColouredMsg.h>
+#include "Common/Util.h"
 #include "crypto/hash.h"
 #include "CheckpointsData.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
@@ -53,6 +54,7 @@
 using Common::JsonValue;
 using namespace CryptoNote;
 using namespace Logging;
+using namespace Tools;
 
 namespace po = boost::program_options;
 
@@ -204,7 +206,7 @@ int main(int argc, char* argv[])
 
     if (!r)
       return 1;
-  
+
     auto modulePath = Common::NativePathToGeneric(argv[0]);
     auto cfgLogFile = Common::NativePathToGeneric(command_line::get_arg(vm, arg_log_file));
 
@@ -249,6 +251,21 @@ int main(int argc, char* argv[])
       logger(INFO) << "Starting in testnet mode!";
     }
 
+    CoreConfig coreConfig;
+    coreConfig.init(vm);
+
+    // create folders
+    if (!coreConfig.configFolderDefaulted) {
+      if (!Tools::directoryExists(coreConfig.configFolder)) {
+        throw std::runtime_error("Directory does not exist: " + coreConfig.configFolder);
+      }
+    }
+    else {
+      if (!Tools::create_directories_if_necessary(coreConfig.configFolder)) {
+        throw std::runtime_error("Failed to create data directory: " + coreConfig.configFolder);
+      }
+    }
+
     //create objects and link them
     CryptoNote::CurrencyBuilder currencyBuilder(logManager);
     currencyBuilder.testnet(testnet_mode);
@@ -260,7 +277,7 @@ int main(int argc, char* argv[])
     }
     CryptoNote::Currency currency = currencyBuilder.currency();
     System::Dispatcher dispatcher;
-    CryptoNote::Core m_core(currency, nullptr, logManager, dispatcher, command_line::get_arg(vm, arg_enable_blockchain_indexes));
+    CryptoNote::Core m_core(currency, nullptr, logManager, dispatcher, command_line::get_arg(vm, arg_enable_blockchain_indexes), coreConfig.configFolder);
 
 	bool disable_checkpoints = command_line::get_arg(vm, arg_disable_checkpoints);
 	if (!disable_checkpoints) {
@@ -291,8 +308,6 @@ int main(int argc, char* argv[])
 
 	}
 
-    CoreConfig coreConfig;
-    coreConfig.init(vm);
     NetNodeConfig netNodeConfig;
     netNodeConfig.init(vm);
     netNodeConfig.setTestnet(testnet_mode);
