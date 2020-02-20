@@ -40,6 +40,16 @@ namespace Crypto {
     explicit Error(const std::string &msg) : std::logic_error(msg) {}
   };
 
+  SecretKey random_scalar();
+
+  template<typename T>
+  T rand() {
+    static_assert(std::is_standard_layout<T>::value, "T must be Standard Layout");
+    T res;
+    randomBytes(sizeof(T), reinterpret_cast<unsigned char *>(&res));
+    return res;
+  }
+
   class crypto_ops {
     crypto_ops();
     crypto_ops(const crypto_ops &);
