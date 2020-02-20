@@ -16,7 +16,7 @@
 #include <sys/utsname.h>
 #include <sys/stat.h>
 
-namespace platform {
+namespace Platform {
 
 #if TARGET_OS_IPHONE
 std::string get_os_version_string() {

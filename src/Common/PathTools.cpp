@@ -136,7 +136,7 @@ bool HasParentPath(const std::string& path) {
 } // namespace Common
 
 
-namespace platform {
+namespace Platform {
 #ifdef __ANDROID__
 std::string get_os_version_string() { return "Android"; }
 std::string get_app_data_folder(const std::string &app_name) {
@@ -437,5 +437,5 @@ bool atomic_save_file(const std::string &filepath, const void *buf, size_t size,
 	}
 	return atomic_replace_file(tmp_filepath, filepath);
 }
-}  // namespace platform
+}  // namespace Platform
 

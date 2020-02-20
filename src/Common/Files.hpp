@@ -41,12 +41,12 @@ private:
 	explicit FileStream();
 	bool try_open(const std::string &filename, OpenMode mode, bool *file_existed = nullptr);
 	// We want those funs to use FileStream without exceptions (greatly hinders debugging)
-	friend bool platform::load_file(const std::string &filepath, std::string &buf);
-	friend bool platform::load_file(const std::string &filepath, CryptoNote::BinaryArray &buf);
+	friend bool Platform::load_file(const std::string &filepath, std::string &buf);
+	friend bool Platform::load_file(const std::string &filepath, CryptoNote::BinaryArray &buf);
 #ifdef _WIN32
 	void *handle;  // HANDLE, cannot initialize hre because do not want to guess what is INVALID_HANDLE_VALUE
 #else
 	int fd = -1;
 #endif
 };
-}  // namespace platform
+}  // namespace Platform

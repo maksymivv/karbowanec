@@ -11,7 +11,7 @@
 #include "Common/BinaryArray.hpp"
 #include "Common/Nocopy.hpp"
 
-namespace platform {
+namespace Platform {
 
 namespace lmdb {
 struct Val {
@@ -129,4 +129,4 @@ public:
 
 	void debug_print_index_size(const std::string &prefix);
 };
-}  // namespace platform
+}  // namespace Platform

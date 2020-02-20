@@ -50,7 +50,7 @@ bool HasParentPath(const std::string& path);
 #define platform_DEFAULT_DATA_FOLDER_PATH_PREFIX "~/."
 #endif
 
-namespace platform {
+namespace Platform {
 
 // New method
 // Windows < Vista: C:\Documents and Settings\Username\Application Data/<app_name>
@@ -79,4 +79,4 @@ bool atomic_save_file(const std::string &filepath, const void *buf, size_t size,
 inline bool save_file(const std::string &filepath, const std::string &buf) {
 	return save_file(filepath, buf.data(), buf.size());
 }
-}  // namespace platform
+}  // namespace Platform

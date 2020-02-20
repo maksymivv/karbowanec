@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "platform/DBlmdb.hpp"
-namespace platform {
+#include "DBlmdb.hpp"
+namespace Platform {
 typedef DBlmdb DB;
 }
 

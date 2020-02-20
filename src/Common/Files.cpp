@@ -62,7 +62,7 @@ bool FileStream::try_open(const std::string &filename, OpenMode mode, bool *file
 	CloseHandle(handle);
 	handle = INVALID_HANDLE_VALUE;
 
-	auto wfilename = utf8_to_utf16(platform::expand_path(filename));
+	auto wfilename = utf8_to_utf16(Platform::expand_path(filename));
 	handle         = CreateFileW(wfilename.c_str(), GENERIC_READ | (mode == O_READ_EXISTING ? 0 : GENERIC_WRITE),
         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
         mode == O_CREATE_ALWAYS

@@ -7,14 +7,14 @@
 #include "Common/Math.h"
 #include "Common/string.hpp"
 
-using namespace platform;
+using namespace Platform;
 
 #ifdef _WIN32
 #pragma comment(lib, "ntdll.lib")  // dependency of lmdb, here to avoid linker arguments
 #endif
 
 void lmdb::Error::do_throw(const std::string &msg, int rc) {
-	throw platform::lmdb::Error(msg + Common::to_string(rc) + " " + std::string(::mdb_strerror(rc)));
+	throw Platform::lmdb::Error(msg + Common::to_string(rc) + " " + std::string(::mdb_strerror(rc)));
 }
 
 static void lmdb_check(int rc, const char *msg) {  // we need very fast check on get/put/del
@@ -26,54 +26,54 @@ static void lmdb_check(int rc, const std::string &msg) {
 		lmdb::Error::do_throw(msg, rc);
 }
 
-platform::lmdb::Env::Env(bool read_only) : m_read_only(read_only) {
+Platform::lmdb::Env::Env(bool read_only) : m_read_only(read_only) {
 	lmdb_check(::mdb_env_create(&handle), "mdb_env_create ");
 }
 
-platform::lmdb::Env::~Env() {
+Platform::lmdb::Env::~Env() {
 	::mdb_env_close(handle);
 	handle = nullptr;
 }
 
-platform::lmdb::Txn::Txn(Env &db_env) {
+Platform::lmdb::Txn::Txn(Env &db_env) {
 	lmdb_check(::mdb_txn_begin(db_env.handle, nullptr, db_env.m_read_only ? MDB_RDONLY : 0, &handle), "mdb_txn_begin ");
 }
 
-void platform::lmdb::Txn::commit() {
+void Platform::lmdb::Txn::commit() {
 	lmdb_check(::mdb_txn_commit(handle), "mdb_txn_commit ");
 	handle = nullptr;
 }
 
-platform::lmdb::Txn::~Txn() {
+Platform::lmdb::Txn::~Txn() {
 	::mdb_txn_abort(handle);
 	handle = nullptr;
 }
 
 // ::mdb_dbi_close should never be called according to docs
-platform::lmdb::Dbi::Dbi(Txn &db_txn) {
+Platform::lmdb::Dbi::Dbi(Txn &db_txn) {
 	lmdb_check(::mdb_dbi_open(db_txn.handle, nullptr, 0, &handle), "mdb_dbi_open ");
 }
 
-bool platform::lmdb::Dbi::get(Txn &db_txn, MDB_val *const key, MDB_val *const data) {
+bool Platform::lmdb::Dbi::get(Txn &db_txn, MDB_val *const key, MDB_val *const data) {
 	const int rc = ::mdb_get(db_txn.handle, handle, key, data);
 	if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND)
 		lmdb::Error::do_throw("mdb_get ", rc);
 	return (rc == MDB_SUCCESS);
 }
 
-platform::lmdb::Cur::Cur(Txn &db_txn, Dbi &db_dbi) {
+Platform::lmdb::Cur::Cur(Txn &db_txn, Dbi &db_dbi) {
 	lmdb_check(::mdb_cursor_open(db_txn.handle, db_dbi.handle, &handle), "mdb_cursor_open ");
 }
 
-platform::lmdb::Cur::Cur(Cur &&other) noexcept { std::swap(handle, other.handle); }
+Platform::lmdb::Cur::Cur(Cur &&other) noexcept { std::swap(handle, other.handle); }
 
-bool platform::lmdb::Cur::get(MDB_val *const key, MDB_val *const data, const MDB_cursor_op op) {
+bool Platform::lmdb::Cur::get(MDB_val *const key, MDB_val *const data, const MDB_cursor_op op) {
 	const int rc = ::mdb_cursor_get(handle, key, data, op);
 	if (rc != MDB_SUCCESS && rc != MDB_NOTFOUND)
 		lmdb::Error::do_throw("mdb_cursor_get ", rc);
 	return (rc == MDB_SUCCESS);
 }
-platform::lmdb::Cur::~Cur() {
+Platform::lmdb::Cur::~Cur() {
 	::mdb_cursor_close(handle);
 	handle = nullptr;
 }
@@ -82,7 +82,7 @@ DBlmdb::DBlmdb(Common::OpenMode open_mode, const std::string &full_path, uint64_
     : full_path(full_path), db_env(open_mode == Common::O_READ_EXISTING), max_tx_size(max_tx_size) {
 	//	std::cout << "lmdb libversion=" << mdb_version(nullptr, nullptr, nullptr) << std::endl;
 	create_folders_if_necessary(full_path);
-	lmdb_check(::mdb_env_open(db_env.handle, platform::expand_path(full_path).c_str(),
+	lmdb_check(::mdb_env_open(db_env.handle, Platform::expand_path(full_path).c_str(),
 	               MDB_NOMETASYNC | (open_mode == Common::O_READ_EXISTING ? MDB_RDONLY : 0), 0644),
 	    "Failed to open database " + full_path + " in mdb_env_open ");
 	// MDB_NOMETASYNC - We agree to trade chance of losing 1 last transaction for 2x performance boost
@@ -261,7 +261,7 @@ std::string DBlmdb::clean_key(const std::string &key) {
 }
 
 void DBlmdb::delete_db(const std::string &full_path) {
-	auto ep = platform::expand_path(full_path);
+	auto ep = Platform::expand_path(full_path);
 	std::remove((ep + "/data.mdb").c_str());
 	std::remove((ep + "/lock.mdb").c_str());
 	std::remove(ep.c_str());
@@ -269,9 +269,9 @@ void DBlmdb::delete_db(const std::string &full_path) {
 
 void DBlmdb::backup_db(const std::string &full_path, const std::string &dst_path) {
 	lmdb::Env db_env(true);
-	lmdb_check(::mdb_env_open(db_env.handle, platform::expand_path(full_path).c_str(), MDB_RDONLY, 0600),
+	lmdb_check(::mdb_env_open(db_env.handle, Platform::expand_path(full_path).c_str(), MDB_RDONLY, 0600),
 	    "Failed to open database " + full_path + " for doing backup");
-	lmdb_check(::mdb_env_copy2(db_env.handle, platform::expand_path(dst_path).c_str(), MDB_CP_COMPACT),
+	lmdb_check(::mdb_env_copy2(db_env.handle, Platform::expand_path(dst_path).c_str(), MDB_CP_COMPACT),
 	    "Failed to backup database " + full_path + " into " + dst_path);
 }
 
