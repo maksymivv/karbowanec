@@ -3,11 +3,14 @@
 
 #include "DBlmdb.hpp"
 #include <iostream>
+
 #include "Common/PathTools.h"
 #include "Common/Math.h"
 #include "Common/string.hpp"
 
 using namespace Platform;
+
+//extern "C" __declspec(dllimport) char* __cdecl _strdup(const char* strSource);
 
 #ifdef _WIN32
 #pragma comment(lib, "ntdll.lib")  // dependency of lmdb, here to avoid linker arguments
