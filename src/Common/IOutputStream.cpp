@@ -16,3 +16,33 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "IOutputStream.h"
+
+#include "Streams.hpp"
+#include <algorithm>
+#include <stdexcept>
+#include <CryptoNote.h>
+#include "BinaryArray.hpp"
+#include "Varint.hpp"
+
+using namespace Common;
+
+void IOutputStream::write(const CryptoNote::BinaryArray &data) { write(data.data(), data.size()); }
+
+void IOutputStream::write(const std::string &data) { write(data.data(), data.size()); }
+
+void IOutputStream::write(const void *data, size_t size) {
+	while (size != 0) {
+		size_t wc = writeSome(data, size);
+		if (wc == 0)
+			throw StreamError("IOutputStream error writing to full stream");
+		data = reinterpret_cast<const char *>(data) + wc;
+		size -= wc;
+	}
+}
+
+void IOutputStream::write_varint(uint64_t value) {
+  uint8_t buf[10];  // enough to store uint64_t
+  uint8_t *end = buf;
+  Common::write_varint(end, value);
+  write(buf, end - buf);
+}
