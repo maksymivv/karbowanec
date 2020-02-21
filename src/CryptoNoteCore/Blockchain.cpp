@@ -2283,7 +2283,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
   }
 
-  pushBlock(block);
+  pushBlock(block, blockHash);
 
   auto block_processing_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - blockProcessingStart).count();
 
@@ -2306,9 +2306,6 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   return true;
 }
-
-bool Blockchain::pushBlock(BlockEntry& block) {
-  Crypto::Hash blockHash = get_block_hash(block.bl);
 
   m_blocks.push_back(block);
   m_blockIndex.push(blockHash);
