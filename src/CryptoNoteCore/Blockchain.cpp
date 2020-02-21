@@ -334,8 +334,6 @@ const std::string version_current = "1"; // increment when making incompatible c
 // use suffixes so all keys related to the same block are close to each other in DB
 static const std::string BLOCK_PREFIX = "b";
 static const std::string BLOCK_SUFFIX = "b";
-static const std::string HEADER_PREFIX = "b";
-static const std::string HEADER_SUFFIX = "h";
 static const std::string TRANSACTION_PREFIX = "t";
 
 Blockchain::Blockchain(const Currency& currency, tx_memory_pool& tx_pool, ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly, const std::string& config_folder) :
@@ -480,31 +478,8 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   if (version != version_current)
     return false;  // BlockChainState will upgrade DB, we must not continue or risk crashing
 
-  db_commit();
-
   m_db.get("$version", version);
   logger(INFO) << "Blockchain DB version: " << version;
-
-
-  /*
-  Hash stored_genesis_bid;
-  if (get_chain(0, &stored_genesis_bid)) {
-    if (stored_genesis_bid != m_genesis_bid)
-      throw std::runtime_error("Database starts with different genesis_block");
-    DB::Cursor cur2 = m_db.rbegin(TIP_CHAIN_PREFIX);
-    m_tip_height = cur2.end() ? -1 : common::integer_cast<Height>(common::read_varint_sqlite4(cur2.get_suffix()));
-    seria::from_binary(m_tip_bid, cur2.get_value_array());
-    api::BlockHeader tip_header = read_header(m_tip_bid);
-    m_tip_cumulative_difficulty = tip_header.cumulative_difficulty;
-    m_header_tip_window.push_back(tip_header);
-  }
-  BinaryArray cha;
-  if (m_db.get("internal_import_chain", cha)) {
-    seria::from_binary(m_internal_import_chain, cha);
-    m_log(logging::INFO) << "BlockChain continue internal import of blocks, count="
-      << m_internal_import_chain.size();
-  }
-  */
 
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
@@ -606,12 +581,12 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 }
 
 void Blockchain::db_commit() {
-  logger(INFO) << "Blockchain::db_commit started..."; // tip_height = " << m_tip_height
+  //logger(INFO) << "Blockchain::db_commit started..."; // tip_height = " << m_tip_height
     //<< " m_header_cache.size=" << m_header_cache.size();
   m_db.commit_db_txn();
   //m_header_cache.clear();  // Most simple cache policy ever
   //m_archive.db_commit();
-  logger(INFO) << "BlockChain::db_commit finished...";
+  //logger(INFO) << "BlockChain::db_commit finished...";
 }
 
 void Blockchain::rebuildCache() {
@@ -767,14 +742,24 @@ Crypto::Hash Blockchain::getBlockIdByHeight(uint32_t height) {
 bool Blockchain::getBlockByHash(const Crypto::Hash& blockHash, Block& b) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-  uint32_t height = 0;
+  /*uint32_t height = 0;
 
   if (m_blockIndex.getBlockHeight(blockHash, height)) {
     b = m_blocks[height].bl;
     return true;
-  }
+  }*/
 
-  logger(WARNING) << blockHash;
+  BinaryArray rb;
+  auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
+  if (m_db.get(key, rb)) {
+    BlockEntry pb;
+    if (!fromBinaryArray(pb, rb))
+      return false;
+    b = pb.bl;
+    return true;
+  }
+  
+  logger(INFO) << "Get alt. block requested: " << blockHash;
 
   auto blockByHashIterator = m_alternative_chains.find(blockHash);
   if (blockByHashIterator != m_alternative_chains.end()) {
@@ -2307,7 +2292,14 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   return true;
 }
 
+bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   m_blocks.push_back(block);
+
+  auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
+  m_db.put(key, toBinaryArray(block), true);
+
+  db_commit();
+
   m_blockIndex.push(blockHash);
 
   m_timestampIndex.add(block.bl.timestamp, blockHash);
