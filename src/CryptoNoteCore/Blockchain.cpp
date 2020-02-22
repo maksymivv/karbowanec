@@ -368,6 +368,7 @@ m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled),
 m_tip_height(0),
 m_lastGeneratedTxNumber(0),
+m_synchronized(false),
 m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain")
 {
   m_outputs.set_deleted_key(0);
@@ -630,6 +631,10 @@ void Blockchain::db_commit() {
   //logger(INFO) << "Blockchain::db_commit started...";
   m_db.commit_db_txn();
   //logger(INFO) << "BlockChain::db_commit finished...";
+}
+
+void Blockchain::on_synchronized() {
+  m_synchronized = true;
 }
 
 void Blockchain::rebuildCache() {
@@ -2404,8 +2409,11 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
 
   assert(m_blockIndex.size() == m_blocks.size()); // old
 
-  // commit every 1k blocks
-  if (block.height % 1000 == 0) {
+  // commit every 10k blocks when syncing, on every block when was synced
+  if (!m_synchronized) {
+    if(block.height % 10000 == 0)
+      db_commit();
+  } else {
     db_commit();
   }
 
