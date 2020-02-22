@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 #include <crypto/crypto-util.h>
 
 namespace Crypto {
@@ -34,6 +35,8 @@ struct EllipticCurveScalar {
 
 struct Hash {
   uint8_t data[32];
+
+  std::vector<uint8_t> as_binary_array() const { return std::vector<uint8_t>{std::begin(data), std::end(data)}; }
 };
 
 struct PublicKey : public EllipticCurvePoint {};
