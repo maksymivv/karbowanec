@@ -209,8 +209,8 @@ public:
     logger(INFO) << operation << "block index...";
     s(m_bs.m_blockIndex, "block_index");
 
-    //logger(INFO) << operation << "transaction map...";
-    //s(m_bs.m_transactionMap, "transactions");
+    logger(INFO) << operation << "transaction map...";
+    s(m_bs.m_transactionMap, "transactions");
 
     /*logger(INFO) << operation << "spent keys...";
     if (s.type() == ISerializer::OUTPUT) {
@@ -442,13 +442,13 @@ bool Blockchain::checkTransactionSize(size_t blobSize) {
 }
 
 bool Blockchain::haveTransaction(const Crypto::Hash &id) {
-  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  //return m_transactionMap.find(id) != m_transactionMap.end();
-
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  return m_transactionMap.find(id) != m_transactionMap.end();
+/*
   Platform::DB::Value v;
   if (m_db.get(TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)), v))
     return true;
-
+*/
   return false;
 }
 
@@ -640,7 +640,7 @@ void Blockchain::on_synchronized() {
 void Blockchain::rebuildCache() {
   std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
   m_blockIndex.clear();
-  //m_transactionMap.clear();
+  m_transactionMap.clear();
   //spentKeyImages.clear();
   m_outputs.clear();
   m_multisignatureOutputs.clear();
@@ -655,7 +655,7 @@ void Blockchain::rebuildCache() {
       const TransactionEntry& transaction = block.transactions[t];
       Crypto::Hash transactionHash = getObjectHash(transaction.tx);
       TransactionIndex transactionIndex = { b, t };
-      //m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
+      m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
 
       // process inputs
       for (auto& i : transaction.tx.inputs) {
@@ -712,7 +712,7 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   m_blocks.clear();
   m_blockIndex.clear();
-  //m_transactionMap.clear();
+  m_transactionMap.clear();
 
   //spentKeyImages.clear();
   m_alternative_chains.clear();
@@ -1777,6 +1777,9 @@ std::vector<Crypto::Hash> Blockchain::findBlockchainSupplement(const std::vector
 }
 
 bool Blockchain::haveBlock(const Crypto::Hash& id) {
+
+  // TODO change to DB
+
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (m_blockIndex.hasBlock(id))
     return true;
@@ -2290,7 +2293,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   auto longhash_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - longhashTimeStart).count();
 
-  if (!prevalidate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()))) {
+  if (!prevalidate_miner_transaction(blockData, m_tip_height + 1)) {
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " failed to pass prevalidation";
     bvc.m_verification_failed = true;
@@ -2303,7 +2306,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   block.bl = blockData;
   block.transactions.resize(1);
   block.transactions[0].tx = blockData.baseTransaction;
-  TransactionIndex transactionIndex = { static_cast<uint32_t>(m_blocks.size()), static_cast<uint16_t>(0) };
+  TransactionIndex transactionIndex = { m_tip_height + 1, static_cast<uint16_t>(0) };
   pushTransaction(block, minerTransactionHash, transactionIndex);
 
   size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
@@ -2335,7 +2338,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     fee_summary += fee;
   }
 
-  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_blocks.size())) {
+  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_tip_height + 1)) {
     bvc.m_verification_failed = true;
     return false;
   }
@@ -2442,12 +2445,12 @@ void Blockchain::popBlock() {
 }
 
 bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transactionHash, TransactionIndex transactionIndex) {
-  /*auto result = m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
+  auto result = m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
   if (!result.second) {
     logger(ERROR, BRIGHT_RED) <<
       "Duplicate transaction was pushed to blockchain.";
     return false;
-  }*/
+  }
 
   auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data)); 
   m_db.put(tkey, toBinaryArray(transactionIndex), true);
@@ -2497,6 +2500,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
           auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
           m_db.del(kikey, true);
         }
+        m_transactionMap.erase(transactionHash);
         auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
         m_db.del(tkey, true);
 
@@ -2638,11 +2642,12 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
 
   m_paymentIdIndex.remove(transaction);
 
-  /*size_t count = m_transactionMap.erase(transactionHash);
+  size_t count = m_transactionMap.erase(transactionHash);
   if (count != 1) {
     logger(ERROR, BRIGHT_RED) <<
       "Blockchain consistency broken - cannot find transaction by hash.";
-  }*/
+  }
+
   auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
   m_db.del(tkey, true);
 
