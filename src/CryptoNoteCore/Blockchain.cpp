@@ -729,8 +729,6 @@ Crypto::Hash Blockchain::getTailId(uint32_t& height) {
   height = getCurrentBlockchainHeight() - 1;
   return getTailId();*/
 
-  assert(m_tip_height > 0);
-
   height = m_tip_height + 1; // total block count incl. genesis block nr zero, not last block number (index)
   std::string s;
   Crypto::Hash tail_id;
