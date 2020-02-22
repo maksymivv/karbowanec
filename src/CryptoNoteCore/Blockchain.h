@@ -337,6 +337,10 @@ namespace CryptoNote {
     OrphanBlocksIndex m_orphanBlocksIndex;
     bool m_blockchainIndexesEnabled;
 
+
+    uint32_t m_tip_height;
+    uint64_t m_lastGeneratedTxNumber;
+
     IntrusiveLinkedList<MessageQueue<BlockchainMessage>> m_messageQueueList;
 
     Logging::LoggerRef logger;

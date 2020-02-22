@@ -29,8 +29,10 @@
 #include "Common/ShuffleGenerator.h"
 #include "Common/StdInputStream.h"
 #include "Common/StdOutputStream.h"
+#include "Common/Varint.hpp"
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Serialization/BinarySerializationTools.h"
+#include "Serialization/SerializationTools.h"
 #include "CryptoNoteTools.h"
 #include "TransactionExtra.h"
 
@@ -48,6 +50,12 @@ std::string appendPath(const std::string& path, const std::string& fileName) {
   result += fileName;
   return result;
 }
+
+  template <typename T>
+  static bool print_as_json(const T& obj) {
+    std::cout << CryptoNote::storeToJson(obj) << ENDL;
+    return true;
+  }
 
 }
 
@@ -335,6 +343,11 @@ const std::string version_current = "1"; // increment when making incompatible c
 static const std::string BLOCK_PREFIX = "b";
 static const std::string BLOCK_SUFFIX = "b";
 static const std::string TRANSACTION_PREFIX = "t";
+static const std::string TIP_CHAIN_PREFIX = "c";
+static const std::string TIMESTAMP_INDEX_PREFIX = "T";
+static const std::string PAYMENT_ID_INDEX_PREFIX = "p";
+static const std::string GENERATED_TRANSACTIONS_INDEX_PREFIX = "g";
+static const std::string ORPHAN_BLOCK_INDEX_PREFIX = "o";
 
 Blockchain::Blockchain(const Currency& currency, tx_memory_pool& tx_pool, ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly, const std::string& config_folder) :
 logger(logger, "Blockchain"),
@@ -351,6 +364,8 @@ m_timestampIndex(blockchainIndexesEnabled),
 m_generatedTransactionsIndex(blockchainIndexesEnabled),
 m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled),
+m_tip_height(0),
+m_lastGeneratedTxNumber(0),
 m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain")
 {
   m_outputs.set_deleted_key(0);
@@ -479,6 +494,18 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 
   m_db.get("$version", version);
   logger(INFO) << "Blockchain DB version: " << version;
+
+  DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
+  m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+
+  logger(INFO) << "Blockchain tip height: " << m_tip_height;
+ 
+  if (m_tip_height > 0) {
+    std::string v;
+    m_db.get(GENERATED_TRANSACTIONS_INDEX_PREFIX + Common::write_varint_sqlite4(m_tip_height), v);
+    m_lastGeneratedTxNumber = Common::read_varint_sqlite4(v);
+    //logger(INFO) << "Generated transactions count: " << m_lastGeneratedTxNumber;
+  }
 
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
@@ -2291,22 +2318,36 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 }
 
 bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
-  m_blocks.push_back(block);
 
+  // group old and new methods
+
+  // push to blocks storage
+  m_blocks.push_back(block); // old
   auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
   m_db.put(key, toBinaryArray(block), true);
+
+  // push to block index
+  m_blockIndex.push(blockHash); // old
+  m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
+
+  // push to timestamp index
+  m_timestampIndex.add(block.bl.timestamp, blockHash); // old
+  m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), blockHash.as_binary_array(), true);
+
+  
+  // push to gen. txs index
+  m_generatedTransactionsIndex.add(block.bl); // old
+  if (block.height > 0) {
+    m_lastGeneratedTxNumber += (block.bl.transactionHashes.size() + 1); // plus miner tx
+    m_db.put(GENERATED_TRANSACTIONS_INDEX_PREFIX + Common::write_varint_sqlite4(block.height), Common::write_varint_sqlite4(m_lastGeneratedTxNumber), true);
+  }
+
+  assert(m_blockIndex.size() == m_blocks.size()); // old
 
   // commit every 1k blocks
   if (block.height % 1000 == 0) {
     db_commit();
   }
-
-  m_blockIndex.push(blockHash);
-
-  m_timestampIndex.add(block.bl.timestamp, blockHash);
-  m_generatedTransactionsIndex.add(block.bl);
-
-  assert(m_blockIndex.size() == m_blocks.size());
 
   return true;
 }
