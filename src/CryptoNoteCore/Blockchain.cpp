@@ -354,7 +354,6 @@ m_blockchainIndexesEnabled(blockchainIndexesEnabled),
 m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain")
 {
   m_outputs.set_deleted_key(0);
-
 }
 
 bool Blockchain::addObserver(IBlockchainStorageObserver* observer) {
@@ -581,11 +580,8 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 }
 
 void Blockchain::db_commit() {
-  //logger(INFO) << "Blockchain::db_commit started..."; // tip_height = " << m_tip_height
-    //<< " m_header_cache.size=" << m_header_cache.size();
+  //logger(INFO) << "Blockchain::db_commit started...";
   m_db.commit_db_txn();
-  //m_header_cache.clear();  // Most simple cache policy ever
-  //m_archive.db_commit();
   //logger(INFO) << "BlockChain::db_commit finished...";
 }
 
@@ -640,6 +636,8 @@ bool Blockchain::storeCache() {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   logger(INFO, BRIGHT_WHITE) << "Saving blockchain at height " << m_blocks.size() - 1 << "...";
+  db_commit();
+
   BlockCacheSerializer ser(*this, getTailId(), logger.getLogger());
   if (!ser.save(appendPath(m_config_folder, m_currency.blocksCacheFileName()))) {
     logger(ERROR, BRIGHT_RED) << "Failed to save blockchain cache";
@@ -2298,7 +2296,10 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
   m_db.put(key, toBinaryArray(block), true);
 
-  db_commit();
+  // commit every 1k blocks
+  if (block.height % 1000 == 0) {
+    db_commit();
+  }
 
   m_blockIndex.push(blockHash);
 
