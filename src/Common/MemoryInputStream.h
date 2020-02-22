@@ -26,7 +26,9 @@ namespace Common {
     MemoryInputStream(const void* buffer, size_t bufferSize);
     size_t getPosition() const;
     bool endOfStream() const;
-    
+    size_t size() const { return bufferSize - position; }
+    bool empty() const { return size() == 0; }
+
     // IInputStream
     virtual size_t readSome(void* data, size_t size) override;
 

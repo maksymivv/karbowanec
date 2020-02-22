@@ -21,6 +21,9 @@
 #include <ostream>
 #include <vector>
 #include <string>
+#include "CryptoNote.h"
+
+using namespace CryptoNote;
 
 namespace Common {
 
@@ -37,6 +40,7 @@ void read(IInputStream& in, uint16_t& value);
 void read(IInputStream& in, uint32_t& value);
 void read(IInputStream& in, uint64_t& value);
 void read(IInputStream& in, std::vector<uint8_t>& data, size_t size);
+void read(IInputStream& in, CryptoNote::BinaryArray &data, size_t size);
 void read(IInputStream& in, std::string& data, size_t size);
 void readVarint(IInputStream& in, uint8_t& value);
 void readVarint(IInputStream& in, uint16_t& value);
@@ -53,6 +57,7 @@ void write(IOutputStream& out, uint16_t value);
 void write(IOutputStream& out, uint32_t value);
 void write(IOutputStream& out, uint64_t value);
 void write(IOutputStream& out, const std::vector<uint8_t>& data);
+void write(IOutputStream& out, CryptoNote::BinaryArray& data);
 void write(IOutputStream& out, const std::string& data);
 void writeVarint(IOutputStream& out, uint64_t value);
 

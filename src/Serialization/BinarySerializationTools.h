@@ -36,11 +36,43 @@ BinaryArray storeToBinary(const T& obj) {
   return result;
 }
 
+template<typename T>
+BinaryArray to_binary(const T &obj) {
+  static_assert(!std::is_pointer<T>::value, "Cannot be called with pointer");
+  BinaryArray result;
+  Common::VectorOutputStream stream(result);
+  BinaryOutputStreamSerializer ba(stream);
+  serialize(const_cast<T &>(obj), ba);
+  return result;
+}
+
 template <typename T>
 void loadFromBinary(T& obj, const BinaryArray& blob) {
   Common::MemoryInputStream stream(blob.data(), blob.size());
   BinaryInputStreamSerializer ba(stream);
   serialize(obj, ba);
+}
+
+template<typename T>
+void from_binary(T &obj, Common::MemoryInputStream &stream) {
+  static_assert(!std::is_pointer<T>::value, "Cannot be called with pointer");
+  BinaryInputStreamSerializer ba(stream);
+  try {
+    serialize(obj, ba);
+  }
+  catch (const std::exception &) {
+    std::throw_with_nested(std::runtime_error(
+      "Error while serializing binary object of type '" + common::demangle(typeid(T).name()) + "'"));
+  }
+  if (!stream.empty())
+    throw std::runtime_error(
+      "Excess data after serializing binary object of type '" + common::demangle(typeid(T).name()) + "'");
+}
+
+template<typename T>
+void from_binary(T &obj, const BinaryArray &blob) {
+  Common::MemoryInputStream stream(blob.data(), blob.size());
+  from_binary(obj, stream);
 }
 
 template <typename T>
