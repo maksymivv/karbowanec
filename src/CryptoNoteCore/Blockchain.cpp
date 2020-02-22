@@ -209,8 +209,8 @@ public:
     logger(INFO) << operation << "block index...";
     s(m_bs.m_blockIndex, "block_index");
 
-    logger(INFO) << operation << "transaction map...";
-    s(m_bs.m_transactionMap, "transactions");
+    //logger(INFO) << operation << "transaction map...";
+    //s(m_bs.m_transactionMap, "transactions");
 
     /*logger(INFO) << operation << "spent keys...";
     if (s.type() == ISerializer::OUTPUT) {
@@ -642,7 +642,7 @@ void Blockchain::db_commit() {
 void Blockchain::rebuildCache() {
   std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
   m_blockIndex.clear();
-  m_transactionMap.clear();
+  //m_transactionMap.clear();
   //spentKeyImages.clear();
   m_outputs.clear();
   m_multisignatureOutputs.clear();
@@ -657,7 +657,7 @@ void Blockchain::rebuildCache() {
       const TransactionEntry& transaction = block.transactions[t];
       Crypto::Hash transactionHash = getObjectHash(transaction.tx);
       TransactionIndex transactionIndex = { b, t };
-      m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
+      //m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
 
       // process inputs
       for (auto& i : transaction.tx.inputs) {
@@ -714,7 +714,7 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   m_blocks.clear();
   m_blockIndex.clear();
-  m_transactionMap.clear();
+  //m_transactionMap.clear();
 
   //spentKeyImages.clear();
   m_alternative_chains.clear();
@@ -1787,7 +1787,19 @@ bool Blockchain::getTransactionOutputGlobalIndexes(const Crypto::Hash& tx_id, st
     return false;
   }
 
-  const TransactionEntry& tx = transactionByIndex(it->second);
+  BinaryArray ba;
+  if (!m_db.get(TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(tx_id.data, sizeof(tx_id.data)), ba)) {
+    logger(WARNING, YELLOW) << "warning: get_tx_outputs_gindexs failed to find transaction with id = " << tx_id;
+    return false;
+  }
+  TransactionIndex ti;
+  if (!fromBinaryArray(ti, ba)) {
+    logger(WARNING, YELLOW) << "warning: get_tx_outputs_gindexs failed to parse DB record";
+      return false;
+  }
+
+  //const TransactionEntry& tx = transactionByIndex(it->second);
+  const TransactionEntry& tx = transactionByIndex(ti);
   if (!(tx.m_global_output_indexes.size())) { logger(ERROR, BRIGHT_RED) << "internal error: global indexes for transaction " << tx_id << " is empty"; return false; }
   indexs.resize(tx.m_global_output_indexes.size());
   for (size_t i = 0; i < tx.m_global_output_indexes.size(); ++i) {
@@ -2158,7 +2170,20 @@ bool Blockchain::addNewBlock(const Block& bl, block_verification_context& bvc) {
 }
 
 const Blockchain::TransactionEntry& Blockchain::transactionByIndex(TransactionIndex index) {
-  return m_blocks[index.block].transactions[index.transaction];
+  //return m_blocks[index.block].transactions[index.transaction];
+  // get block by height, and in block tx from DB
+  std::string s;
+  Crypto::Hash h;
+  m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(index.block), s);
+  Common::podFromHex(s, h);
+
+  auto key = BLOCK_PREFIX + DB::to_binary_key(h.data, sizeof(h.data)) + BLOCK_SUFFIX;
+  BinaryArray ba;
+  m_db.get(key, ba);
+  BlockEntry pb;
+  fromBinaryArray(pb, ba);
+
+  return pb.transactions[index.transaction];
 }
 
 bool Blockchain::pushBlock(const Block& blockData, const Crypto::Hash& id, block_verification_context& bvc) {
@@ -2401,12 +2426,12 @@ void Blockchain::popBlock() {
 }
 
 bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transactionHash, TransactionIndex transactionIndex) {
-  auto result = m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
+  /*auto result = m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
   if (!result.second) {
     logger(ERROR, BRIGHT_RED) <<
       "Duplicate transaction was pushed to blockchain.";
     return false;
-  }
+  }*/
 
   auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data)); 
   m_db.put(tkey, toBinaryArray(transactionIndex), true);
@@ -2416,7 +2441,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
   if (!checkMultisignatureInputsDiff(transaction.tx)) {
     logger(ERROR, BRIGHT_RED) <<
       "Double spending transaction was pushed to blockchain.";
-    m_transactionMap.erase(transactionHash);
+    //m_transactionMap.erase(transactionHash);
     auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
     m_db.del(tkey, true);
 
@@ -2597,11 +2622,14 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
 
   m_paymentIdIndex.remove(transaction);
 
-  size_t count = m_transactionMap.erase(transactionHash);
+  /*size_t count = m_transactionMap.erase(transactionHash);
   if (count != 1) {
     logger(ERROR, BRIGHT_RED) <<
       "Blockchain consistency broken - cannot find transaction by hash.";
-  }
+  }*/
+  auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
+  m_db.del(tkey, true);
+
 }
 
 void Blockchain::popTransactions(const BlockEntry& block, const Crypto::Hash& minerTransactionHash) {
