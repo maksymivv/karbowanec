@@ -494,7 +494,7 @@ uint32_t Blockchain::getCurrentBlockchainHeight() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return static_cast<uint32_t>(m_blocks.size());
   DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-  uint32_t tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+  uint32_t tip_height = cur1.end() ? 1 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
 
   return tip_height;
 }
@@ -523,7 +523,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   logger(INFO) << "Blockchain DB version: " << version;
 
   DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-  m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+  m_tip_height = cur1.end() ? 1 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
 
   logger(INFO) << "Blockchain tip height: " << m_tip_height;
  
