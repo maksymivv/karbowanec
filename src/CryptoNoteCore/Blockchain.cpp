@@ -345,6 +345,8 @@ static const std::string BLOCK_SUFFIX = "b";
 static const std::string TRANSACTION_PREFIX = "t";
 static const std::string TIP_CHAIN_PREFIX = "c";
 static const std::string TIMESTAMP_INDEX_PREFIX = "T";
+static const std::string TRANSACTIONS_INDEX_PREFIX = "i";
+static const std::string SPENT_KEY_IMAGES_INDEX_PREFIX = "k";
 static const std::string PAYMENT_ID_INDEX_PREFIX = "p";
 static const std::string GENERATED_TRANSACTIONS_INDEX_PREFIX = "g";
 static const std::string ORPHAN_BLOCK_INDEX_PREFIX = "o";
@@ -2334,7 +2336,6 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   m_timestampIndex.add(block.bl.timestamp, blockHash); // old
   m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), blockHash.as_binary_array(), true);
 
-  
   // push to gen. txs index
   m_generatedTransactionsIndex.add(block.bl); // old
   if (block.height > 0) {
@@ -2381,18 +2382,25 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
     return false;
   }
 
+  auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data)); 
+  m_db.put(tkey, toBinaryArray(transactionIndex), true);
+
   TransactionEntry& transaction = block.transactions[transactionIndex.transaction];
 
   if (!checkMultisignatureInputsDiff(transaction.tx)) {
     logger(ERROR, BRIGHT_RED) <<
       "Double spending transaction was pushed to blockchain.";
     m_transactionMap.erase(transactionHash);
+    auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
+    m_db.del(tkey, true);
+
     return false;
   }
 
   for (size_t i = 0; i < transaction.tx.inputs.size(); ++i) {
     if (transaction.tx.inputs[i].type() == typeid(KeyInput)) {
-      auto result = spentKeyImages.get<KeyImageTag>().insert(SpentKeyImage{ block.height, ::boost::get<KeyInput>(transaction.tx.inputs[i]).keyImage });
+      Crypto::KeyImage ki = ::boost::get<KeyInput>(transaction.tx.inputs[i]).keyImage;
+      auto result = spentKeyImages.get<KeyImageTag>().insert(SpentKeyImage{ block.height, ki });
       if (!result.second) {
         logger(ERROR, BRIGHT_RED) <<
           "Double spending transaction was pushed to blockchain.";
@@ -2403,6 +2411,28 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         }
         
         m_transactionMap.erase(transactionHash);
+        auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
+        m_db.del(tkey, true);
+
+        return false;
+      }
+      // add to spent key images DB index
+      Platform::DB::Value v;
+      if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data)), v)) {
+        auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
+        m_db.put(kikey, toBinaryArray(SpentKeyImage{ block.height, ki }), true);
+      }
+      else {
+        logger(ERROR, BRIGHT_RED) <<
+          "Double spending transaction was pushed to blockchain.";
+        for (size_t j = 0; j < i; ++j) {
+          Crypto::KeyImage ki = ::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage;
+          auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
+          m_db.del(kikey, true);
+        }
+        auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
+        m_db.del(tkey, true);
+
         return false;
       }
     }
@@ -2431,6 +2461,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
   }
 
   m_paymentIdIndex.add(transaction.tx);
+  // add to payment id index in db
 
   return true;
 }
