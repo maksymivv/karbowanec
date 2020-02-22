@@ -442,9 +442,13 @@ bool Blockchain::checkTransactionSize(size_t blobSize) {
 
 bool Blockchain::haveTransaction(const Crypto::Hash &id) {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return m_transactionMap.find(id) != m_transactionMap.end();
+  //return m_transactionMap.find(id) != m_transactionMap.end();
 
-  // TODO get from db
+  Platform::DB::Value v;
+  if (m_db.get(TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)), v))
+    return true;
+
+  return false;
 }
 
 bool Blockchain::have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im) {
@@ -487,8 +491,12 @@ bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage) {
 }
 
 uint32_t Blockchain::getCurrentBlockchainHeight() {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return static_cast<uint32_t>(m_blocks.size());
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //return static_cast<uint32_t>(m_blocks.size());
+  DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
+  uint32_t tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+
+  return tip_height;
 }
 
 bool Blockchain::init(const std::string& config_folder, bool load_existing) {
@@ -2347,6 +2355,7 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
 
   // push to block index
   m_blockIndex.push(blockHash); // old
+  m_tip_height = block.height;
   m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
 
   // push to timestamp index
