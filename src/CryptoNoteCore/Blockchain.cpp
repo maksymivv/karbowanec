@@ -493,10 +493,8 @@ bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage) {
 uint32_t Blockchain::getCurrentBlockchainHeight() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return static_cast<uint32_t>(m_blocks.size());
-  DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-  uint32_t tip_height = cur1.end() ? 1 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
 
-  return tip_height;
+  return m_tip_height + 1; // total block count including genesis block number zero, not last block index
 }
 
 bool Blockchain::init(const std::string& config_folder, bool load_existing) {
@@ -523,22 +521,14 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   logger(INFO) << "Blockchain DB version: " << version;
 
   DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-  m_tip_height = cur1.end() ? 1 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+  m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
 
-  logger(INFO) << "Blockchain tip height: " << m_tip_height;
- 
-  if (m_tip_height > 0) {
-    std::string v;
-    m_db.get(GENERATED_TRANSACTIONS_INDEX_PREFIX + Common::write_varint_sqlite4(m_tip_height), v);
-    m_lastGeneratedTxNumber = Common::read_varint_sqlite4(v);
-    //logger(INFO) << "Generated transactions count: " << m_lastGeneratedTxNumber;
-  }
-
+  
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
   }
 
-  if (load_existing && !m_blocks.empty()) {
+  if (load_existing && m_tip_height > 0 /* same as !m_blocks.empty(), that blockchain is not empty, TODO delete, replace by BD */ && !m_blocks.empty()) {
     logger(INFO, BRIGHT_WHITE) << "Loading blockchain...";
     BlockCacheSerializer loader(*this, get_block_hash(m_blocks.back().bl), logger.getLogger());
     loader.load(appendPath(config_folder, m_currency.blocksCacheFileName()));
@@ -555,7 +545,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     m_blocks.clear();
   }
 
-  if (m_blocks.empty()) {
+  if (m_tip_height == 0 /* TODO delete, replace by BD */ && m_blocks.empty()) {
     logger(INFO, BRIGHT_WHITE)
       << "Blockchain not loaded, generating genesis block.";
     block_verification_context bvc = boost::value_initialized<block_verification_context>();
@@ -621,13 +611,16 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 
   update_next_cumulative_size_limit();
 
-  uint64_t timestamp_diff = time(NULL) - m_blocks.back().bl.timestamp;
+  DB::Cursor cur2 = m_db.rbegin(TIMESTAMP_INDEX_PREFIX);
+  uint64_t tip_timestamp = cur1.end() ? time(NULL) : 
+    Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(cur2.get_suffix()));
+  uint64_t timestamp_diff = time(NULL) - tip_timestamp;
   if (!m_blocks.back().bl.timestamp) {
     timestamp_diff = time(NULL) - 1341378000;
   }
 
   logger(INFO, BRIGHT_GREEN)
-    << "Blockchain initialized. last block: " << m_blocks.size() - 1 << ", "
+    << "Blockchain initialized. last block: " << m_tip_height << ", "
     << Common::timeIntervalToString(timestamp_diff)
     << " time ago, current difficulty: " << getDifficultyForNextBlock();
   return true;
@@ -731,15 +724,32 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
 }
 
 Crypto::Hash Blockchain::getTailId(uint32_t& height) {
-  assert(!m_blocks.empty());
+  /*assert(!m_blocks.empty());
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   height = getCurrentBlockchainHeight() - 1;
-  return getTailId();
+  return getTailId();*/
+
+  assert(m_tip_height > 0);
+
+  height = m_tip_height + 1; // total block count incl. genesis block nr zero, not last block number (index)
+  std::string s;
+  Crypto::Hash tail_id;
+  m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(height), s);
+  Common::podFromHex(s, tail_id);
+
+  return m_tip_height == 0 ? NULL_HASH : tail_id;
 }
 
 Crypto::Hash Blockchain::getTailId() {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return m_blocks.empty() ? NULL_HASH : m_blockIndex.getTailId();
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //return m_blocks.empty() ? NULL_HASH : m_blockIndex.getTailId();
+
+  std::string s;
+  Crypto::Hash tail_id;
+  m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(m_tip_height), s);
+  Common::podFromHex(s, tail_id);
+
+  return m_tip_height == 0 ? NULL_HASH : tail_id;
 }
 
 std::vector<Crypto::Hash> Blockchain::buildSparseChain() {
@@ -801,11 +811,11 @@ bool Blockchain::getBlockByHash(const Crypto::Hash& blockHash, Block& b) {
     return true;
   }*/
 
-  BinaryArray rb;
+  BinaryArray ba;
   auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
-  if (m_db.get(key, rb)) {
+  if (m_db.get(key, ba)) {
     BlockEntry pb;
-    if (!fromBinaryArray(pb, rb))
+    if (!fromBinaryArray(pb, ba))
       return false;
     b = pb.bl;
     return true;
