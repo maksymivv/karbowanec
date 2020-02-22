@@ -27,6 +27,7 @@
 #include "Common/Math.h"
 #include "Common/int-util.h"
 #include "Common/ShuffleGenerator.h"
+#include "Common/StringTools.h"
 #include "Common/StdInputStream.h"
 #include "Common/StdOutputStream.h"
 #include "Common/Varint.hpp"
@@ -522,14 +523,12 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   logger(INFO) << "Blockchain DB version: " << version;
 
   DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-  m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
-
-  
+    
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
   }
 
-  if (load_existing && m_tip_height > 0 /* same as !m_blocks.empty(), that blockchain is not empty, TODO delete, replace by BD */ && !m_blocks.empty()) {
+  if (load_existing && !cur1.end() /* same as !m_blocks.empty(), that blockchain is not empty, TODO delete, replace by BD */ && !m_blocks.empty()) {
     logger(INFO, BRIGHT_WHITE) << "Loading blockchain...";
     BlockCacheSerializer loader(*this, get_block_hash(m_blocks.back().bl), logger.getLogger());
     loader.load(appendPath(config_folder, m_currency.blocksCacheFileName()));
@@ -546,7 +545,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     m_blocks.clear();
   }
 
-  if (m_tip_height == 0 /* TODO delete, replace by BD */ && m_blocks.empty()) {
+  if (cur1.end() /* TODO delete, replace by BD */ && m_blocks.empty()) {
     logger(INFO, BRIGHT_WHITE)
       << "Blockchain not loaded, generating genesis block.";
     block_verification_context bvc = boost::value_initialized<block_verification_context>();
@@ -734,25 +733,31 @@ Crypto::Hash Blockchain::getTailId(uint32_t& height) {
   height = getCurrentBlockchainHeight() - 1;
   return getTailId();*/
 
-  height = m_tip_height + 1; // total block count incl. genesis block nr zero, not last block number (index)
-  std::string s;
   Crypto::Hash tail_id;
-  m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(height), s);
-  Common::podFromHex(s, tail_id);
+  DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+  height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix()));
+  loadFromBinary(tail_id, cur.get_value_array());
 
-  return m_tip_height == 0 ? NULL_HASH : tail_id;
+
+  logger(INFO) << "getTailId, DB: \n" << tail_id << "\nm_blockIndex: \n" << m_blockIndex.getTailId();
+
+  return tail_id;
 }
 
 Crypto::Hash Blockchain::getTailId() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return m_blocks.empty() ? NULL_HASH : m_blockIndex.getTailId();
 
+  DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
+  if (cur1.end())
+    return NULL_HASH;
+
   std::string s;
   Crypto::Hash tail_id;
-  m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(m_tip_height), s);
-  Common::podFromHex(s, tail_id);
+  m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(m_tip_height), s); 
+  DB::from_binary_key(s, 0, tail_id.data, sizeof(tail_id.data));
 
-  return m_tip_height == 0 ? NULL_HASH : tail_id;
+  return tail_id;
 }
 
 std::vector<Crypto::Hash> Blockchain::buildSparseChain() {
@@ -2293,7 +2298,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   auto longhash_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - longhashTimeStart).count();
 
-  if (!prevalidate_miner_transaction(blockData, m_tip_height + 1)) {
+  if (!prevalidate_miner_transaction(blockData, m_tip_height)) {
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " failed to pass prevalidation";
     bvc.m_verification_failed = true;
@@ -2306,7 +2311,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   block.bl = blockData;
   block.transactions.resize(1);
   block.transactions[0].tx = blockData.baseTransaction;
-  TransactionIndex transactionIndex = { m_tip_height + 1, static_cast<uint16_t>(0) };
+  TransactionIndex transactionIndex = { m_tip_height, static_cast<uint16_t>(0) };
   pushTransaction(block, minerTransactionHash, transactionIndex);
 
   size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
@@ -2338,7 +2343,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     fee_summary += fee;
   }
 
-  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_tip_height + 1)) {
+  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_tip_height)) {
     bvc.m_verification_failed = true;
     return false;
   }
@@ -2346,19 +2351,19 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   int64_t emissionChange = 0;
   uint64_t reward = 0;
   uint64_t already_generated_coins = m_blocks.empty() ? 0 : m_blocks.back().already_generated_coins;
-  if (!validate_miner_transaction(blockData, static_cast<uint32_t>(m_blocks.size()), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
+  if (!validate_miner_transaction(blockData, m_tip_height, cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
     logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
     bvc.m_verification_failed = true;
     popTransactions(block, minerTransactionHash);
     return false;
   }
 
-  block.height = static_cast<uint32_t>(m_blocks.size());
+  block.height = m_tip_height + 1;
   block.block_cumulative_size = cumulative_block_size;
   block.cumulative_difficulty = currentDifficulty;
   block.already_generated_coins = already_generated_coins + emissionChange;
-  if (m_blocks.size() > 0) {
-    block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
+  if (m_blocks.size() > 0) { // TODO use DB
+    block.cumulative_difficulty += m_blocks.back().cumulative_difficulty; // TODO use DB
   }
 
   pushBlock(block, blockHash);
@@ -2397,7 +2402,7 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   // push to block index
   m_blockIndex.push(blockHash); // old
   m_tip_height = block.height;
-  m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
+  m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), DB::to_binary_key(blockHash.data, sizeof(blockHash.data)), true);
 
   // push to timestamp index
   m_timestampIndex.add(block.bl.timestamp, blockHash); // old
