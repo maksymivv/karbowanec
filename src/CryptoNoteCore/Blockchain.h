@@ -319,9 +319,7 @@ namespace CryptoNote {
     typedef SwappedVector<BlockEntry> Blocks;
     typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
     typedef std::unordered_map<Crypto::Hash, TransactionIndex> TransactionMap;
-    typedef BasicUpgradeDetector<Blocks> UpgradeDetector;
-
-    //typedef BasicUpgradeDetector<DB> UpgradeDetector;
+    typedef BasicUpgradeDetector<DB> UpgradeDetector;
 
     friend class BlockCacheSerializer;
     friend class BlockchainIndicesSerializer;

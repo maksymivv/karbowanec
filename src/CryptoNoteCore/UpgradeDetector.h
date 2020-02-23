@@ -48,14 +48,13 @@ namespace CryptoNote {
 
   static_assert(CryptoNote::UpgradeDetectorBase::UNDEF_HEIGHT == UINT32_C(0xFFFFFFFF), "UpgradeDetectorBase::UNDEF_HEIGHT has invalid value");
 
-  template <typename BC> //   template<typename DB>
+  template<typename DB>
   class BasicUpgradeDetector : public UpgradeDetectorBase {
   public:
     typedef Platform::DB DB;
 
-    BasicUpgradeDetector(const Currency& currency, BC& blockchain, uint8_t targetVersion, const std::string& config_folder, Logging::ILogger& log) :
+    BasicUpgradeDetector(const Currency& currency, DB& bdb, uint8_t targetVersion, const std::string& config_folder, Logging::ILogger& log) :
       m_currency(currency),
-      m_blockchain(blockchain),
       m_targetVersion(targetVersion),
       m_votingCompleteHeight(UNDEF_HEIGHT),
       logger(log, "upgrade"),
@@ -317,7 +316,6 @@ namespace CryptoNote {
   private:
     Logging::LoggerRef logger;
     const Currency& m_currency;
-    BC& m_blockchain;
     uint8_t m_targetVersion;
     uint32_t m_votingCompleteHeight;
     uint32_t m_height; // blockchain height incl. zero block

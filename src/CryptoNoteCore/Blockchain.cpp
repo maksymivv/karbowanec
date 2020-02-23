@@ -344,10 +344,11 @@ logger(logger, "Blockchain"),
 m_currency(currency),
 m_tx_pool(tx_pool),
 m_current_block_cumul_sz_limit(0),
-m_upgradeDetectorV2(currency, m_blocks, BLOCK_MAJOR_VERSION_2, config_folder, logger),
-m_upgradeDetectorV3(currency, m_blocks, BLOCK_MAJOR_VERSION_3, config_folder, logger),
-m_upgradeDetectorV4(currency, m_blocks, BLOCK_MAJOR_VERSION_4, config_folder, logger),
-m_upgradeDetectorV5(currency, m_blocks, BLOCK_MAJOR_VERSION_5, config_folder, logger),
+m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain"),
+m_upgradeDetectorV2(currency, m_db, BLOCK_MAJOR_VERSION_2, config_folder, logger),
+m_upgradeDetectorV3(currency, m_db, BLOCK_MAJOR_VERSION_3, config_folder, logger),
+m_upgradeDetectorV4(currency, m_db, BLOCK_MAJOR_VERSION_4, config_folder, logger),
+m_upgradeDetectorV5(currency, m_db, BLOCK_MAJOR_VERSION_5, config_folder, logger),
 m_checkpoints(logger),
 m_paymentIdIndex(blockchainIndexesEnabled),
 m_timestampIndex(blockchainIndexesEnabled),
@@ -356,8 +357,7 @@ m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled),
 m_height(0),
 m_lastGeneratedTxNumber(0),
-m_synchronized(false),
-m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain")
+m_synchronized(false)
 {
   m_outputs.set_deleted_key(0);
 }
