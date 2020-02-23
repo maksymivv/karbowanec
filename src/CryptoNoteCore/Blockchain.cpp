@@ -523,7 +523,8 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   logger(INFO) << "Blockchain DB version: " << version;
 
   DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-    
+  m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
   }
@@ -735,11 +736,9 @@ Crypto::Hash Blockchain::getTailId(uint32_t& height) {
 
   Crypto::Hash tail_id;
   DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
-  height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1;
+  height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix()));
   BinaryArray ba = cur.get_value_array();
   memcpy(&tail_id, ba.data(), ba.size());
-
-  //logger(INFO) << "getTailId, DB: \n" << tail_id << "\nm_blockIndex: \n" << m_blockIndex.getTailId();
 
   return tail_id;
 }
