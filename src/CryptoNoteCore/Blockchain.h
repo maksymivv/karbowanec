@@ -232,7 +232,7 @@ namespace CryptoNote {
 
     void rebuildCache();
     bool storeCache();
-
+    void on_synchronized();
     void db_commit();
 
   protected:
@@ -336,7 +336,7 @@ namespace CryptoNote {
     GeneratedTransactionsIndex m_generatedTransactionsIndex;
     OrphanBlocksIndex m_orphanBlocksIndex;
     bool m_blockchainIndexesEnabled;
-
+    bool m_synchronized;
 
     uint32_t m_tip_height;
     uint64_t m_lastGeneratedTxNumber;

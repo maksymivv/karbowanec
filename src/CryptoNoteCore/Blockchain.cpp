@@ -337,20 +337,6 @@ private:
   Crypto::Hash m_lastBlockHash;
 };
 
-const std::string version_current = "1"; // increment when making incompatible changes to indexes
-
-// use suffixes so all keys related to the same block are close to each other in DB
-static const std::string BLOCK_PREFIX = "b";
-static const std::string BLOCK_SUFFIX = "b";
-static const std::string TRANSACTION_PREFIX = "t";
-static const std::string TIP_CHAIN_PREFIX = "c";
-static const std::string TIMESTAMP_INDEX_PREFIX = "T";
-static const std::string TRANSACTIONS_INDEX_PREFIX = "i";
-static const std::string SPENT_KEY_IMAGES_INDEX_PREFIX = "k";
-static const std::string PAYMENT_ID_INDEX_PREFIX = "p";
-static const std::string GENERATED_TRANSACTIONS_INDEX_PREFIX = "g";
-static const std::string ORPHAN_BLOCK_INDEX_PREFIX = "o";
-
 Blockchain::Blockchain(const Currency& currency, tx_memory_pool& tx_pool, ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly, const std::string& config_folder) :
 logger(logger, "Blockchain"),
 m_currency(currency),
@@ -368,7 +354,8 @@ m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled),
 m_tip_height(0),
 m_lastGeneratedTxNumber(0),
-m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain")
+m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/db"),
+m_synchronized(false)
 {
   m_outputs.set_deleted_key(0);
 }
@@ -441,26 +428,17 @@ bool Blockchain::checkTransactionSize(size_t blobSize) {
 }
 
 bool Blockchain::haveTransaction(const Crypto::Hash &id) {
-  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   return m_transactionMap.find(id) != m_transactionMap.end();
 
   // TODO get from db
 }
 
 bool Blockchain::have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im) {
-  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   return  checkIfSpent(key_im);
 }
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIndex) {
-  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  /*auto it = spentKeyImages.get<KeyImageTag>().find(keyImage);
-  if (it == spentKeyImages.get<KeyImageTag>().end()) {
-    return false;
-  }
-
-  return it->blockIndex <= blockIndex;*/
-
   BinaryArray ba;
   if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), ba)) {
     return false;
@@ -475,10 +453,6 @@ bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIn
 }
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage) {
-  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  /*if (spentKeyImages.get<KeyImageTag>().count(keyImage) != 0) {
-    return true;
-  }*/
   Platform::DB::Value v;
   if (m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), v))
     return true;
@@ -504,7 +478,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   if (!m_db.get("$version", version)) {
     DB::Cursor cur = m_db.begin(std::string{});
     if (!cur.end())
-      throw std::runtime_error("Blockchain database format unknown version, please delete " + m_db.get_path());
+      throw std::runtime_error("Blockchain indexes database format unknown version, please delete " + m_db.get_path());
     version = version_current;
     m_db.put("$version", version, false);
   }
@@ -512,19 +486,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     return false;  // BlockChainState will upgrade DB, we must not continue or risk crashing
 
   m_db.get("$version", version);
-  logger(INFO) << "Blockchain DB version: " << version;
-
-  DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-  m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
-
-  logger(INFO) << "Blockchain tip height: " << m_tip_height;
- 
-  if (m_tip_height > 0) {
-    std::string v;
-    m_db.get(GENERATED_TRANSACTIONS_INDEX_PREFIX + Common::write_varint_sqlite4(m_tip_height), v);
-    m_lastGeneratedTxNumber = Common::read_varint_sqlite4(v);
-    //logger(INFO) << "Generated transactions count: " << m_lastGeneratedTxNumber;
-  }
+  logger(INFO) << "Blockchain indexes DB version: " << version;
 
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
@@ -629,6 +591,11 @@ void Blockchain::db_commit() {
   //logger(INFO) << "Blockchain::db_commit started...";
   m_db.commit_db_txn();
   //logger(INFO) << "BlockChain::db_commit finished...";
+}
+
+void Blockchain::on_synchronized() {
+  m_synchronized = true;
+  db_commit();
 }
 
 void Blockchain::rebuildCache() {
@@ -2337,13 +2304,12 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 }
 
 bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
-
-  // group old and new methods
-
   // push to blocks storage
-  m_blocks.push_back(block); // old
-  auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
-  m_db.put(key, toBinaryArray(block), true);
+  m_blocks.push_back(block);
+
+  // Hybrid: use SwappedVector storage for blocks and LMDB for various indexes
+  //auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
+  //m_db.put(key, toBinaryArray(block), true);
 
   // push to block index
   m_blockIndex.push(blockHash); // old
@@ -2362,8 +2328,12 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
 
   assert(m_blockIndex.size() == m_blocks.size()); // old
 
-  // commit every 1k blocks
-  if (block.height % 1000 == 0) {
+  // commit every 1k blocks when syncing, on every block when was synced
+  if (!m_synchronized) {
+    if(block.height % 10000 == 0)
+      db_commit();
+  } else {
+    logger(INFO) << "Blockchain::db_commit on single push block started...";
     db_commit();
   }
 

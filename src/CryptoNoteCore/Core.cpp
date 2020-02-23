@@ -649,6 +649,7 @@ bool Core::handle_block_found(Block& b) {
 }
 
 void Core::on_synchronized() {
+  m_blockchain.on_synchronized();
   m_miner->on_synchronized();
 }
 
