@@ -34,7 +34,7 @@
 #include <CryptoNote.h>
 #include <Logging/LoggerRef.h>
 #include "Serialization/ISerializer.h"
-
+#include "Serialization/SerializationTools.h"
 
 #undef ERROR
 
@@ -77,11 +77,11 @@ namespace CryptoNote {
         return false;
 
       if (upgradeHeight == UNDEF_HEIGHT) {
-        if (m_tip_height == 0 /* m_blockchain.empty() */) {
+        if (m_tip_height == 0) {
           m_votingCompleteHeight = UNDEF_HEIGHT;
 
         } else if (m_targetVersion - 1 == m_tip_b.bl.majorVersion) {
-          m_votingCompleteHeight = findVotingCompleteHeight(static_cast<uint32_t>(m_tip_height/* - 1*/));
+          m_votingCompleteHeight = findVotingCompleteHeight(static_cast<uint32_t>(m_tip_height));
 
         } else if (m_targetVersion <= m_tip_b.bl.majorVersion) {
           uint8_t v;
@@ -106,8 +106,8 @@ namespace CryptoNote {
         } else {
           m_votingCompleteHeight = UNDEF_HEIGHT;
         }
-      } else if (m_tip_height > 0 /*!m_blockchain.empty()*/) {
-        if (/*m_blockchain.size()*/ m_tip_height <= upgradeHeight + 1) {
+      } else if (m_tip_height > 0) {
+        if (m_tip_height + 1 <= upgradeHeight + 1) {
           if (m_tip_b.bl.majorVersion >= m_targetVersion) {
             logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: block at height " << (m_tip_height/* - 1*/) <<
               " has invalid version " << static_cast<int>(m_tip_b.bl.majorVersion) <<
@@ -115,36 +115,37 @@ namespace CryptoNote {
             return false;
           }
         } else {
-
-          std::string s;
-          BinaryArray ba;
-          BlockEntry be;
-          if(!m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(upgradeHeight), s))
+          std::string sb;
+          BinaryArray bab;
+          BlockEntry beb;
+          if(!m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(upgradeHeight), sb))
             return false;
-          if (!m_db.get(BLOCK_PREFIX + s + BLOCK_SUFFIX, ba))
+          if (!m_db.get(BLOCK_PREFIX + sb + BLOCK_SUFFIX, bab))
             return false;
-          if (!fromBinaryArray(be, ba))
+          if (!fromBinaryArray(beb, bab))
             return false;
-          int blockVersionAtUpgradeHeight = be.bl.majorVersion;
-
+          int blockVersionAtUpgradeHeight = beb.bl.majorVersion;
           if (blockVersionAtUpgradeHeight != m_targetVersion - 1) {
             logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: block at height " << upgradeHeight <<
-              " has invalid version " << blockVersionAtUpgradeHeight <<
+              " (before upgrade) has invalid version " << blockVersionAtUpgradeHeight <<
               ", expected " << static_cast<int>(m_targetVersion - 1);
             return false;
           }
 
-          if (!m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(upgradeHeight + 1), s))
+          std::string sa;
+          BinaryArray baa;
+          BlockEntry bea;
+          if (!m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4((upgradeHeight + 1)), sa))
             return false;
-          if (!m_db.get(BLOCK_PREFIX + s + BLOCK_SUFFIX, ba))
+          if (!m_db.get(BLOCK_PREFIX + sa + BLOCK_SUFFIX, baa))
             return false;
-          if (!fromBinaryArray(be, ba))
+          if (!fromBinaryArray(bea, baa))
             return false;
-          int blockVersionAfterUpgradeHeight = be.bl.majorVersion;
 
+          int blockVersionAfterUpgradeHeight = bea.bl.majorVersion;
           if (blockVersionAfterUpgradeHeight != m_targetVersion) {
             logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: block at height " << (upgradeHeight + 1) <<
-              " has invalid version " << blockVersionAfterUpgradeHeight <<
+              " (after upgrade) has invalid version " << blockVersionAfterUpgradeHeight <<
               ", expected " << static_cast<int>(m_targetVersion);
             return false;
           }

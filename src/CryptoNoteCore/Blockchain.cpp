@@ -52,11 +52,12 @@ std::string appendPath(const std::string& path, const std::string& fileName) {
   return result;
 }
 
-  template <typename T>
-  static bool print_as_json(const T& obj) {
-    std::cout << CryptoNote::storeToJson(obj) << ENDL;
-    return true;
-  }
+// for debug print
+template <typename T>
+static bool print_as_json(const T& obj) {
+  std::cout << CryptoNote::storeToJson(obj) << ENDL;
+  return true;
+}
 
 }
 
@@ -353,7 +354,7 @@ m_timestampIndex(blockchainIndexesEnabled),
 m_generatedTransactionsIndex(blockchainIndexesEnabled),
 m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled),
-m_tip_height(0),
+m_height(0),
 m_lastGeneratedTxNumber(0),
 m_synchronized(false),
 m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, config_folder + "/blockchain")
@@ -482,7 +483,7 @@ uint32_t Blockchain::getCurrentBlockchainHeight() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return static_cast<uint32_t>(m_blocks.size());
 
-  return m_tip_height; // total block count including genesis block number zero, not last block index ??
+  return m_height;
 }
 
 bool Blockchain::init(const std::string& config_folder, bool load_existing) {
@@ -509,7 +510,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   logger(INFO) << "Blockchain DB version: " << version;
 
   DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-  m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+  m_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix())) + 1;
 
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
     return false;
@@ -607,14 +608,14 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   }
 
   logger(INFO, BRIGHT_GREEN)
-    << "Blockchain initialized. last block: " << m_tip_height << ", "
+    << "Blockchain initialized. last block: " << (m_height - 1) << ", "
     << Common::timeIntervalToString(timestamp_diff)
     << " time ago, current difficulty: " << getDifficultyForNextBlock();
   return true;
 }
 
 void Blockchain::db_commit() {
-  logger(INFO) << "Blockchain::db_commit started...";
+  //logger(INFO) << "Blockchain::db_commit started...";
   m_db.commit_db_txn();
   //logger(INFO) << "BlockChain::db_commit finished...";
 }
@@ -723,7 +724,7 @@ Crypto::Hash Blockchain::getTailId(uint32_t& height) {
 
   Crypto::Hash tail_id;
   DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
-  height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix()));
+  height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1; // incl. block zero
   BinaryArray ba = cur.get_value_array();
   memcpy(&tail_id, ba.data(), ba.size());
 
@@ -2284,7 +2285,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   auto longhash_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - longhashTimeStart).count();
 
-  if (!prevalidate_miner_transaction(blockData, m_tip_height)) {
+  if (!prevalidate_miner_transaction(blockData, m_height)) { // blockchain height (incl. zero block)
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " failed to pass prevalidation";
     bvc.m_verification_failed = true;
@@ -2297,7 +2298,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   block.bl = blockData;
   block.transactions.resize(1);
   block.transactions[0].tx = blockData.baseTransaction;
-  TransactionIndex transactionIndex = { m_tip_height, static_cast<uint16_t>(0) };
+  TransactionIndex transactionIndex = { m_height, static_cast<uint16_t>(0) };
   pushTransaction(block, minerTransactionHash, transactionIndex);
 
   size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
@@ -2329,7 +2330,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     fee_summary += fee;
   }
 
-  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_tip_height)) {
+  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_height)) {
     bvc.m_verification_failed = true;
     return false;
   }
@@ -2337,14 +2338,14 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   int64_t emissionChange = 0;
   uint64_t reward = 0;
   uint64_t already_generated_coins = m_blocks.empty() ? 0 : m_blocks.back().already_generated_coins;
-  if (!validate_miner_transaction(blockData, m_tip_height, cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
+  if (!validate_miner_transaction(blockData, m_height, cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
     logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
     bvc.m_verification_failed = true;
     popTransactions(block, minerTransactionHash);
     return false;
   }
 
-  block.height = m_tip_height + 1;
+  block.height = m_height; // blockchain height (incl. zero block)!!!
   block.block_cumulative_size = cumulative_block_size;
   block.cumulative_difficulty = currentDifficulty;
   block.already_generated_coins = already_generated_coins + emissionChange;
@@ -2387,7 +2388,6 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
 
   // push to block index
   m_blockIndex.push(blockHash); // old
-  m_tip_height = block.height;
   m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
 
   // push to timestamp index
@@ -2404,12 +2404,15 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   assert(m_blockIndex.size() == m_blocks.size()); // old
 
   // commit every 10k blocks when syncing, on every block when was synced
-  //if (!m_synchronized) {
+  if (!m_synchronized) {
     if(block.height % 50000 == 0)
       db_commit();
-  //} else {
-  //  db_commit();
-  //}
+  } else {
+    logger(INFO) << "Blockchain::db_commit on single push block started...";
+    db_commit();
+  }
+
+  m_height = block.height + 1; // +1 because not tip index but entire blockchain height
 
   return true;
 }
