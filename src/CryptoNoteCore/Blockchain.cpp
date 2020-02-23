@@ -736,7 +736,8 @@ Crypto::Hash Blockchain::getTailId(uint32_t& height) {
   Crypto::Hash tail_id;
   DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
   height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix()));
-  loadFromBinary(tail_id, cur.get_value_array());
+  BinaryArray ba = cur.get_value_array();
+  memcpy(&tail_id, ba.data(), ba.size());
 
   logger(INFO) << "getTailId, DB: \n" << tail_id << "\nm_blockIndex: \n" << m_blockIndex.getTailId();
 
@@ -747,13 +748,14 @@ Crypto::Hash Blockchain::getTailId() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return m_blocks.empty() ? NULL_HASH : m_blockIndex.getTailId();
 
-  Crypto::Hash tail_id;
   DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
 
   if (cur.end())
     return NULL_HASH;
 
-  loadFromBinary(tail_id, cur.get_value_array());
+  Crypto::Hash tail_id;
+  BinaryArray ba = cur.get_value_array();
+  memcpy(&tail_id, ba.data(), ba.size());
 
   return tail_id;
 }
@@ -2400,11 +2402,11 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   // push to block index
   m_blockIndex.push(blockHash); // old
   m_tip_height = block.height;
-  m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), storeToBinary(blockHash.data), true);
+  m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
 
   // push to timestamp index
   m_timestampIndex.add(block.bl.timestamp, blockHash); // old
-  m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), storeToBinary(blockHash.data), true);
+  m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), blockHash.as_binary_array(), true);
 
   // push to gen. txs index
   m_generatedTransactionsIndex.add(block.bl); // old
