@@ -1,12 +1,11 @@
 // Copyright (c) 2012-2018, The CryptoNote developers, The Bytecoin developers.
+// Copyright (c) 2016-2020, The Karbo developers
 // Licensed under the GNU Lesser General Public License. See LICENSE for details.
 
 #pragma once
 
 #include "DBlmdb.hpp"
-#include <CryptoNote.h>
-#include "Difficulty.h"
-#include "Serialization/ISerializer.h"
+
 namespace Platform {
 typedef DBlmdb DB;
 }
@@ -26,34 +25,5 @@ namespace CryptoNote {
   static const std::string PAYMENT_ID_INDEX_PREFIX = "p";
   static const std::string GENERATED_TRANSACTIONS_INDEX_PREFIX = "g";
   static const std::string ORPHAN_BLOCK_INDEX_PREFIX = "o";
-
-
-  struct TransactionEntry {
-    Transaction tx;
-    std::vector<uint32_t> m_global_output_indexes;
-
-    void serialize(ISerializer& s) {
-      s(tx, "tx");
-      s(m_global_output_indexes, "indexes");
-    }
-  };
-
-  struct BlockEntry {
-    Block bl;
-    uint32_t height;
-    uint64_t block_cumulative_size;
-    difficulty_type cumulative_difficulty;
-    uint64_t already_generated_coins;
-    std::vector<TransactionEntry> transactions;
-
-    void serialize(ISerializer& s) {
-      s(bl, "block");
-      s(height, "height");
-      s(block_cumulative_size, "block_cumulative_size");
-      s(cumulative_difficulty, "cumulative_difficulty");
-      s(already_generated_coins, "already_generated_coins");
-      s(transactions, "transactions");
-    }
-  };
 
 }

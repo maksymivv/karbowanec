@@ -254,6 +254,34 @@ namespace CryptoNote {
       }
     };
 
+    struct TransactionEntry {
+      Transaction tx;
+      std::vector<uint32_t> m_global_output_indexes;
+
+      void serialize(ISerializer& s) {
+        s(tx, "tx");
+        s(m_global_output_indexes, "indexes");
+      }
+    };
+
+    struct BlockEntry {
+      Block bl;
+      uint32_t height;
+      uint64_t block_cumulative_size;
+      difficulty_type cumulative_difficulty;
+      uint64_t already_generated_coins;
+      std::vector<TransactionEntry> transactions;
+
+      void serialize(ISerializer& s) {
+        s(bl, "block");
+        s(height, "height");
+        s(block_cumulative_size, "block_cumulative_size");
+        s(cumulative_difficulty, "cumulative_difficulty");
+        s(already_generated_coins, "already_generated_coins");
+        s(transactions, "transactions");
+      }
+    };
+
     struct BlockIndexTag {};
     struct KeyImageTag {};
 
@@ -292,6 +320,8 @@ namespace CryptoNote {
     typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
     typedef std::unordered_map<Crypto::Hash, TransactionIndex> TransactionMap;
     typedef BasicUpgradeDetector<Blocks> UpgradeDetector;
+
+    //typedef BasicUpgradeDetector<DB> UpgradeDetector;
 
     friend class BlockCacheSerializer;
     friend class BlockchainIndicesSerializer;

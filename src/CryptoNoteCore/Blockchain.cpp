@@ -343,10 +343,10 @@ logger(logger, "Blockchain"),
 m_currency(currency),
 m_tx_pool(tx_pool),
 m_current_block_cumul_sz_limit(0),
-m_upgradeDetectorV2(currency, m_blocks, BLOCK_MAJOR_VERSION_2, logger),
-m_upgradeDetectorV3(currency, m_blocks, BLOCK_MAJOR_VERSION_3, logger),
-m_upgradeDetectorV4(currency, m_blocks, BLOCK_MAJOR_VERSION_4, logger),
-m_upgradeDetectorV5(currency, m_blocks, BLOCK_MAJOR_VERSION_5, logger),
+m_upgradeDetectorV2(currency, m_blocks, BLOCK_MAJOR_VERSION_2, config_folder, logger),
+m_upgradeDetectorV3(currency, m_blocks, BLOCK_MAJOR_VERSION_3, config_folder, logger),
+m_upgradeDetectorV4(currency, m_blocks, BLOCK_MAJOR_VERSION_4, config_folder, logger),
+m_upgradeDetectorV5(currency, m_blocks, BLOCK_MAJOR_VERSION_5, config_folder, logger),
 m_checkpoints(logger),
 m_paymentIdIndex(blockchainIndexesEnabled),
 m_timestampIndex(blockchainIndexesEnabled),
@@ -614,13 +614,14 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 }
 
 void Blockchain::db_commit() {
-  //logger(INFO) << "Blockchain::db_commit started...";
+  logger(INFO) << "Blockchain::db_commit started...";
   m_db.commit_db_txn();
   //logger(INFO) << "BlockChain::db_commit finished...";
 }
 
 void Blockchain::on_synchronized() {
   m_synchronized = true;
+  db_commit();
 }
 
 void Blockchain::rebuildCache() {
@@ -2351,7 +2352,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     block.cumulative_difficulty += m_blocks.back().cumulative_difficulty; // TODO use DB
   }
 
-  pushBlock(block, blockHash);
+  pushBlock(block, blockHash); // TODO use if (!pushBlock(block, blockHash)) return false; ??
 
   auto block_processing_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - blockProcessingStart).count();
 
@@ -2403,12 +2404,12 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   assert(m_blockIndex.size() == m_blocks.size()); // old
 
   // commit every 10k blocks when syncing, on every block when was synced
-  if (!m_synchronized) {
-    if(block.height % 10000 == 0)
+  //if (!m_synchronized) {
+    if(block.height % 50000 == 0)
       db_commit();
-  } else {
-    db_commit();
-  }
+  //} else {
+  //  db_commit();
+  //}
 
   return true;
 }
