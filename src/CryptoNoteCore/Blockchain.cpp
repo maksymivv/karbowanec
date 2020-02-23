@@ -496,7 +496,7 @@ uint32_t Blockchain::getCurrentBlockchainHeight() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return static_cast<uint32_t>(m_blocks.size());
 
-  return m_tip_height + 1; // total block count including genesis block number zero, not last block index
+  return m_tip_height; // total block count including genesis block number zero, not last block index ??
 }
 
 bool Blockchain::init(const std::string& config_folder, bool load_existing) {
@@ -735,11 +735,11 @@ Crypto::Hash Blockchain::getTailId(uint32_t& height) {
 
   Crypto::Hash tail_id;
   DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
-  height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix()));
+  height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1;
   BinaryArray ba = cur.get_value_array();
   memcpy(&tail_id, ba.data(), ba.size());
 
-  logger(INFO) << "getTailId, DB: \n" << tail_id << "\nm_blockIndex: \n" << m_blockIndex.getTailId();
+  //logger(INFO) << "getTailId, DB: \n" << tail_id << "\nm_blockIndex: \n" << m_blockIndex.getTailId();
 
   return tail_id;
 }
