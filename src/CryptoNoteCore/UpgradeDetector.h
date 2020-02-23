@@ -63,20 +63,19 @@ namespace CryptoNote {
 
     bool init() {
       uint32_t upgradeHeight = m_currency.upgradeHeight(m_targetVersion);
-
-      DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-      m_height = (cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()))) + 1;
-      std::string tip_id_str = cur1.get_value_string();
-
-      BinaryArray ba;
-      auto key = BLOCK_PREFIX + tip_id_str + BLOCK_SUFFIX;
+      
+      Crypto::Hash tail_id;
+      DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+      m_height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1; // incl. block zero
+      BinaryArray ba = cur.get_value_array();
+      memcpy(&tail_id, ba.data(), ba.size());
+      auto key = BLOCK_PREFIX + DB::to_binary_key(tail_id.data, sizeof(tail_id.data)) + BLOCK_SUFFIX;
       if (!m_db.get(key, ba))
-        return false;
-      if (!fromBinaryArray(m_tip_b, ba))
-        return false;
+        logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: init() can't get block from DB: " << Common::podToHex(tail_id);
+      fromBinaryArray(m_tip_b, ba);
 
       if (upgradeHeight == UNDEF_HEIGHT) {
-        if (cur1.end()) {
+        if (cur.end()) {
           m_votingCompleteHeight = UNDEF_HEIGHT;
 
         } else if (m_targetVersion - 1 == m_tip_b.bl.majorVersion) {
@@ -105,7 +104,7 @@ namespace CryptoNote {
         } else {
           m_votingCompleteHeight = UNDEF_HEIGHT;
         }
-      } else if (!cur1.end()) {
+      } else if (!cur.end()) {
         if (m_height <= upgradeHeight + 1) {
           if (m_tip_b.bl.majorVersion >= m_targetVersion) {
             logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: block at height " << (m_height - 1) <<
@@ -166,12 +165,14 @@ namespace CryptoNote {
     }
 
     void blockPushed() {
-      DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-      m_height = (cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()))) + 1;
-      std::string tip_id_str = cur1.get_value_string();
-      BinaryArray ba;
-      auto key = BLOCK_PREFIX + tip_id_str + BLOCK_SUFFIX;
-      m_db.get(key, ba);
+      Crypto::Hash tail_id;
+      DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+      m_height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1; // incl. block zero
+      BinaryArray ba = cur.get_value_array();
+      memcpy(&tail_id, ba.data(), ba.size());
+      auto key = BLOCK_PREFIX + DB::to_binary_key(tail_id.data, sizeof(tail_id.data)) + BLOCK_SUFFIX;
+      if (!m_db.get(key, ba))
+        logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: blockPushed() can't get block from DB: " << Common::podToHex(tail_id);
       fromBinaryArray(m_tip_b, ba);
 
       if (m_currency.upgradeHeight(m_targetVersion) != UNDEF_HEIGHT) {
@@ -223,13 +224,16 @@ namespace CryptoNote {
       if (m_votingCompleteHeight != UNDEF_HEIGHT) {
         assert(m_currency.upgradeHeight(m_targetVersion) == UNDEF_HEIGHT);
 
-        DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-        m_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix())) + 1;
+        
+        Crypto::Hash tail_id;
+        DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+        m_height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1; // incl. block zero
         assert(m_height > 0);
-        std::string tip_id_str = cur1.get_value_string();
-        BinaryArray ba;
-        auto key = BLOCK_PREFIX + tip_id_str + BLOCK_SUFFIX;
-        m_db.get(key, ba);
+        BinaryArray ba = cur.get_value_array();
+        memcpy(&tail_id, ba.data(), ba.size());
+        auto key = BLOCK_PREFIX + DB::to_binary_key(tail_id.data, sizeof(tail_id.data)) + BLOCK_SUFFIX;
+        if (!m_db.get(key, ba))
+          logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: blockPopped() can't get block from DB: " << Common::podToHex(tail_id);
         fromBinaryArray(m_tip_b, ba);
 
         if (m_height == m_votingCompleteHeight) {
