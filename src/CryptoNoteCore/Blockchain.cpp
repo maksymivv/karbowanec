@@ -2404,13 +2404,15 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   assert(m_blockIndex.size() == m_blocks.size()); // old
 
   // commit every 10k blocks when syncing, on every block when was synced
-  if (!m_synchronized) {
+  /*if (!m_synchronized) {
     if(block.height % 50000 == 0)
       db_commit();
   } else {
     logger(INFO) << "Blockchain::db_commit on single push block started...";
     db_commit();
-  }
+  }*/
+
+  db_commit(); // Have to commit every block to DB for e.g. upgrade detector to work
 
   m_height = block.height + 1; // +1 because not tip index but entire blockchain height
 
