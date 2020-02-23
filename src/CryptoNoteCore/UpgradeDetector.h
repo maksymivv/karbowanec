@@ -65,9 +65,8 @@ namespace CryptoNote {
       uint32_t upgradeHeight = m_currency.upgradeHeight(m_targetVersion);
 
       DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-      m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
+      m_height = (cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()))) + 1;
       std::string tip_id_str = cur1.get_value_string();
-      Common::podFromHex(tip_id_str, m_tip_id);
 
       BinaryArray ba;
       auto key = BLOCK_PREFIX + tip_id_str + BLOCK_SUFFIX;
@@ -77,11 +76,11 @@ namespace CryptoNote {
         return false;
 
       if (upgradeHeight == UNDEF_HEIGHT) {
-        if (m_tip_height == 0) {
+        if (cur1.end()) {
           m_votingCompleteHeight = UNDEF_HEIGHT;
 
         } else if (m_targetVersion - 1 == m_tip_b.bl.majorVersion) {
-          m_votingCompleteHeight = findVotingCompleteHeight(static_cast<uint32_t>(m_tip_height));
+          m_votingCompleteHeight = findVotingCompleteHeight(static_cast<uint32_t>(m_height - 1));
 
         } else if (m_targetVersion <= m_tip_b.bl.majorVersion) {
           uint8_t v;
@@ -106,10 +105,10 @@ namespace CryptoNote {
         } else {
           m_votingCompleteHeight = UNDEF_HEIGHT;
         }
-      } else if (m_tip_height > 0) {
-        if (m_tip_height + 1 <= upgradeHeight + 1) {
+      } else if (!cur1.end()) {
+        if (m_height <= upgradeHeight + 1) {
           if (m_tip_b.bl.majorVersion >= m_targetVersion) {
-            logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: block at height " << (m_tip_height/* - 1*/) <<
+            logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: block at height " << (m_height - 1) <<
               " has invalid version " << static_cast<int>(m_tip_b.bl.majorVersion) <<
               ", expected " << static_cast<int>(m_targetVersion - 1) << " or less";
             return false;
@@ -167,46 +166,39 @@ namespace CryptoNote {
     }
 
     void blockPushed() {
-      //assert(!m_blockchain.empty());
       DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-      m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
-      assert(m_tip_height > 0);
+      m_height = (cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()))) + 1;
       std::string tip_id_str = cur1.get_value_string();
-      Common::podFromHex(tip_id_str, m_tip_id);
       BinaryArray ba;
       auto key = BLOCK_PREFIX + tip_id_str + BLOCK_SUFFIX;
       m_db.get(key, ba);
       fromBinaryArray(m_tip_b, ba);
 
       if (m_currency.upgradeHeight(m_targetVersion) != UNDEF_HEIGHT) {
-        if (m_tip_height/*m_blockchain.size()*/ <= m_currency.upgradeHeight(m_targetVersion) + 1) {
-          //assert(m_blockchain.back().bl.majorVersion <= m_targetVersion - 1);
+        if (m_height <= m_currency.upgradeHeight(m_targetVersion) + 1) {
           assert(m_tip_b.bl.majorVersion <= m_targetVersion - 1);
         } else {
-          //assert(m_blockchain.back().bl.majorVersion >= m_targetVersion);
           assert(m_tip_b.bl.majorVersion >= m_targetVersion);
         }
 
       } else if (m_votingCompleteHeight != UNDEF_HEIGHT) {
-        //assert(m_blockchain.size() > m_votingCompleteHeight);
-        assert(m_tip_height > m_votingCompleteHeight);
+        assert(m_height > m_votingCompleteHeight);
 
-        if (m_tip_height/*m_blockchain.size()*/ <= upgradeHeight()) {
-          //assert(m_blockchain.back().bl.majorVersion == m_targetVersion - 1);
+        if (m_height <= upgradeHeight()) {
           assert(m_tip_b.bl.majorVersion == m_targetVersion - 1);
 
-          if (m_tip_height/*m_blockchain.size()*/ % (60 * 60 / m_currency.difficultyTarget()) == 0) {
-            auto interval = m_currency.difficultyTarget() * (upgradeHeight() - m_tip_height/*m_blockchain.size()*/ + 2);
+          if (m_height % (60 * 60 / m_currency.difficultyTarget()) == 0) {
+            auto interval = m_currency.difficultyTarget() * (upgradeHeight() - m_height + 2);
             time_t upgradeTimestamp = time(nullptr) + static_cast<time_t>(interval);
             struct tm* upgradeTime = localtime(&upgradeTimestamp);;
             char upgradeTimeStr[40];
             strftime(upgradeTimeStr, 40, "%H:%M:%S %Y.%m.%d", upgradeTime);
 
             logger(Logging::INFO, Logging::BRIGHT_GREEN) << "###### UPGRADE is going to happen after block index " << upgradeHeight() << " at about " <<
-              upgradeTimeStr << " (in " << Common::timeIntervalToString(interval) << ")! Current last block index " << m_tip_height /*(m_blockchain.size() - 1)*/ <<
+              upgradeTimeStr << " (in " << Common::timeIntervalToString(interval) << ")! Current last block index " << (m_height - 1) <<
               ", hash " << get_block_hash(m_tip_b.bl);
           }
-        } else if (m_tip_height/*m_blockchain.size()*/ == upgradeHeight() + 1) {
+        } else if (m_height == upgradeHeight() + 1) {
           //assert(m_blockchain.back().bl.majorVersion == m_targetVersion - 1);
           assert(m_tip_b.bl.majorVersion == m_targetVersion - 1);
 
@@ -218,7 +210,7 @@ namespace CryptoNote {
         }
 
       } else {
-        uint32_t lastBlockHeight = m_tip_height/*static_cast<uint32_t>(m_blockchain.size()) - 1*/;
+        uint32_t lastBlockHeight = m_height - 1;
         if (isVotingComplete(lastBlockHeight)) {
           m_votingCompleteHeight = lastBlockHeight;
           logger(Logging::INFO, Logging::BRIGHT_GREEN) << "###### UPGRADE voting complete at block index " << m_votingCompleteHeight <<
@@ -232,20 +224,19 @@ namespace CryptoNote {
         assert(m_currency.upgradeHeight(m_targetVersion) == UNDEF_HEIGHT);
 
         DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
-        m_tip_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix()));
-        assert(m_tip_height > 0);
+        m_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix())) + 1;
+        assert(m_height > 0);
         std::string tip_id_str = cur1.get_value_string();
-        Common::podFromHex(tip_id_str, m_tip_id);
         BinaryArray ba;
         auto key = BLOCK_PREFIX + tip_id_str + BLOCK_SUFFIX;
         m_db.get(key, ba);
         fromBinaryArray(m_tip_b, ba);
 
-        if (m_tip_height/*m_blockchain.size()*/ == m_votingCompleteHeight) {
+        if (m_height == m_votingCompleteHeight) {
           logger(Logging::INFO, Logging::BRIGHT_YELLOW) << "###### UPGRADE after block index " << upgradeHeight() << " has been canceled!";
           m_votingCompleteHeight = UNDEF_HEIGHT;
         } else {
-          assert(m_tip_height/*m_blockchain.size()*/ > m_votingCompleteHeight);
+          assert(m_height > m_votingCompleteHeight);
         }
       }
     }
@@ -325,8 +316,7 @@ namespace CryptoNote {
     BC& m_blockchain;
     uint8_t m_targetVersion;
     uint32_t m_votingCompleteHeight;
-    uint32_t m_tip_height;
-    Crypto::Hash m_tip_id;
+    uint32_t m_height; // blockchain height incl. zero block
     BlockEntry m_tip_b;
   };
 }
