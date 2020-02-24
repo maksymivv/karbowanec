@@ -2404,12 +2404,11 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         return false;
       }*/
       // add to spent key images DB index
-      Platform::DB::Value v;
-      if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data)), v)) {
+      try {
         auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
         m_db.put(kikey, toBinaryArray(SpentKeyImage{ block.height, ki }), true);
       }
-      else {
+      catch (std::runtime_error& e) {
         logger(ERROR, BRIGHT_RED) <<
           "Double spending transaction was pushed to blockchain.";
         for (size_t j = 0; j < i; ++j) {
