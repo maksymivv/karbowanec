@@ -47,7 +47,7 @@ namespace Crypto {
   T rand() {
     static_assert(std::is_standard_layout<T>::value, "T must be Standard Layout");
     T res;
-    randomBytes(sizeof(T), reinterpret_cast<unsigned char *>(&res));
+    Random::randomBytes(sizeof(T), reinterpret_cast<unsigned char *>(&res));
     return res;
   }
 
@@ -328,7 +328,6 @@ namespace Crypto {
 
   bool key_isvalid(const PublicKey &key);
   bool keys_match(const SecretKey &secret_key, const PublicKey &expected_public_key);
-
   void check_scalar(const EllipticCurveScalar &scalar);
   int sc_isvalid_vartime(const struct EllipticCurveScalar &);
   void sc_invert(unsigned char *, const unsigned char *);
