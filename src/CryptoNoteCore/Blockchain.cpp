@@ -755,14 +755,14 @@ Crypto::Hash Blockchain::getBlockIdByHeight(uint32_t height) {
 bool Blockchain::getBlockByHash(const Crypto::Hash& blockHash, Block& b) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-  /*uint32_t height = 0;
+  uint32_t height = 0;
 
   if (m_blockIndex.getBlockHeight(blockHash, height)) {
     b = m_blocks[height].bl;
     return true;
-  }*/
+  }
 
-  BinaryArray rb;
+  /*BinaryArray rb;
   auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
   if (m_db.get(key, rb)) {
     BlockEntry pb;
@@ -770,7 +770,7 @@ bool Blockchain::getBlockByHash(const Crypto::Hash& blockHash, Block& b) {
       return false;
     b = pb.bl;
     return true;
-  }
+  }*/
   
   logger(INFO) << "Get alt. block requested: " << blockHash;
 
@@ -1825,11 +1825,12 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
       const KeyInput& in_to_key = boost::get<KeyInput>(txin);
       if (!(!in_to_key.outputIndexes.empty())) { logger(ERROR, BRIGHT_RED) << "empty in_to_key.outputIndexes in transaction with id " << getObjectHash(tx); return false; }
 
-      if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
-        logger(DEBUGGING) <<
-          "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
-        return false;
-      }
+      // DB will throw on attempt to add spent keyimage
+      //if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
+      //  logger(DEBUGGING) <<
+      //    "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
+      //  return false;
+      //}
 
       if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
         if (!check_tx_input(in_to_key, tx_prefix_hash, tx.signatures[inputIndex], pmax_used_block_height)) {
@@ -2331,13 +2332,15 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   assert(m_blockIndex.size() == m_blocks.size()); // old
 
   // commit every 1k blocks when syncing, on every block when was synced
-  if (!m_synchronized) {
-    if(block.height % 10000 == 0)
-      db_commit();
-  } else {
-    logger(INFO) << "Blockchain::db_commit on single push block started...";
-    db_commit();
-  }
+  //if (!m_synchronized) {
+  //  if(block.height % 10000 == 0)
+  //    db_commit();
+  //} else {
+  //  logger(INFO) << "Blockchain::db_commit on single push block started...";
+  //  db_commit();
+  //}
+
+  db_commit();
 
   return true;
 }
