@@ -421,9 +421,16 @@ std::string short_hash_str(const Hash& h) {
 }
 
 bool is_out_to_acc(const AccountKeys& acc, const KeyOutput& out_key, const KeyDerivation& derivation, size_t keyIndex) {
-  PublicKey pk;
-  derive_public_key(derivation, keyIndex, acc.address.spendPublicKey, pk);
-  return pk == out_key.key;
+  //PublicKey pk;
+  //derive_public_key(derivation, keyIndex, acc.address.spendPublicKey, pk);
+  //return pk == out_key.key;
+
+  // Discover outs to unlinkable aggregate addresses
+  KeyPair output_keypair;
+  output_keypair.publicKey = derivePublicKey(derivation, keyIndex, acc.address.spendPublicKey);
+  output_keypair.secretKey = deriveSecretKey(derivation, keyIndex, acc.spendSecretKey);
+
+  return output_keypair.publicKey == out_key.key;
 }
 
 bool is_out_to_acc(const AccountKeys& acc, const KeyOutput& out_key, const PublicKey& tx_pub_key, size_t keyIndex) {
