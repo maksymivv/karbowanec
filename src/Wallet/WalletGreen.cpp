@@ -754,7 +754,7 @@ void WalletGreen::initTransactionPool() {
 void WalletGreen::deleteOrphanTransactions(const std::unordered_set<Crypto::PublicKey>& deletedKeys) {
   for (auto spendPublicKey : deletedKeys) {
 
-    PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(spendPublicKey, m_viewSecretKey);
+    PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(spendPublicKey, m_viewSecretKey);
 
     AccountPublicAddress deletedAccountAddress;
     deletedAccountAddress.spendPublicKey = spendPublicKey;
@@ -806,7 +806,7 @@ void WalletGreen::subscribeWallets() {
 
       AccountSubscription sub;
 
-      PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(wallet.spendPublicKey, m_viewSecretKey);
+      PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(wallet.spendPublicKey, m_viewSecretKey);
 
       sub.keys.address.viewPublicKey = addressViewPublicKey;
       sub.keys.address.spendPublicKey = wallet.spendPublicKey;
@@ -962,7 +962,7 @@ AccountPublicAddress WalletGreen::getAccountPublicAddress(size_t index) const {
 
   const WalletRecord& wallet = m_walletsContainer.get<RandomAccessIndex>()[index];
 
-  PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(wallet.spendPublicKey, m_viewSecretKey);
+  PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(wallet.spendPublicKey, m_viewSecretKey);
 
   return { wallet.spendPublicKey, addressViewPublicKey };
 }
@@ -1208,7 +1208,7 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
     throw std::system_error(make_error_code(error::WRONG_PARAMETERS));
   }
 
-  PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(spendPublicKey, m_viewSecretKey);
+  PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(spendPublicKey, m_viewSecretKey);
 
   auto insertIt = index.find(spendPublicKey);
   if (insertIt != index.end()) {
@@ -2120,7 +2120,7 @@ bool WalletGreen::updateTransactionTransfers(size_t transactionId, const std::ve
   int64_t myOutputsAmount = 0;
   for (auto containerAmount : containerAmountsList) {
     PublicKey spendPublicKey = getWalletRecord(containerAmount.container).spendPublicKey;
-    PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(spendPublicKey, m_viewSecretKey);
+    PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(spendPublicKey, m_viewSecretKey);
     AccountPublicAddress address{ spendPublicKey, addressViewPublicKey };
     std::string addressString = m_currency.accountAddressAsString(address);
 
@@ -3314,7 +3314,7 @@ void WalletGreen::updateBalance(CryptoNote::ITransfersContainer* container) {
       wallet.pendingBalance = pending;
     });
 
-    PublicKey addressViewPublicKey = generate_unlinkable_address_view_public_key(it->spendPublicKey, m_viewSecretKey);
+    PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(it->spendPublicKey, m_viewSecretKey);
 
     m_logger(INFO, BRIGHT_WHITE) << "Wallet balance updated, address " << m_currency.accountAddressAsString({ it->spendPublicKey, addressViewPublicKey }) <<
       ", actual " << m_currency.formatAmount(it->actualBalance) <<

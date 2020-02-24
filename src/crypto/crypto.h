@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <CryptoTypes.h>
+#include <CryptoNote.h>
 
 #include "generic-ops.h"
 #include "crypto-ops.h"
@@ -161,12 +162,11 @@ namespace Crypto {
     return crypto_ops::derive_public_key(derivation, output_index, base, derived_key);
   }
 
-
   inline bool underive_public_key_and_get_scalar(const KeyDerivation &derivation, std::size_t output_index,
     const PublicKey &derived_key, PublicKey &base, EllipticCurveScalar &hashed_derivation) {
     return crypto_ops::underive_public_key_and_get_scalar(derivation, output_index, derived_key, base, hashed_derivation);
   }
-  
+
   inline void derive_secret_key(const KeyDerivation &derivation, std::size_t output_index,
     const SecretKey &base, const uint8_t* prefix, size_t prefixLength, SecretKey &derived_key) {
     crypto_ops::derive_secret_key(derivation, output_index, base, prefix, prefixLength, derived_key);
@@ -318,16 +318,36 @@ namespace Crypto {
     return result;
   }
 
+  void random_keypair(PublicKey &pub, SecretKey &sec);
+
+  inline CryptoNote::KeyPair random_keypair() {
+    CryptoNote::KeyPair k;
+    Crypto::random_keypair(k.publicKey, k.secretKey);
+    return k;
+  }
+
+  bool key_isvalid(const PublicKey &key);
+  bool keys_match(const SecretKey &secret_key, const PublicKey &expected_public_key);
+
   void check_scalar(const EllipticCurveScalar &scalar);
-  bool sc_isvalid_vartime(const struct cryptoEllipticCurveScalar &);
+  int sc_isvalid_vartime(const struct EllipticCurveScalar &);
   void sc_invert(unsigned char *, const unsigned char *);
   SecretKey sc_invert(const unsigned char &sec);
   SecretKey sc_invert(const EllipticCurveScalar &sec);
   SecretKey sc_from_uint64(uint64_t val);
+  SecretKey bytes_to_scalar(const Hash &h);
   SecretKey hash_to_scalar(const void *data, size_t length);
-  PublicKey hash_to_ec(const PublicKey &key);
-
-  PublicKey generate_unlinkable_address_view_public_key(const PublicKey &spend_public_key, const SecretKey &view_secret_key);
+  //SecretKey hash_to_scalar64(const void *data, size_t length);
+  
+  PublicKey generateUnlinkableAddressViewPublicKey(const PublicKey &spend_public_key, const SecretKey &view_secret_key);
+  PublicKey derivePublicKey(const KeyDerivation &derivation, size_t output_index, const PublicKey &spend_public_key);
+  SecretKey deriveSecretKey(const KeyDerivation &derivation, std::size_t output_index, const SecretKey &spend_secret_key);
+  PublicKey underivePublicKey(const KeyDerivation &derivation, size_t output_index, const PublicKey &output_public_key);
+  Signature generateSignature(const Hash &prefix_hash, const PublicKey &pub, const SecretKey &sec);
+  KeyImage  generateKeyImage(const PublicKey &pub, const SecretKey &sec);
+    
+  int sc_iszero(const struct EllipticCurveScalar &); // Doesn't normalize
+  bool check_signature(const Hash &prefix_hash, const PublicKey &pub, const Signature &sig);
 
   static inline const KeyImage &EllipticCurveScalar2KeyImage(const EllipticCurveScalar &k) { return (const KeyImage&)k; }
   static inline const PublicKey &EllipticCurveScalar2PublicKey(const EllipticCurveScalar &k) { return (const PublicKey&)k; }

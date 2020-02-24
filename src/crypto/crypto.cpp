@@ -51,6 +51,46 @@ namespace Crypto {
     return &reinterpret_cast<const unsigned char &>(scalar);
   }
 
+  enum { max_varint_size = (std::numeric_limits<size_t>::digits + 6) / 7 };
+  
+  struct MiniBuffer {
+    MiniBuffer(uint8_t *buf, size_t max_size) : buf(buf), max_size(max_size) {}
+    uint8_t *const buf;
+    const size_t max_size;
+    size_t pos = 0;
+    void check_overflow(size_t size) {
+      if (pos + size > max_size)
+        throw Error("FixedBuffer overflow");
+    }
+    void append(const void *ptr, size_t size) {
+      check_overflow(size);
+      memcpy(buf + pos, ptr, size);
+      pos += size;
+    }
+    template<size_t S>
+    void append(const char(&h)[S]) {
+      append(h, S - 1);
+    }
+    void append(const Hash &h) { append(h.data, sizeof(h.data)); }
+    void append(const EllipticCurvePoint &h) { append(h.data, sizeof(h.data)); }
+    void append(const EllipticCurveScalar &h) { append(h.data, sizeof(h.data)); }
+    void append(size_t i) {  // varint
+      check_overflow(max_varint_size);
+      for (; i >= 0x80; i >>= 7)
+        buf[pos++] = static_cast<uint8_t>((i & 0x7f) | 0x80);
+      buf[pos++] = static_cast<uint8_t>(i);
+      check_overflow(0);  // cheap paranoid check
+    }
+    SecretKey hash_to_scalar() const { return Crypto::hash_to_scalar(buf, pos); }
+    //SecretKey hash_to_scalar64() const { return Crypto::hash_to_scalar64(buf, pos); }
+  };
+
+  template<size_t S>
+  struct FixedBuffer : MiniBuffer {
+    uint8_t space[S]{};
+    FixedBuffer() : MiniBuffer{ space, S } {}
+  };
+
   static inline void random_scalar(EllipticCurveScalar &res) {
     unsigned char tmp[64];
     Random::randomBytes(64, tmp);
@@ -561,6 +601,18 @@ namespace Crypto {
     return result;
   }
 
+  static ge_p3 ge_scalarmult_base(const EllipticCurveScalar &sec) {
+    ge_p3 point;
+    ge_scalarmult_base(&point, &sec);
+    return point;
+  }
+
+  SecretKey bytes_to_scalar(const Hash &h) {
+    SecretKey result;
+    ecsc_reduce32(reinterpret_cast<unsigned char*>(&result), h.data);
+    return result;
+  }
+
   SecretKey hash_to_scalar(const void *data, size_t length) {
     Hash h = cn_fast_hash(data, length);
     SecretKey result;
@@ -568,8 +620,29 @@ namespace Crypto {
     return result;
   }
 
-  PublicKey hash_to_ec(const PublicKey &key) { return ge_tobytes(hash_to_ec_p3(key)); }
+  /*SecretKey hash_to_scalar64(const void *data, size_t length) {
+    uint8_t buf[64]{};
+    crypto_cn_fast_hash64(data, length, buf);
+    SecretKey result;
+    sc_reduce(reinterpret_cast<unsigned char*>(&result), buf);
+    return result;
+  }*/
 
+  void random_keypair(PublicKey &pub, SecretKey &sec) {
+    sec = random_scalar();
+    pub = ge_tobytes(ge_scalarmult_base(sec));
+  }
+
+  bool key_isvalid(const PublicKey &key) {
+    ge_p3 point;
+    return ge_frombytes_vartime(&point, &key) == 0;
+  }
+
+  bool keys_match(const SecretKey &secret_key, const PublicKey &expected_public_key) {
+    PublicKey pub;
+    bool r = secret_key_to_public_key(secret_key, pub);
+    return r && expected_public_key == pub;
+  }
 
   KeyImage crypto_ops::scalarmultKey(const KeyImage & P, const KeyImage & a) {
     ge_p3 A;
@@ -763,7 +836,7 @@ namespace Crypto {
     return (a >> 63) - ((-a) >> 63);
   }
 
-  bool sc_isvalid_vartime(const EllipticCurveScalar &s) {
+  int sc_isvalid_vartime(const struct EllipticCurveScalar &s) {
     int64_t s0 = load_4(s.data);
     int64_t s1 = load_4(s.data + 4);
     int64_t s2 = load_4(s.data + 8);
@@ -772,7 +845,7 @@ namespace Crypto {
     int64_t s5 = load_4(s.data + 20);
     int64_t s6 = load_4(s.data + 24);
     int64_t s7 = load_4(s.data + 28);
-    return ((signum(1559614444 - s0) + (signum(1477600026 - s1) << 1) + (signum(2734136534 - s2) << 2) + (signum(350157278 - s3) << 3) + (signum(-s4) << 4) + (signum(-s5) << 5) + (signum(-s6) << 6) + (signum(268435456 - s7) << 7)) >> 8) == 0;
+    return (int)((signum(1559614444 - s0) + (signum(1477600026 - s1) << 1) + (signum(2734136534 - s2) << 2) + (signum(350157278 - s3) << 3) + (signum(-s4) << 4) + (signum(-s5) << 5) + (signum(-s6) << 6) + (signum(268435456 - s7) << 7)) >> 8) == 0;
   }
 
   void check_scalar(const EllipticCurveScalar &scalar) {
@@ -809,9 +882,91 @@ namespace Crypto {
     return result;
   }
 
-  PublicKey generate_unlinkable_address_view_public_key(const PublicKey &spend_public_key, const SecretKey &view_secret_key) {
+  PublicKey generateUnlinkableAddressViewPublicKey(const PublicKey &spend_public_key, const SecretKey &view_secret_key) {
     const ge_p3 spend_public_key_p3 = ge_frombytes_vartime(spend_public_key);
     check_scalar(view_secret_key);
     return ge_tobytes(ge_scalarmult(view_secret_key, spend_public_key_p3));
   }
+
+  static SecretKey derivation_to_scalar(const KeyDerivation &derivation, size_t output_index) {
+    FixedBuffer<sizeof(KeyDerivation) + max_varint_size> buf;
+    buf.append(derivation);
+    buf.append(output_index);
+    return buf.hash_to_scalar();
+  }
+
+  PublicKey derivePublicKey(const KeyDerivation &derivation, size_t output_index, const PublicKey &spend_public_key) {
+    const ge_p3 spend_public_key_g3 = ge_frombytes_vartime(spend_public_key);
+    const EllipticCurveScalar scalar = derivation_to_scalar(derivation, output_index);
+    const ge_cached point3 = ge_p3_to_cached(ge_scalarmult_base(scalar));
+    ge_p1p1 point_sum;
+    ge_add(&point_sum, &spend_public_key_g3, &point3);
+    return ge_tobytes(ge_p1p1_to_p2(point_sum));
+  }
+
+  SecretKey deriveSecretKey(const KeyDerivation &derivation, size_t output_index, const SecretKey &spend_secret_key) {
+    check_scalar(spend_secret_key);
+    const EllipticCurveScalar scalar = derivation_to_scalar(derivation, output_index);
+    SecretKey output_secret_key;
+    sc_add(&output_secret_key, &spend_secret_key, &scalar);
+    return output_secret_key;
+  }
+
+  PublicKey underivePublicKey(
+    const KeyDerivation &derivation, size_t output_index, const PublicKey &output_public_key) {
+    const ge_p3 output_public_key_p3 = ge_frombytes_vartime(output_public_key);
+    const EllipticCurveScalar scalar = derivation_to_scalar(derivation, output_index);
+    const ge_cached point3 = ge_p3_to_cached(ge_scalarmult_base(scalar));
+    ge_p1p1 point_diff;
+    ge_sub(&point_diff, &output_public_key_p3, &point3);
+    return ge_tobytes(ge_p1p1_to_p2(point_diff));
+  }
+
+  Signature generateSignature(const Hash &prefix_hash, const PublicKey &pub, const SecretKey &sec) {
+    if (!keys_match(sec, pub))
+      throw Error("Keys do not match in generate_signature");
+    const EllipticCurveScalar k = random_scalar();
+
+    FixedBuffer<sizeof(Hash) + sizeof(PublicKey) + sizeof(EllipticCurvePoint)> buf;
+    buf.append(prefix_hash);
+    buf.append(pub);
+    buf.append(ge_tobytes(ge_scalarmult_base(k)));
+
+    Signature sig;
+    sig.c = buf.hash_to_scalar();
+    sc_mulsub(&sig.r, &sig.c, &sec, &k);
+    return sig;
+  }
+
+  KeyImage generateKeyImage(const PublicKey &pub, const SecretKey &sec) {
+    check_scalar(sec);
+    const ge_p3 pub_hash_p3 = hash_to_ec_p3(pub);
+    KeyImage image;
+    static_cast<EllipticCurvePoint &>(image) = ge_tobytes(ge_scalarmult(sec, pub_hash_p3));
+    return image;
+  }
+
+  int sc_iszero(const struct EllipticCurveScalar &ss) {
+    const unsigned char * s = ss.data;
+    return (s[0] | s[1] | s[2] | s[3] | s[4] | s[5] | s[6] | s[7] | s[8] |
+      s[9] | s[10] | s[11] | s[12] | s[13] | s[14] | s[15] | s[16] | s[17] |
+      s[18] | s[19] | s[20] | s[21] | s[22] | s[23] | s[24] | s[25] | s[26] |
+      s[27] | s[28] | s[29] | s[30] | s[31]) == 0;
+  }
+
+  bool checkSignature(const Hash &prefix_hash, const PublicKey &pub, const Signature &sig) {
+    if (!sc_isvalid_vartime(sig.c) || !sc_isvalid_vartime(sig.r))
+      return false;
+    const ge_p3 pub_p3 = ge_frombytes_vartime(pub);
+
+    FixedBuffer<sizeof(Hash) + sizeof(PublicKey) + sizeof(EllipticCurvePoint)> buf;
+    buf.append(prefix_hash);
+    buf.append(pub);
+    buf.append(ge_tobytes(ge_double_scalarmult_base_vartime(sig.c, pub_p3, sig.r)));
+
+    EllipticCurveScalar c = buf.hash_to_scalar();
+    sc_sub(&c, &c, &sig.c);
+    return sc_iszero(c) != 0;
+  }
+
 }
