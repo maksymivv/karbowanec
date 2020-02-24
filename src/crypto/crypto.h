@@ -46,7 +46,7 @@ namespace Crypto {
   T rand() {
     static_assert(std::is_standard_layout<T>::value, "T must be Standard Layout");
     T res;
-    randomBytes(sizeof(T), reinterpret_cast<unsigned char *>(&res));
+    Random::randomBytes(sizeof(T), reinterpret_cast<unsigned char *>(&res));
     return res;
   }
 
