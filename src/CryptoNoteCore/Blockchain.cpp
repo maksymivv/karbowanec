@@ -2410,7 +2410,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       }
       catch (std::runtime_error& e) {
         logger(ERROR, BRIGHT_RED) <<
-          "Double spending transaction was pushed to blockchain.";
+          "Double spending transaction was pushed to blockchain:" << e.what();
         for (size_t j = 0; j < i; ++j) {
           Crypto::KeyImage ki = ::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage;
           auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
