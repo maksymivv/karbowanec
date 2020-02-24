@@ -439,17 +439,19 @@ bool Blockchain::have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im) {
 }
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIndex) {
-  BinaryArray ba;
-  if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), ba)) {
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  /*auto it = spentKeyImages.get<KeyImageTag>().find(keyImage);
+  if (it == spentKeyImages.get<KeyImageTag>().end()) {
     return false;
   }
 
-  SpentKeyImage ski;
-  if (!fromBinaryArray(ski, ba)) {
-    throw std::runtime_error("Couldn't parse DB Spent Key Image entry");
-  }
+  return it->blockIndex <= blockIndex;*/
 
-  return ski.blockIndex <= blockIndex;
+  std::string hstr;
+  if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), hstr))
+    return false;
+  uint32_t keyImageHeight = Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(hstr));
+  return keyImageHeight <= blockIndex;
 }
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage) {
@@ -2406,7 +2408,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       // add to spent key images DB index
       try {
         auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
-        m_db.put(kikey, toBinaryArray(SpentKeyImage{ block.height, ki }), true);
+        m_db.put(kikey, Common::write_varint_sqlite4(block.height), true);
       }
       catch (std::runtime_error& e) {
         logger(ERROR, BRIGHT_RED) <<
