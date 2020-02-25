@@ -49,10 +49,14 @@ void checkOutputKey(
   size_t keyIndex,
   size_t outputIndex,
   const std::unordered_set<PublicKey>& spendKeys,
+  const SecretKey& viewSecretKey,
   std::unordered_map<PublicKey, std::vector<uint32_t>>& outputs) {
 
-  PublicKey spendKey;
-  underive_public_key(derivation, keyIndex, key, spendKey); // TODO do unlinkable aggregated magic about this
+  // TODO do unlinkable aggregated magic about this
+  //PublicKey spendKey;
+  //underive_public_key(derivation, keyIndex, key, spendKey); 
+  
+  PublicKey spendKey = underivePublicKey(derivation, keyIndex, key);
 
   if (spendKeys.find(spendKey) != spendKeys.end()) {
     outputs[spendKey].push_back(static_cast<uint32_t>(outputIndex));
@@ -69,7 +73,7 @@ void findMyOutputs(
   auto txPublicKey = tx.getTransactionPublicKey();
   KeyDerivation derivation;
 
-  if (!generate_key_derivation( txPublicKey, viewSecretKey, derivation)) {
+  if (!generate_key_derivation(txPublicKey, viewSecretKey, derivation)) {
     return;
   }
 
@@ -86,7 +90,7 @@ void findMyOutputs(
       KeyOutput out;
       tx.getOutput(idx, out, amount);
 
-      checkOutputKey(derivation, out.key, keyIndex, idx, spendKeys, outputs);
+      checkOutputKey(derivation, out.key, keyIndex, idx, spendKeys, viewSecretKey, outputs);
       ++keyIndex;
 
     } else if (outType == TransactionTypes::OutputType::Multisignature) {
@@ -96,7 +100,7 @@ void findMyOutputs(
       tx.getOutput(idx, out, amount);
 
       for (const auto& key : out.keys) {
-        checkOutputKey(derivation, key, idx, idx, spendKeys, outputs);
+        checkOutputKey(derivation, key, idx, idx, spendKeys, viewSecretKey, outputs);
 
         ++keyIndex;
       }
