@@ -539,7 +539,17 @@ void WalletGreen::load(const std::string& path, const std::string& password, std
   assert(m_blockchain.empty());
   if (m_walletsContainer.get<RandomAccessIndex>().size() != 0) {
     m_synchronizer.subscribeConsumerNotifications(m_viewPublicKey, this);
-    initBlockchain(m_viewPublicKey);
+    auto& walletsIndex = m_walletsContainer.get<RandomAccessIndex>();
+    std::vector<Crypto::PublicKey> publicViewKeys;
+    for (const auto& wallet : walletsIndex) {
+      // TODO consider using orig m_viewPublicKey for 1st address
+      PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(wallet.spendPublicKey, m_viewSecretKey);
+      //m_synchronizer.subscribeConsumerNotifications(addressViewPublicKey, this);
+      // do we need notifications for each address??
+      publicViewKeys.push_back(addressViewPublicKey);
+    }
+
+    initBlockchain(publicViewKeys);
 
     startBlockchainSynchronizer();
   } else {
@@ -962,6 +972,11 @@ AccountPublicAddress WalletGreen::getAccountPublicAddress(size_t index) const {
 
   const WalletRecord& wallet = m_walletsContainer.get<RandomAccessIndex>()[index];
 
+  // TODO consider: first address uses regular view public key
+  // the rest of addresses use unlinkable
+  //if (index == 0)
+  //  return { wallet.spendPublicKey, m_viewPublicKey };
+
   PublicKey addressViewPublicKey = generateUnlinkableAddressViewPublicKey(wallet.spendPublicKey, m_viewSecretKey);
 
   return { wallet.spendPublicKey, addressViewPublicKey };
@@ -1220,8 +1235,6 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
   m_containerStorage.push_back(encryptKeyPair(spendPublicKey, spendSecretKey, creationTimestamp));
   incNextIv();
 
-
-
   try {
     AccountSubscription sub;
     sub.keys.address.viewPublicKey = addressViewPublicKey;
@@ -1247,7 +1260,9 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
 
     if (index.size() == 1) {
       m_synchronizer.subscribeConsumerNotifications(addressViewPublicKey, this);
-      initBlockchain(addressViewPublicKey);
+      std::vector<Crypto::PublicKey> publicViewKeys;// = { addressViewPublicKey };
+      publicViewKeys.push_back(addressViewPublicKey);
+      initBlockchain(publicViewKeys);
     }
 
     auto address = m_currency.accountAddressAsString({ spendPublicKey, addressViewPublicKey });
@@ -1338,7 +1353,7 @@ uint64_t WalletGreen::getCurrentTimestampAdjusted() {
 void WalletGreen::reset(const uint64_t scanHeight)
 {
     throwIfNotInitialized();
-    throwIfStopped();
+    //throwIfStopped();
 
     /* Stop so things can't be added to the container as we're looping */
     stop();
@@ -2838,7 +2853,7 @@ std::string WalletGreen::getReserveProof(const uint64_t &reserve, const std::str
   CryptoNote::AccountKeys keys;
   keys.spendSecretKey = wallets[0].wallet->spendSecretKey;
   keys.viewSecretKey = m_viewSecretKey;
-  keys.address = { wallets[0].wallet->spendPublicKey, m_viewPublicKey };
+  keys.address = { wallets[0].wallet->spendPublicKey, m_viewPublicKey }; // TODO consider using for the first (nr zero wallet) orig. m_viewPublicKey, for the rest unlinkable
 
   // compute signature prefix hash
   std::string prefix_data = message;
@@ -3755,8 +3770,10 @@ void WalletGreen::filterOutTransactions(WalletTransactions& transactions, Wallet
   }
 }
 
-void WalletGreen::initBlockchain(const Crypto::PublicKey& viewPublicKey) {
-  std::vector<Crypto::Hash> blockchain = m_synchronizer.getViewKeyKnownBlocks(m_viewPublicKey);
+void WalletGreen::initBlockchain(const std::vector<Crypto::PublicKey>& viewPublicKeys) {
+  //std::vector<Crypto::Hash> blockchain = m_synchronizer.getViewKeyKnownBlocks(m_viewPublicKey);
+  std::vector<Crypto::Hash> blockchain = m_synchronizer.getViewKeyKnownBlocks(viewPublicKeys);
+
   m_blockchain.insert(m_blockchain.end(), blockchain.begin(), blockchain.end());
 }
 
@@ -3775,7 +3792,7 @@ CryptoNote::AccountPublicAddress WalletGreen::getChangeDestination(const std::st
   return parseAccountAddressString(sourceAddresses[0]);
 }
 
-bool WalletGreen::isMyAddress(const std::string& addressString) const {
+bool WalletGreen::isMyAddress(const std::string& addressString) const { // TODO fix to check for unlinkable aggregate addresses
   CryptoNote::AccountPublicAddress address = parseAccountAddressString(addressString);
   return /*m_viewPublicKey == address.viewPublicKey &&*/ m_walletsContainer.get<KeysIndex>().count(address.spendPublicKey) != 0;
 }

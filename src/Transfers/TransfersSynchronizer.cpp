@@ -107,6 +107,16 @@ std::vector<Crypto::Hash> TransfersSyncronizer::getViewKeyKnownBlocks(const Cryp
   return m_sync.getConsumerKnownBlocks(*it->second);
 }
 
+std::vector<Crypto::Hash> TransfersSyncronizer::getViewKeyKnownBlocks(const std::vector<Crypto::PublicKey>& publicViewKeys) {
+  for (const auto& key : publicViewKeys) {
+    auto it = m_consumers.find(key);
+    if (it != m_consumers.end()) {
+      return m_sync.getConsumerKnownBlocks(*it->second);
+    }
+  }
+  throw std::invalid_argument("Consumer not found");
+}
+
 void TransfersSyncronizer::onBlocksAdded(IBlockchainConsumer* consumer, const std::vector<Crypto::Hash>& blockHashes) {
   auto it = findSubscriberForConsumer(consumer);
   if (it != m_subscribers.end()) {

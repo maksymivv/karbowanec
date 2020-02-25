@@ -362,7 +362,7 @@ protected:
 
   std::vector<WalletTransfer> getTransactionTransfers(const WalletTransaction& transaction) const;
   void filterOutTransactions(WalletTransactions& transactions, WalletTransfers& transfers, std::function<bool (const WalletTransaction&)>&& pred) const;
-  void initBlockchain(const Crypto::PublicKey& viewPublicKey);
+  void initBlockchain(const std::vector<Crypto::PublicKey>& viewPublicKeys);
   CryptoNote::AccountPublicAddress getChangeDestination(const std::string& changeDestinationAddress, const std::vector<std::string>& sourceAddresses) const;
   bool isMyAddress(const std::string& address) const;
 
@@ -399,7 +399,7 @@ protected:
   std::string m_path;
   std::string m_extra; // workaround for wallet reset
 
-  Crypto::PublicKey m_viewPublicKey;
+  Crypto::PublicKey m_viewPublicKey; // TODO not use for unlinkable aggregate addresses
   Crypto::SecretKey m_viewSecretKey;
 
   uint64_t m_actualBalance;

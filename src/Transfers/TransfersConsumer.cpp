@@ -52,7 +52,7 @@ void checkOutputKey(
   std::unordered_map<PublicKey, std::vector<uint32_t>>& outputs) {
 
   PublicKey spendKey;
-  underive_public_key(derivation, keyIndex, key, spendKey);
+  underive_public_key(derivation, keyIndex, key, spendKey); // TODO do unlinkable aggregated magic about this
 
   if (spendKeys.find(spendKey) != spendKeys.end()) {
     outputs[spendKey].push_back(static_cast<uint32_t>(outputIndex));
