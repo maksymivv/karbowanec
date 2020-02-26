@@ -18,6 +18,11 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include "BinaryArray.hpp"
+#include "Math.h"
 
 namespace Common {
 
@@ -25,6 +30,11 @@ class IOutputStream {
 public:
   virtual ~IOutputStream() { }
   virtual size_t writeSome(const void* data, size_t size) = 0;
+  void write(const void *data, size_t size);
+  void write(const CryptoNote::BinaryArray &data);
+  void write(const std::string &data);
+  void write_byte(uint8_t b) { write(&b, 1); }
+  void write_varint(uint64_t value);
 };
 
 }

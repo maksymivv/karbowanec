@@ -33,6 +33,8 @@
 
 #include "Common/ObserverManager.h"
 #include "Common/Util.h"
+
+#include "CryptoNoteCore/DB.hpp"
 #include "CryptoNoteCore/BlockIndex.h"
 #include "CryptoNoteCore/Checkpoints.h"
 #include "CryptoNoteCore/Currency.h"
@@ -63,7 +65,9 @@ namespace CryptoNote {
   using CryptoNote::BlockInfo;
   class Blockchain : public CryptoNote::ITransactionValidator {
   public:
-    Blockchain(const Currency& currency, tx_memory_pool& tx_pool, Logging::ILogger& logger, bool blockchainIndexesEnabled);
+    typedef Platform::DB DB;
+    
+    Blockchain(const Currency& currency, tx_memory_pool& tx_pool, Logging::ILogger& logger, bool blockchainIndexesEnabled, bool blockchainReadOnly, const std::string& config_folder);
 
     bool addObserver(IBlockchainStorageObserver* observer);
     bool removeObserver(IBlockchainStorageObserver* observer);
@@ -228,6 +232,11 @@ namespace CryptoNote {
 
     void rebuildCache();
     bool storeCache();
+    void on_synchronized();
+    void db_commit();
+
+  protected:
+    DB m_db;
 
   private:
 
@@ -327,6 +336,10 @@ namespace CryptoNote {
     GeneratedTransactionsIndex m_generatedTransactionsIndex;
     OrphanBlocksIndex m_orphanBlocksIndex;
     bool m_blockchainIndexesEnabled;
+    bool m_synchronized;
+
+    uint32_t m_tip_height;
+    uint64_t m_lastGeneratedTxNumber;
 
     IntrusiveLinkedList<MessageQueue<BlockchainMessage>> m_messageQueueList;
 

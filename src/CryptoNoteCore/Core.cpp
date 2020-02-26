@@ -69,12 +69,12 @@ private:
   friend class Core;
 };
 
-Core::Core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher& dispatcher, bool blockchainIndexesEnabled) :
+Core::Core(const Currency& currency, i_cryptonote_protocol* pprotocol, Logging::ILogger& logger, System::Dispatcher& dispatcher, bool blockchainIndexesEnabled, const std::string& config_folder) :
   m_dispatcher(dispatcher),
   m_currency(currency),
   logger(logger, "Core"),
   m_mempool(currency, m_blockchain, *this, m_timeProvider, logger, blockchainIndexesEnabled),
-  m_blockchain(currency, m_mempool, logger, blockchainIndexesEnabled),
+  m_blockchain(currency, m_mempool, logger, blockchainIndexesEnabled, false /*blockchainReadOnly*/, config_folder),
   m_miner(new miner(currency, *this, logger)),
   m_starter_message_showed(false),
   m_checkpoints(logger) {
@@ -649,6 +649,7 @@ bool Core::handle_block_found(Block& b) {
 }
 
 void Core::on_synchronized() {
+  m_blockchain.on_synchronized();
   m_miner->on_synchronized();
 }
 

@@ -18,6 +18,11 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include "BinaryArray.hpp"
+#include "Math.h"
 
 namespace Common {
 
@@ -25,6 +30,18 @@ class IInputStream {
 public:
   virtual ~IInputStream() { }
   virtual size_t readSome(void* data, size_t size) = 0;
+
+  void read(void *data, size_t size);
+  void read(CryptoNote::BinaryArray &data, size_t size);
+  void read(std::string &data, size_t size);
+  uint8_t read_byte();
+  uint64_t read_varint64();
+  template<class T>
+  T read_varint() {
+    static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+      "reading signed values in varint format has to be done carefully (no canonical way)");
+    return integer_cast<T>(read_varint64());
+  }
 };
 
 }

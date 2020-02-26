@@ -169,7 +169,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
   log(Logging::INFO) << "Starting Payment Gate with local node";
 
   CryptoNote::Currency currency = currencyBuilder.currency();
-  CryptoNote::Core core(currency, NULL, logger, *dispatcher, false);
+  CryptoNote::Core core(currency, NULL, logger, *dispatcher, false, config.coreConfig.configFolder);
 
   CryptoNote::CryptoNoteProtocolHandler protocol(currency, *dispatcher, core, NULL, logger);
   CryptoNote::NodeServer p2pNode(*dispatcher, protocol, logger);
