@@ -123,7 +123,7 @@ namespace Crypto {
     }
     ge_p2 point2;
     ge_scalarmult(&point2, &sec, &point);
-    ge_tobytes(&result, &point2);
+    ge_tobytes(reinterpret_cast<unsigned char*>(&result), &point2);
     return true;
   }
 
