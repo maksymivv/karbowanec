@@ -451,6 +451,9 @@ bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIn
   if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), hstr))
     return false;
   uint32_t keyImageHeight = Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(hstr));
+
+  std::cout << "keyImageHeight: " << keyImageHeight << " from raw str: " << hstr << ENDL;
+
   return keyImageHeight <= blockIndex;
 }
 
@@ -2319,8 +2322,18 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
 
   // push to timestamp index
-  m_timestampIndex.add(block.bl.timestamp, blockHash); // old
-  m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), blockHash.as_binary_array(), true);
+  //m_timestampIndex.add(block.bl.timestamp, blockHash); // old
+  //m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), blockHash.as_binary_array(), true);
+  /*
+
+  should be put like this to avoid duplicate keys
+
+  	auto tikey = TIMESTAMP_BLOCK_PREFIX + common::write_varint_sqlite4(info.timestamp) +
+	             common::write_varint_sqlite4(info.height);
+	m_db.put(tikey, std::string(), true);
+  
+  */
+
 
   // push to gen. txs index
   m_generatedTransactionsIndex.add(block.bl); // old
@@ -2409,7 +2422,9 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       // add to spent key images DB index
       try {
         auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
-        m_db.put(kikey, Common::write_varint_sqlite4(block.height), true);
+        
+        m_db.put(kikey, Common::write_varint_sqlite4(block.height), true); // TODO can't properly read from this read_varint_sqlite4
+        
       }
       catch (std::runtime_error& e) {
         logger(ERROR, BRIGHT_RED) <<
