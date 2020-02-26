@@ -35,11 +35,6 @@
 
 namespace Crypto {
 
-  class Error : public std::logic_error {
-  public:
-    explicit Error(const std::string &msg) : std::logic_error(msg) {}
-  };
-
   class crypto_ops {
     crypto_ops();
     crypto_ops(const crypto_ops &);
@@ -236,66 +231,6 @@ namespace Crypto {
     const std::vector<const PublicKey *> &pubs,
     const Signature *sig) {
     return check_ring_signature(prefix_hash, image, pubs.data(), pubs.size(), sig);
-  }
-
-
-  struct ScalarMulResult {
-    const EllipticCurveScalar &a;
-    const EllipticCurveScalar &b;
-    operator SecretKey() {
-      SecretKey result;
-      sc_mul(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&a), reinterpret_cast<const unsigned char*>(&b));
-      return result;
-    }
-  };
-  inline ScalarMulResult operator*(const EllipticCurveScalar &a, const EllipticCurveScalar &b) {
-    return ScalarMulResult{ a, b };
-  }
-  inline EllipticCurveScalar &operator*=(EllipticCurveScalar &a, const EllipticCurveScalar &b) {
-    a = ScalarMulResult{ a, b };
-    return a;
-  }
-
-  inline SecretKey operator-(const EllipticCurveScalar &c, const ScalarMulResult &ab) {
-    SecretKey result;
-    sc_mulsub(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&ab.a), reinterpret_cast<const unsigned char*>(&ab.b), reinterpret_cast<const unsigned char*>(&c));
-    return result;
-  }
-  inline EllipticCurveScalar &operator-=(EllipticCurveScalar &c, const ScalarMulResult &ab) {
-    c = c - ab;
-    return c;
-  }
-  inline SecretKey operator-(const EllipticCurveScalar &a, const EllipticCurveScalar &b) {
-    SecretKey result;
-    sc_sub(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&a), reinterpret_cast<const unsigned char*>(&b));
-    return result;
-  }
-  inline EllipticCurveScalar &operator-=(EllipticCurveScalar &a, const EllipticCurveScalar &b) {
-    a = a - b;
-    return a;
-  }
-  inline SecretKey operator+(const EllipticCurveScalar &a, const EllipticCurveScalar &b) {
-    SecretKey result;
-    sc_add(reinterpret_cast<unsigned char*>(&result), reinterpret_cast<const unsigned char*>(&a), reinterpret_cast<const unsigned char*>(&b));
-    return result;
-  }
-  inline EllipticCurveScalar &operator+=(EllipticCurveScalar &a, const EllipticCurveScalar &b) {
-    a = a + b;
-    return a;
-  }
-
-  void sc_invert(unsigned char *, const unsigned char *);
-
-  inline SecretKey sc_invert(const unsigned char &sec) {
-    SecretKey result;
-    sc_invert(reinterpret_cast<unsigned char *>(&result), &sec);
-    return result;
-  }
-  SecretKey sc_from_uint64(uint64_t val);
-
-  inline void check_scalar(const EllipticCurveScalar &scalar) {
-    if (!sc_check(reinterpret_cast<const unsigned char*>(&scalar)))
-      throw Error("Secret Key Invalid");
   }
 
   static inline const KeyImage &EllipticCurveScalar2KeyImage(const EllipticCurveScalar &k) { return (const KeyImage&)k; }
