@@ -51,6 +51,8 @@ namespace Crypto {
     friend bool check_key(const PublicKey &);
     static bool secret_key_to_public_key(const SecretKey &, PublicKey &);
     friend bool secret_key_to_public_key(const SecretKey &, PublicKey &);
+    static bool secret_key_mult_public_key(const SecretKey &, const PublicKey &, PublicKey &);
+    friend bool secret_key_mult_public_key(const SecretKey &, const PublicKey &, PublicKey &);
     static bool generate_key_derivation(const PublicKey &, const SecretKey &, KeyDerivation &);
     friend bool generate_key_derivation(const PublicKey &, const SecretKey &, KeyDerivation &);
     static bool derive_public_key(const KeyDerivation &, size_t, const PublicKey &, PublicKey &);
@@ -95,6 +97,8 @@ namespace Crypto {
       const PublicKey *const *, size_t, const Signature *);
   };
 
+  void hash_to_scalar(const void *data, size_t length, EllipticCurveScalar &res);
+
   /* Generate a new key pair
    */
   inline void generate_keys(PublicKey &pub, SecretKey &sec) {
@@ -119,6 +123,12 @@ namespace Crypto {
    */
   inline bool secret_key_to_public_key(const SecretKey &sec, PublicKey &pub) {
     return crypto_ops::secret_key_to_public_key(sec, pub);
+  }
+
+  /* Multiply secret key to public key
+ */
+  inline bool secret_key_mult_public_key(const SecretKey &sec, const PublicKey &pub, PublicKey &result) {
+    return crypto_ops::secret_key_mult_public_key(sec, pub, result);
   }
 
   /* To generate an ephemeral key used to send money to:
