@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <utility>
 #include <CryptoNote.h>
-#include "BinaryArray.hpp"
 
 namespace Common {
 

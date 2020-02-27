@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <CryptoNote.h>
 #include "Common/Files.hpp"  // For OpenMode
-#include "Common/BinaryArray.hpp"
 #include "Common/Nocopy.hpp"
 
 namespace Platform {

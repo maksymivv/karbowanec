@@ -2423,8 +2423,19 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       try {
         auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
         
-        m_db.put(kikey, Common::write_varint_sqlite4(block.height), true); // TODO can't properly read from this read_varint_sqlite4
-        
+        m_db.put(kikey, Common::write_varint_sqlite4((uint64_t)block.height), true); // TODO can't properly read from this read_varint_sqlite4
+       
+
+        std::cout << "Push key image: " << Common::podToHex(ki);
+
+        // check
+        std::string hstr;
+        if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data)), hstr))
+          return false;
+        uint64_t keyImageHeight = Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(hstr));
+
+        std::cout << "keyImageHeight: " << keyImageHeight << " from raw str: " << hstr << ENDL;
+
       }
       catch (std::runtime_error& e) {
         logger(ERROR, BRIGHT_RED) <<

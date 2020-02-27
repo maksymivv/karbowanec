@@ -21,7 +21,6 @@
 #include <boost/variant.hpp>
 #include "android.h"
 #include "CryptoTypes.h"
-#include "Common/BinaryArray.hpp"
 
 namespace CryptoNote {
 
@@ -111,7 +110,6 @@ struct KeyPair {
   Crypto::SecretKey secretKey;
 };
 
-//using BinaryArray = std::vector<uint8_t>;
-typedef std::vector<uint8_t> BinaryArray;
+using BinaryArray = std::vector<uint8_t>;
 
 }

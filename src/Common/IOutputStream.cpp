@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <stdexcept>
 #include <CryptoNote.h>
-#include "BinaryArray.hpp"
 #include "Varint.hpp"
 
 using namespace Common;

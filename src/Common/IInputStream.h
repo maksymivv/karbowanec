@@ -21,8 +21,8 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
-#include "BinaryArray.hpp"
 #include "Math.h"
+#include <CryptoNote.h>
 
 namespace Common {
 
