@@ -2437,15 +2437,6 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
 
         return false;
       }
-
-      // check if it's stored ok
-      std::string s;
-      if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data)), s))
-        return false;
-      uint32_t keyImageHeight = Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(s));
-
-      logger(INFO, BRIGHT_BLUE) << "Stored height: " << block.height << ", retrieved " << keyImageHeight;
-
     }
   }
 
