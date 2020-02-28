@@ -33,6 +33,7 @@
 #include "Rpc/CoreRpcServerCommandsDefinitions.h"
 #include "Serialization/BinarySerializationTools.h"
 #include "Serialization/SerializationTools.h"
+#include "BlockchainExplorer/BlockchainExplorerDataBuilder.h"
 #include "CryptoNoteTools.h"
 #include "TransactionExtra.h"
 
@@ -280,14 +281,14 @@ public:
       s(m_lastBlockHash, "blockHash");
     }
 
-    logger(INFO) << operation << "paymentID index...";
-    s(m_bs.m_paymentIdIndex, "paymentIdIndex");
+    //logger(INFO) << operation << "paymentID index...";
+    //s(m_bs.m_paymentIdIndex, "paymentIdIndex");
 
-    logger(INFO) << operation << "timestamp index...";
-    s(m_bs.m_timestampIndex, "timestampIndex");
+    //logger(INFO) << operation << "timestamp index...";
+    //s(m_bs.m_timestampIndex, "timestampIndex");
 
-    logger(INFO) << operation << "generated transactions index...";
-    s(m_bs.m_generatedTransactionsIndex, "generatedTransactionsIndex");
+    //logger(INFO) << operation << "generated transactions index...";
+    //s(m_bs.m_generatedTransactionsIndex, "generatedTransactionsIndex");
 
     m_loaded = true;
   }
@@ -313,14 +314,14 @@ public:
       ar & m_lastBlockHash;
     }
 
-    logger(INFO) << operation << "paymentID index...";
-    ar & m_bs.m_paymentIdIndex;
+    //logger(INFO) << operation << "paymentID index...";
+    //ar & m_bs.m_paymentIdIndex;
 
-    logger(INFO) << operation << "timestamp index...";
-    ar & m_bs.m_timestampIndex;
+    //logger(INFO) << operation << "timestamp index...";
+    //ar & m_bs.m_timestampIndex;
 
-    logger(INFO) << operation << "generated transactions index...";
-    ar & m_bs.m_generatedTransactionsIndex;
+    //logger(INFO) << operation << "generated transactions index...";
+    //ar & m_bs.m_generatedTransactionsIndex;
 
     m_loaded = true;
   }
@@ -682,9 +683,9 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
   m_alternative_chains.clear();
   m_outputs.clear();
 
-  m_paymentIdIndex.clear();
-  m_timestampIndex.clear();
-  m_generatedTransactionsIndex.clear();
+  //m_paymentIdIndex.clear();
+  //m_timestampIndex.clear();
+  //m_generatedTransactionsIndex.clear();
   m_orphanBlocksIndex.clear();
 
   block_verification_context bvc = boost::value_initialized<block_verification_context>();
@@ -2324,24 +2325,28 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   // push to timestamp index
   //m_timestampIndex.add(block.bl.timestamp, blockHash); // old
   //m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), blockHash.as_binary_array(), true);
-  /*
 
-  should be put like this to avoid duplicate keys
-
-  	auto tikey = TIMESTAMP_BLOCK_PREFIX + common::write_varint_sqlite4(info.timestamp) +
-	             common::write_varint_sqlite4(info.height);
-	m_db.put(tikey, std::string(), true);
-  
-  */
-
+  BinaryArray ba;
+  TimestampEntry tse;
+  tse.blocks.push_back(std::make_pair(block.height, blockHash));
+  toBinaryArray(tse, ba);
+  if (!m_db.get(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), ba)) { 
+    m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), ba, false);
+  }
+  else {
+    if (!fromBinaryArray(tse, ba)) {
+      throw std::runtime_error("Blockchain::pushBlock, failed to parse timestamp entry from DB");
+    }
+    m_db.put(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(block.bl.timestamp), ba, false);
+  }
 
   // push to gen. txs index
-  m_generatedTransactionsIndex.add(block.bl); // old
+  //m_generatedTransactionsIndex.add(block.bl); // old
   if (block.height > 0) {
     m_lastGeneratedTxNumber += (block.bl.transactionHashes.size() + 1); // plus miner tx
     m_db.put(GENERATED_TRANSACTIONS_INDEX_PREFIX + Common::write_varint_sqlite4(block.height), Common::write_varint_sqlite4(m_lastGeneratedTxNumber), true);
   }
-
+ 
   assert(m_blockIndex.size() == m_blocks.size()); // old
 
   // commit every 1k blocks when syncing, on every block when was synced
@@ -2462,8 +2467,25 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
     }
   }
 
-  m_paymentIdIndex.add(transaction.tx);
-  // add to payment id index in db
+  //m_paymentIdIndex.add(transaction.tx);
+  BinaryArray ba;
+  PaymentIdEntry pe;
+  Crypto::Hash paymentId;
+  if (BlockchainExplorerDataBuilder::getPaymentId(transaction.tx, paymentId)) {
+    if (!m_db.get(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), ba)) {
+      pe.transactionHashes.push_back(transactionHash);
+      toBinaryArray(pe, ba);
+      m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), ba, false);
+    }
+    else {
+      if (!fromBinaryArray(pe, ba)) {
+        throw std::runtime_error("Blockchain::pushBlock, failed to parse paymentId entry from DB");
+      }
+      pe.transactionHashes.push_back(transactionHash);
+      toBinaryArray(pe, ba);
+      m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), ba, false);
+    }
+  }
 
   return true;
 }
@@ -2571,7 +2593,12 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
     }
   }
 
-  m_paymentIdIndex.remove(transaction);
+  //m_paymentIdIndex.remove(transaction);
+  // todo rem from db
+  Crypto::Hash paymentId;
+  if (BlockchainExplorerDataBuilder::getPaymentId(transaction, paymentId)) {
+    m_db.del(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), false);
+  }
 
   size_t count = m_transactionMap.erase(transactionHash);
   if (count != 1) {
@@ -2679,8 +2706,14 @@ void Blockchain::removeLastBlock() {
   popTransactions(m_blocks.back(), getObjectHash(m_blocks.back().bl.baseTransaction));
 
   Crypto::Hash blockHash = getBlockIdByHeight(m_blocks.back().height);
-  m_timestampIndex.remove(m_blocks.back().bl.timestamp, blockHash);
-  m_generatedTransactionsIndex.remove(m_blocks.back().bl);
+
+  //m_timestampIndex.remove(m_blocks.back().bl.timestamp, blockHash);
+  m_db.del(TIMESTAMP_INDEX_PREFIX + Common::write_varint_sqlite4(m_blocks.back().bl.timestamp), false);
+
+  //m_generatedTransactionsIndex.remove(m_blocks.back().bl);
+  uint32_t blockHeight = boost::get<BaseInput>(m_blocks.back().bl.baseTransaction.inputs.front()).blockIndex; // TODO DB
+  m_lastGeneratedTxNumber -= (m_blocks.back().bl.transactionHashes.size() + 1);
+  m_db.del(GENERATED_TRANSACTIONS_INDEX_PREFIX + Common::write_varint_sqlite4(blockHeight), false);
 
   m_blocks.pop_back();
   m_blockIndex.pop();
@@ -2819,11 +2852,11 @@ bool Blockchain::loadBlockchainIndices() {
     logger(WARNING, BRIGHT_YELLOW) << "No actual blockchain indices for BlockchainExplorer found, rebuilding...";
     std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
 
-    m_paymentIdIndex.clear();
-    m_timestampIndex.clear();
-    m_generatedTransactionsIndex.clear();
+    //m_paymentIdIndex.clear();
+    //m_timestampIndex.clear();
+    //m_generatedTransactionsIndex.clear();
 
-    for (uint32_t b = 0; b < m_blocks.size(); ++b) {
+    /*for (uint32_t b = 0; b < m_blocks.size(); ++b) {
       if (b % 1000 == 0) {
         logger(INFO, BRIGHT_WHITE) << "Height " << b << " of " << m_blocks.size();
       }
@@ -2834,7 +2867,9 @@ bool Blockchain::loadBlockchainIndices() {
         const TransactionEntry& transaction = block.transactions[t];
         m_paymentIdIndex.add(transaction.tx);
       }
-    }
+    }*/
+
+    // Store these indexes in db by default
 
     std::chrono::duration<double> duration = std::chrono::steady_clock::now() - timePoint;
     logger(INFO, BRIGHT_WHITE) << "Rebuilding blockchain indices took: " << duration.count();
@@ -2843,23 +2878,76 @@ bool Blockchain::loadBlockchainIndices() {
 }
 
 bool Blockchain::getGeneratedTransactionsNumber(uint32_t height, uint64_t& generatedTransactions) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return m_generatedTransactionsIndex.find(height, generatedTransactions);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //return m_generatedTransactionsIndex.find(height, generatedTransactions);
+
+  if (height > m_tip_height) {
+    return false;
+  }
+
+  std::string s;
+  if (!m_db.get(GENERATED_TRANSACTIONS_INDEX_PREFIX + Common::write_varint_sqlite4(height), s)) {
+    return false;
+  }
+  generatedTransactions = Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(s));
+  
+  return true;
 }
 
 bool Blockchain::getOrphanBlockIdsByHeight(uint32_t height, std::vector<Crypto::Hash>& blockHashes) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   return m_orphanBlocksIndex.find(height, blockHashes);
+  // TODO DB
 }
 
 bool Blockchain::getBlockIdsByTimestamp(uint64_t timestampBegin, uint64_t timestampEnd, uint32_t blocksNumberLimit, std::vector<Crypto::Hash>& hashes, uint32_t& blocksNumberWithinTimestamps) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return m_timestampIndex.find(timestampBegin, timestampEnd, blocksNumberLimit, hashes, blocksNumberWithinTimestamps);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //return m_timestampIndex.find(timestampBegin, timestampEnd, blocksNumberLimit, hashes, blocksNumberWithinTimestamps);
+
+  if (timestampBegin > timestampEnd) {
+    return false;
+  }
+
+  uint32_t lim = 0, nr = 0;
+  auto middle = Common::write_varint_sqlite4(timestampBegin);
+  for (DB::Cursor cur = m_db.rbegin(TIMESTAMP_INDEX_PREFIX, middle); !cur.end(); cur.next()) {
+    auto v = cur.get_value_array();
+    TimestampEntry t;
+    if (!fromBinaryArray(t, v)) {
+      throw std::runtime_error("Blockchain::getBlockIdsByTimestamp, failed to parse entry from DB");
+    }
+    if (lim < blocksNumberLimit) {
+      for (const auto& i : t.blocks) {
+        hashes.push_back(i.second);
+      }
+    }
+    lim += t.blocks.size();
+    nr += t.blocks.size();
+    if (Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(cur.get_suffix())) >= timestampEnd) {
+      break;
+    }
+  }
+  blocksNumberWithinTimestamps = nr;
+
+  return true;
 }
 
 bool Blockchain::getTransactionIdsByPaymentId(const Crypto::Hash& paymentId, std::vector<Crypto::Hash>& transactionHashes) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return m_paymentIdIndex.find(paymentId, transactionHashes);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //return m_paymentIdIndex.find(paymentId, transactionHashes);
+  // TODO DB
+  BinaryArray ba;
+  if (!m_db.get(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), ba)) {
+    return false;
+  }
+
+  PaymentIdEntry pe;
+  if (!fromBinaryArray(pe, ba)) {
+    throw std::runtime_error("Blockchain::getTransactionIdsByPaymentId, failed to parse paymentId entry from DB");
+  }
+  transactionHashes = pe.transactionHashes;
+
+  return true;
 }
 
 bool Blockchain::loadTransactions(const Block& block, std::vector<Transaction>& transactions) {

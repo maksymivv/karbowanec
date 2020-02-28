@@ -280,6 +280,22 @@ namespace CryptoNote {
       }
     };
 
+    struct TimestampEntry {
+      std::vector<std::pair<uint32_t, Crypto::Hash>> blocks;
+      
+      void serialize(ISerializer& s) {
+        s(blocks, "blocks");
+      }
+    };
+
+    struct PaymentIdEntry {
+      std::vector<Crypto::Hash> transactionHashes;
+
+      void serialize(ISerializer& s) {
+        s(transactionHashes, "transaction_hashes");
+      }
+    };
+
     struct BlockIndexTag {};
     struct KeyImageTag {};
 
