@@ -447,14 +447,12 @@ bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIn
 
   return it->blockIndex <= blockIndex;*/
 
-  std::string hstr;
-  if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), hstr))
+  std::string s;
+  if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), s))
     return false;
-  uint32_t keyImageHeight = Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(hstr));
+  uint32_t height = Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(s));
 
-  std::cout << "keyImageHeight: " << keyImageHeight << " from raw str: " << hstr << ENDL;
-
-  return keyImageHeight <= blockIndex;
+  return height <= blockIndex;
 }
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage) {
@@ -1828,12 +1826,12 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
       const KeyInput& in_to_key = boost::get<KeyInput>(txin);
       if (!(!in_to_key.outputIndexes.empty())) { logger(ERROR, BRIGHT_RED) << "empty in_to_key.outputIndexes in transaction with id " << getObjectHash(tx); return false; }
 
-      // DB will throw on attempt to add spent keyimage
-      //if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
-      //  logger(DEBUGGING) <<
-      //    "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
-      //  return false;
-      //}
+      // DB will throw on attempt to add spent keyimage, maybe not necessary here
+      if (have_tx_keyimg_as_spent(in_to_key.keyImage)) {
+        logger(DEBUGGING) <<
+          "Key image already spent in blockchain: " << Common::podToHex(in_to_key.keyImage);
+        return false;
+      }
 
       if (!isInCheckpointZone(getCurrentBlockchainHeight())) {
         if (!check_tx_input(in_to_key, tx_prefix_hash, tx.signatures[inputIndex], pmax_used_block_height)) {
@@ -2228,6 +2226,9 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   BlockEntry block;
   block.bl = blockData;
+  
+  block.height = static_cast<uint32_t>(m_blocks.size()); // block.height is used in pushTransaction()
+
   block.transactions.resize(1);
   block.transactions[0].tx = blockData.baseTransaction;
   TransactionIndex transactionIndex = { static_cast<uint32_t>(m_blocks.size()), static_cast<uint16_t>(0) };
@@ -2277,7 +2278,6 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     return false;
   }
 
-  block.height = static_cast<uint32_t>(m_blocks.size());
   block.block_cumulative_size = cumulative_block_size;
   block.cumulative_difficulty = currentDifficulty;
   block.already_generated_coins = already_generated_coins + emissionChange;
@@ -2422,20 +2422,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       // add to spent key images DB index
       try {
         auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
-        
-        m_db.put(kikey, Common::write_varint_sqlite4((uint64_t)block.height), true); // TODO can't properly read from this read_varint_sqlite4
-       
-
-        std::cout << "Push key image: " << Common::podToHex(ki);
-
-        // check
-        std::string hstr;
-        if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data)), hstr))
-          return false;
-        uint64_t keyImageHeight = Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(hstr));
-
-        std::cout << "keyImageHeight: " << keyImageHeight << " from raw str: " << hstr << ENDL;
-
+        m_db.put(kikey, Common::write_varint_sqlite4((uint64_t)block.height), true);
       }
       catch (std::runtime_error& e) {
         logger(ERROR, BRIGHT_RED) <<
@@ -2450,6 +2437,15 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
 
         return false;
       }
+
+      // check if it's stored ok
+      std::string s;
+      if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data)), s))
+        return false;
+      uint32_t keyImageHeight = Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(s));
+
+      logger(INFO, BRIGHT_BLUE) << "Stored height: " << block.height << ", retrieved " << keyImageHeight;
+
     }
   }
 
