@@ -2469,21 +2469,34 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
 
   //m_paymentIdIndex.add(transaction.tx);
   BinaryArray ba;
-  PaymentIdEntry pe;
   Crypto::Hash paymentId;
   if (BlockchainExplorerDataBuilder::getPaymentId(transaction.tx, paymentId)) {
     if (!m_db.get(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), ba)) {
+      PaymentIdEntry pe;
       pe.transactionHashes.push_back(transactionHash);
       toBinaryArray(pe, ba);
-      m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), ba, false);
+      try {
+        m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), toBinaryArray(pe), true);
+      }
+      catch (std::runtime_error& e) {
+        logger(ERROR, BRIGHT_RED) << e.what();
+        return false;
+      }
     }
     else {
+      PaymentIdEntry pe;
       if (!fromBinaryArray(pe, ba)) {
-        throw std::runtime_error("Blockchain::pushBlock, failed to parse paymentId entry from DB");
+        throw std::runtime_error("Blockchain::pushTransaction, failed to parse paymentId entry from DB");
       }
       pe.transactionHashes.push_back(transactionHash);
-      toBinaryArray(pe, ba);
-      m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), ba, false);
+      try {
+        m_db.del(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), false);
+        m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), toBinaryArray(pe), true);
+      }
+      catch (std::runtime_error& e) {
+        logger(ERROR, BRIGHT_RED) << e.what();
+        return false;
+      }
     }
   }
 
@@ -2594,7 +2607,6 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
   }
 
   //m_paymentIdIndex.remove(transaction);
-  // todo rem from db
   Crypto::Hash paymentId;
   if (BlockchainExplorerDataBuilder::getPaymentId(transaction, paymentId)) {
     m_db.del(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), false);
