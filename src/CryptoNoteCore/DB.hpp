@@ -25,5 +25,5 @@ namespace CryptoNote {
   static const std::string PAYMENT_ID_INDEX_PREFIX = "p";
   static const std::string GENERATED_TRANSACTIONS_INDEX_PREFIX = "g";
   static const std::string ORPHAN_BLOCK_INDEX_PREFIX = "o";
-
+  static const std::string ALTERNATIVE_BLOCKS_PREFIX = "a";
 }

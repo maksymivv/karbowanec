@@ -1501,7 +1501,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
 }
 
 bool Blockchain::getBlocks(uint32_t start_offset, uint32_t count, std::list<Block>& blocks, std::list<Transaction>& txs) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  /*std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (start_offset >= m_blocks.size())
     return false;
   for (size_t i = start_offset; i < start_offset + count && i < m_blocks.size(); i++) {
@@ -1509,19 +1509,62 @@ bool Blockchain::getBlocks(uint32_t start_offset, uint32_t count, std::list<Bloc
     std::list<Crypto::Hash> missed_ids;
     getTransactions(m_blocks[i].bl.transactionHashes, txs, missed_ids);
     if (!(!missed_ids.size())) { logger(ERROR, BRIGHT_RED) << "have missed transactions in own block in main blockchain"; return false; }
+  }*/
+
+  if (start_offset >= m_height)
+    return false;
+
+  uint32_t cnt = 0;
+  auto middle = Common::write_varint_sqlite4(start_offset);
+  for (DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX, middle); !cur.end(); cnt++, cur.next()) {
+    auto v = cur.get_value_array();
+    Crypto::Hash id;
+    std::copy(v.begin(), v.end(), id.data);
+    auto key = BLOCK_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)) + BLOCK_SUFFIX;
+    BinaryArray ba;
+    m_db.get(key, ba);
+    BlockEntry e;
+    fromBinaryArray(e, ba);
+    blocks.push_back(e.bl);
+    std::list<Crypto::Hash> missed_ids;
+    getTransactions(e.bl.transactionHashes, txs, missed_ids);
+    if (!(!missed_ids.size())) { logger(ERROR, BRIGHT_RED) << "have missed transactions in own block in main blockchain"; return false; }
+
+    if (cnt > count)
+      break;
   }
 
   return true;
 }
 
 bool Blockchain::getBlocks(uint32_t start_offset, uint32_t count, std::list<Block>& blocks) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  /*std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (start_offset >= m_blocks.size()) {
     return false;
   }
 
   for (uint32_t i = start_offset; i < start_offset + count && i < m_blocks.size(); i++) {
     blocks.push_back(m_blocks[i].bl);
+  }*/
+
+  if (start_offset >= m_height)
+    return false;
+
+  uint32_t cnt = 0;
+  auto middle = Common::write_varint_sqlite4(start_offset);
+  for (DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX, middle); !cur.end(); cnt++, cur.next()) {
+    auto v = cur.get_value_array();
+    Crypto::Hash id;
+    std::copy(v.begin(), v.end(), id.data);
+    auto key = BLOCK_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)) + BLOCK_SUFFIX;
+    BinaryArray ba;
+    m_db.get(key, ba);
+    BlockEntry e;
+    fromBinaryArray(e, ba);
+    blocks.push_back(e.bl);
+    
+    if (cnt > count)
+      break;
   }
 
   return true;
@@ -2420,8 +2463,10 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
 
   // commit every 1k blocks when syncing, on every block when was synced
   if (!m_synchronized) {
-    if(block.height % 1000 == 0)
+    if (block.height % 1000 == 0) {
       db_commit();
+      logger(INFO, BLUE) << block.height;
+    }
   } else {
     logger(INFO) << "Blockchain::db_commit on single push block started...";
     db_commit();
@@ -2933,13 +2978,6 @@ bool Blockchain::getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& ge
   if (m_blockIndex.getBlockHeight(hash, height)) {
     generatedCoins = m_blocks[height].already_generated_coins;
     return true;
-  }
-
-  // try to find block in alternative chain
-  auto blockByHashIterator = m_alternative_chains.find(hash);
-  if (blockByHashIterator != m_alternative_chains.end()) {
-    generatedCoins = blockByHashIterator->second.already_generated_coins;
-    return true;
   }*/
 
   // try to find block in main chain
@@ -2954,7 +2992,12 @@ bool Blockchain::getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& ge
   }
 
   // try to find block in alternative chain
-  //TODO
+  //TODO DB
+  auto blockByHashIterator = m_alternative_chains.find(hash);
+  if (blockByHashIterator != m_alternative_chains.end()) {
+    generatedCoins = blockByHashIterator->second.already_generated_coins;
+    return true;
+  }
 
   logger(DEBUGGING) << "Can't find block with hash " << hash << " to get already generated coins.";
   return false;
