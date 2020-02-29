@@ -72,6 +72,16 @@ namespace CryptoNote {
     bool addObserver(IBlockchainStorageObserver* observer);
     bool removeObserver(IBlockchainStorageObserver* observer);
 
+    struct TransactionIndex {
+      uint32_t block;
+      uint16_t transaction;
+
+      void serialize(ISerializer& s) {
+        s(block, "block");
+        s(transaction, "tx");
+      }
+    };
+
     // ITransactionValidator
     virtual bool checkTransactionInputs(const CryptoNote::Transaction& tx, BlockInfo& maxUsedBlock) override;
     virtual bool checkTransactionInputs(const CryptoNote::Transaction& tx, BlockInfo& maxUsedBlock, BlockInfo& lastFailed) override;
@@ -129,6 +139,7 @@ namespace CryptoNote {
     uint64_t blockDifficulty(size_t i);
     uint64_t blockCumulativeDifficulty(size_t i);
     bool getblockEntry(size_t i, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp);
+    bool getTransactionIndex(const Crypto::Hash& txId, TransactionIndex& index);
     bool getBlockContainingTransaction(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight);
     bool getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& generatedCoins);
     bool getBlockSize(const Crypto::Hash& hash, size_t& size);
@@ -169,14 +180,14 @@ namespace CryptoNote {
 
     template<class t_ids_container, class t_tx_container, class t_missed_container>
     void getBlockchainTransactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs) {
-      std::lock_guard<decltype(m_blockchain_lock)> bcLock(m_blockchain_lock);
+      //std::lock_guard<decltype(m_blockchain_lock)> bcLock(m_blockchain_lock);
 
       for (const auto& tx_id : txs_ids) {
-        auto it = m_transactionMap.find(tx_id);
-        if (it == m_transactionMap.end()) {
+        TransactionIndex ti;
+        if (!getTransactionIndex(tx_id, ti)) {
           missed_txs.push_back(tx_id);
         } else {
-          txs.push_back(transactionByIndex(it->second).tx);
+          txs.push_back(transactionByIndex(ti).tx);
         }
       }
     }
@@ -201,16 +212,6 @@ namespace CryptoNote {
     void print_blockchain(uint64_t start_index, uint64_t end_index);
     void print_blockchain_index();
     void print_blockchain_outs(const std::string& file);
-
-    struct TransactionIndex {
-      uint32_t block;
-      uint16_t transaction;
-
-      void serialize(ISerializer& s) {
-        s(block, "block");
-        s(transaction, "tx");
-      }
-    };
 
     struct SpentKeyImage {
       uint32_t blockIndex;
@@ -340,16 +341,16 @@ namespace CryptoNote {
 
     Blocks m_blocks;
     CryptoNote::BlockIndex m_blockIndex;
-    TransactionMap m_transactionMap;
+    //TransactionMap m_transactionMap;
     MultisignatureOutputsContainer m_multisignatureOutputs;
     //UpgradeDetector m_upgradeDetectorV2;
     //UpgradeDetector m_upgradeDetectorV3;
     //UpgradeDetector m_upgradeDetectorV4;
     //UpgradeDetector m_upgradeDetectorV5;
 
-    PaymentIdIndex m_paymentIdIndex;
-    TimestampBlocksIndex m_timestampIndex;
-    GeneratedTransactionsIndex m_generatedTransactionsIndex;
+    //PaymentIdIndex m_paymentIdIndex;
+    //TimestampBlocksIndex m_timestampIndex;
+    //GeneratedTransactionsIndex m_generatedTransactionsIndex;
     OrphanBlocksIndex m_orphanBlocksIndex;
     bool m_blockchainIndexesEnabled;
     bool m_synchronized;

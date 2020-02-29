@@ -351,9 +351,9 @@ m_db(blockchainReadOnly ? Common::O_READ_EXISTING : Common::O_OPEN_ALWAYS, confi
 //m_upgradeDetectorV4(currency, m_db, BLOCK_MAJOR_VERSION_4, config_folder, logger),
 //m_upgradeDetectorV5(currency, m_db, BLOCK_MAJOR_VERSION_5, config_folder, logger),
 m_checkpoints(logger),
-m_paymentIdIndex(blockchainIndexesEnabled),
-m_timestampIndex(blockchainIndexesEnabled),
-m_generatedTransactionsIndex(blockchainIndexesEnabled),
+//m_paymentIdIndex(blockchainIndexesEnabled),
+//m_timestampIndex(blockchainIndexesEnabled),
+//m_generatedTransactionsIndex(blockchainIndexesEnabled),
 m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled),
 m_height(0),
@@ -2456,15 +2456,22 @@ void Blockchain::popBlock() {
 }
 
 bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transactionHash, TransactionIndex transactionIndex) {
-  auto result = m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
+  /*auto result = m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
   if (!result.second) {
     logger(ERROR, BRIGHT_RED) <<
       "Duplicate transaction was pushed to blockchain.";
     return false;
-  }
+  }*/
 
   auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data)); 
-  m_db.put(tkey, toBinaryArray(transactionIndex), true);
+  try {
+    m_db.put(tkey, toBinaryArray(transactionIndex), true);
+  }
+  catch (std::runtime_error& e) {
+    logger(ERROR, BRIGHT_RED) <<
+      "Duplicate transaction was pushed to blockchain: " << e.what();
+    return false;
+  }
 
   TransactionEntry& transaction = block.transactions[transactionIndex.transaction];
 
@@ -2510,7 +2517,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
           auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
           m_db.del(kikey, true);
         }
-        m_transactionMap.erase(transactionHash);
+        //m_transactionMap.erase(transactionHash);
         auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
         m_db.del(tkey, true);
 
@@ -2578,7 +2585,13 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
 }
 
 void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Hash& transactionHash) {
-  TransactionIndex transactionIndex = m_transactionMap.at(transactionHash);
+  TransactionIndex transactionIndex;
+  if (!getTransactionIndex(transactionHash, transactionIndex)) {
+    logger(ERROR, BRIGHT_RED) <<
+      "Blockchain consistency broken - cannot find transactionIndex in DB";
+    return;
+  }
+
   for (size_t outputIndex = 0; outputIndex < transaction.outputs.size(); ++outputIndex) {
     const TransactionOutput& output = transaction.outputs[transaction.outputs.size() - 1 - outputIndex];
     if (output.target.type() == typeid(KeyOutput)) {
@@ -2686,15 +2699,19 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
     m_db.del(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), false);
   }
 
-  size_t count = m_transactionMap.erase(transactionHash);
+  /*size_t count = m_transactionMap.erase(transactionHash);
   if (count != 1) {
     logger(ERROR, BRIGHT_RED) <<
       "Blockchain consistency broken - cannot find transaction by hash.";
-  }
+  }*/
 
   auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
-  m_db.del(tkey, true);
-
+  try {
+    m_db.del(tkey, true);
+  } catch (std::runtime_error& e) {
+    logger(ERROR, BRIGHT_RED) <<
+      "Blockchain consistency broken - couldn't delete transaction from DB: " << e.what();
+  }
 }
 
 void Blockchain::popTransactions(const BlockEntry& block, const Crypto::Hash& minerTransactionHash) {
@@ -2857,21 +2874,60 @@ std::vector<Crypto::Hash> Blockchain::getBlockIds(uint32_t startHeight, uint32_t
   return ids;
 }
 
+bool Blockchain::getTransactionIndex(const Crypto::Hash& txId, TransactionIndex& index) {
+  BinaryArray ba;
+  if (!m_db.get(TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(txId.data, sizeof(txId.data)), ba))
+    return false;
+  if (!fromBinaryArray(index, ba))
+    return false;
+
+  return true;
+}
+
 bool Blockchain::getBlockContainingTransaction(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  auto it = m_transactionMap.find(txId);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  /*auto it = m_transactionMap.find(txId);
   if (it == m_transactionMap.end()) {
     return false;
   } else {
     blockHeight = m_blocks[it->second.block].height;
     blockId = getBlockIdByHeight(blockHeight);
     return true;
+  }*/
+
+  BinaryArray ba;
+  if (!m_db.get(TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(txId.data, sizeof(txId.data)), ba))
+    return false;
+  TransactionIndex ti;
+  if (!fromBinaryArray(ti, ba))
+    return false;
+  
+  std::string s;
+  Crypto::Hash bid;
+  if(!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(ti.block), s))
+    return false;
+  Common::podFromHex(s, bid);
+
+  auto key = BLOCK_PREFIX + DB::to_binary_key(bid.data, sizeof(bid.data)) + BLOCK_SUFFIX;
+  if (!m_db.get(key, ba))
+    return false;
+  BlockEntry e;
+  if (!fromBinaryArray(e, ba))
+      return false;
+  
+  if (e.bl.transactionHashes[ti.transaction] == txId) {
+    blockId = bid;
+    blockHeight = ti.block;
+
+    return true;
   }
+
+  return false;
 }
 
 bool Blockchain::getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& generatedCoins) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-
+  /*
   // try to find block in main chain
   uint32_t height = 0;
   if (m_blockIndex.getBlockHeight(hash, height)) {
@@ -2884,7 +2940,21 @@ bool Blockchain::getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& ge
   if (blockByHashIterator != m_alternative_chains.end()) {
     generatedCoins = blockByHashIterator->second.already_generated_coins;
     return true;
+  }*/
+
+  // try to find block in main chain
+  BinaryArray ba;
+  auto key = BLOCK_PREFIX + DB::to_binary_key(hash.data, sizeof(hash.data)) + BLOCK_SUFFIX;
+  if (m_db.get(key, ba)) {
+    BlockEntry e;
+    if (!fromBinaryArray(e, ba))
+      return false;
+    generatedCoins = e.already_generated_coins;
+    return true;
   }
+
+  // try to find block in alternative chain
+  //TODO
 
   logger(DEBUGGING) << "Can't find block with hash " << hash << " to get already generated coins.";
   return false;
