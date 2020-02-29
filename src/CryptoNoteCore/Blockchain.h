@@ -82,6 +82,34 @@ namespace CryptoNote {
       }
     };
 
+    struct TransactionEntry {
+      Transaction tx;
+      std::vector<uint32_t> m_global_output_indexes;
+
+      void serialize(ISerializer& s) {
+        s(tx, "tx");
+        s(m_global_output_indexes, "indexes");
+      }
+    };
+
+    struct BlockEntry {
+      Block bl;
+      uint32_t height;
+      uint64_t block_cumulative_size;
+      difficulty_type cumulative_difficulty;
+      uint64_t already_generated_coins;
+      std::vector<TransactionEntry> transactions;
+
+      void serialize(ISerializer& s) {
+        s(bl, "block");
+        s(height, "height");
+        s(block_cumulative_size, "block_cumulative_size");
+        s(cumulative_difficulty, "cumulative_difficulty");
+        s(already_generated_coins, "already_generated_coins");
+        s(transactions, "transactions");
+      }
+    };
+
     // ITransactionValidator
     virtual bool checkTransactionInputs(const CryptoNote::Transaction& tx, BlockInfo& maxUsedBlock) override;
     virtual bool checkTransactionInputs(const CryptoNote::Transaction& tx, BlockInfo& maxUsedBlock, BlockInfo& lastFailed) override;
@@ -102,6 +130,8 @@ namespace CryptoNote {
     uint32_t getAlternativeBlocksCount();
     Crypto::Hash getBlockIdByHeight(uint32_t height);
     bool getBlockByHash(const Crypto::Hash &h, Block &blk);
+    bool getBlockEntryByHeight(const uint32_t &height, BlockEntry &e);
+    bool getBlockByHeight(const uint32_t &height, Block &blk);
     bool getBlockHeight(const Crypto::Hash& blockId, uint32_t& blockHeight);
 
     template<class archive_t> void serialize(archive_t & ar, const unsigned int version);
@@ -158,17 +188,18 @@ namespace CryptoNote {
 
     template<class t_ids_container, class t_blocks_container, class t_missed_container>
     bool getBlocks(const t_ids_container& block_ids, t_blocks_container& blocks, t_missed_container& missed_bs) {
-      std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+      //std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
 
       for (const auto& bl_id : block_ids) {
         try {
-          uint32_t height = 0;
-          if (!m_blockIndex.getBlockHeight(bl_id, height)) {
-            missed_bs.push_back(bl_id);
+          //if (!haveBlock(bl_id)) {
+          Block b;
+          if (!getBlockByHash(bl_id, b)) {
+            missed_bs.push_back(bl_id); 
           } else {
-            if (!(height < m_blocks.size())) { logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: bl_id=" << Common::podToHex(bl_id)
-            << " have index record with offset=" << height << ", bigger then m_blocks.size()=" << m_blocks.size(); return false; }
-            blocks.push_back(m_blocks[height].bl);
+            //if (!(height < m_blocks.size())) { logger(Logging::ERROR, Logging::BRIGHT_RED) << "Internal error: bl_id=" << Common::podToHex(bl_id)
+            //<< " have index record with offset=" << height << ", bigger then m_blocks.size()=" << m_blocks.size(); return false; }
+            blocks.push_back(b);
           }
         } catch (const std::exception& e) {
           logger(Logging::ERROR, Logging::BRIGHT_RED) << "Exception in Core getBlocks: " << e.what();
@@ -250,34 +281,6 @@ namespace CryptoNote {
         s(transactionIndex, "txindex");
         s(outputIndex, "outindex");
         s(isUsed, "used");
-      }
-    };
-
-    struct TransactionEntry {
-      Transaction tx;
-      std::vector<uint32_t> m_global_output_indexes;
-
-      void serialize(ISerializer& s) {
-        s(tx, "tx");
-        s(m_global_output_indexes, "indexes");
-      }
-    };
-
-    struct BlockEntry {
-      Block bl;
-      uint32_t height;
-      uint64_t block_cumulative_size;
-      difficulty_type cumulative_difficulty;
-      uint64_t already_generated_coins;
-      std::vector<TransactionEntry> transactions;
-
-      void serialize(ISerializer& s) {
-        s(bl, "block");
-        s(height, "height");
-        s(block_cumulative_size, "block_cumulative_size");
-        s(cumulative_difficulty, "cumulative_difficulty");
-        s(already_generated_coins, "already_generated_coins");
-        s(transactions, "transactions");
       }
     };
 
