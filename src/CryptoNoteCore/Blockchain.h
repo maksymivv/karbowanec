@@ -333,7 +333,7 @@ namespace CryptoNote {
     typedef SwappedVector<BlockEntry> Blocks;
     typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
     typedef std::unordered_map<Crypto::Hash, TransactionIndex> TransactionMap;
-    typedef BasicUpgradeDetector<Blocks> UpgradeDetector;
+    typedef BasicUpgradeDetector<DB> UpgradeDetector;
 
     friend class BlockCacheSerializer;
     friend class BlockchainIndicesSerializer;
@@ -354,7 +354,7 @@ namespace CryptoNote {
     bool m_blockchainIndexesEnabled;
     bool m_synchronized;
 
-    uint32_t m_tip_height;
+    uint32_t m_height; // blockchain height including genesis block nr zero (total blocks count)
     uint64_t m_lastGeneratedTxNumber;
 
     IntrusiveLinkedList<MessageQueue<BlockchainMessage>> m_messageQueueList;
