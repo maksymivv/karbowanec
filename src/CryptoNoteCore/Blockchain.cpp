@@ -500,7 +500,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   m_db.get("$version", version);
   logger(INFO) << "Blockchain DB version: " << version;
 
-  DB::Cursor cur1 = m_db.rbegin(TIP_CHAIN_PREFIX);
+  DB::Cursor cur1 = m_db.rbegin(BLOCK_INDEX_PREFIX);
   m_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix())) + 1;
 
   if (!m_blocks.open(appendPath(config_folder, m_currency.blocksFileName()), appendPath(config_folder, m_currency.blockIndexesFileName()), 1024)) {
@@ -719,7 +719,7 @@ Crypto::Hash Blockchain::getTailId(uint32_t& height) {
   return getTailId();*/
 
   Crypto::Hash tail_id;
-  DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+  DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
   height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1;
   BinaryArray ba = cur.get_value_array();
   memcpy(&tail_id, ba.data(), ba.size());
@@ -731,7 +731,7 @@ Crypto::Hash Blockchain::getTailId() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return m_blocks.empty() ? NULL_HASH : m_blockIndex.getTailId();
 
-  DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+  DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
 
   if (cur.end())
     return NULL_HASH;
@@ -2182,7 +2182,7 @@ const Blockchain::TransactionEntry& Blockchain::transactionByIndex(TransactionIn
   // get block by height, and in block tx from DB
   std::string s;
   Crypto::Hash h;
-  m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(index.block), s);
+  m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(index.block), s);
   Common::podFromHex(s, h);
 
   auto key = BLOCK_PREFIX + DB::to_binary_key(h.data, sizeof(h.data)) + BLOCK_SUFFIX;
@@ -2391,7 +2391,7 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
 
   // push to block index
   m_blockIndex.push(blockHash); // old
-  m_db.put(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
+  m_db.put(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
 
   // push to timestamp index
   //m_timestampIndex.add(block.bl.timestamp, blockHash); // old
@@ -2840,8 +2840,21 @@ bool Blockchain::getLowerBound(uint64_t timestamp, uint64_t startOffset, uint32_
 }
 
 std::vector<Crypto::Hash> Blockchain::getBlockIds(uint32_t startHeight, uint32_t maxCount) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return m_blockIndex.getBlockIds(startHeight, maxCount);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //return m_blockIndex.getBlockIds(startHeight, maxCount);
+
+  uint32_t count = 0;
+  std::vector<Crypto::Hash> ids;
+  auto middle = Common::write_varint_sqlite4(startHeight);
+  for (DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX, middle); !cur.end(); count++, cur.next()) {
+    auto v = cur.get_value_array();
+    Crypto::Hash id;
+    std::copy(v.begin(), v.end(), id.data);
+    ids.push_back(id);
+    if (count > maxCount)
+      break;
+  }
+  return ids;
 }
 
 bool Blockchain::getBlockContainingTransaction(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) {

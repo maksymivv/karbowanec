@@ -18,7 +18,7 @@ namespace CryptoNote {
   static const std::string BLOCK_PREFIX = "b";
   static const std::string BLOCK_SUFFIX = "b";
   static const std::string TRANSACTION_PREFIX = "t";
-  static const std::string TIP_CHAIN_PREFIX = "c";
+  static const std::string BLOCK_INDEX_PREFIX = "c";
   static const std::string TIMESTAMP_INDEX_PREFIX = "T";
   static const std::string TRANSACTIONS_INDEX_PREFIX = "i";
   static const std::string SPENT_KEY_IMAGES_INDEX_PREFIX = "k";

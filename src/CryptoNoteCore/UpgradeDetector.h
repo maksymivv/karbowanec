@@ -64,7 +64,7 @@ namespace CryptoNote {
       uint32_t upgradeHeight = m_currency.upgradeHeight(m_targetVersion);
       
       Crypto::Hash tail_id;
-      DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+      DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
       m_height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1; // incl. block zero
       BinaryArray ba = cur.get_value_array();
       memcpy(&tail_id, ba.data(), ba.size());
@@ -115,7 +115,7 @@ namespace CryptoNote {
           std::string sb;
           BinaryArray bab;
           BlockEntry beb;
-          if(!m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4(upgradeHeight), sb))
+          if(!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(upgradeHeight), sb))
             return false;
           if (!m_db.get(BLOCK_PREFIX + sb + BLOCK_SUFFIX, bab))
             return false;
@@ -132,7 +132,7 @@ namespace CryptoNote {
           std::string sa;
           BinaryArray baa;
           BlockEntry bea;
-          if (!m_db.get(TIP_CHAIN_PREFIX + Common::write_varint_sqlite4((upgradeHeight + 1)), sa))
+          if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4((upgradeHeight + 1)), sa))
             return false;
           if (!m_db.get(BLOCK_PREFIX + sa + BLOCK_SUFFIX, baa))
             return false;
@@ -165,7 +165,7 @@ namespace CryptoNote {
 
     void blockPushed() {
       Crypto::Hash tail_id;
-      DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+      DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
       m_height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1; // incl. block zero
       BinaryArray ba = cur.get_value_array();
       memcpy(&tail_id, ba.data(), ba.size());
@@ -225,7 +225,7 @@ namespace CryptoNote {
 
         
         Crypto::Hash tail_id;
-        DB::Cursor cur = m_db.rbegin(TIP_CHAIN_PREFIX);
+        DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
         m_height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1; // incl. block zero
         assert(m_height > 0);
         BinaryArray ba = cur.get_value_array();
