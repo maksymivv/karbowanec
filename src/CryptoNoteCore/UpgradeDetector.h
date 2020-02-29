@@ -58,7 +58,7 @@ namespace CryptoNote {
       m_targetVersion(targetVersion),
       m_votingCompleteHeight(UNDEF_HEIGHT),
       logger(log, "upgrade"),
-      m_db(Common::O_READ_EXISTING, config_folder + "/blockchain") { }
+      m_db(bdb) { }
 
     bool init() {
       uint32_t upgradeHeight = m_currency.upgradeHeight(m_targetVersion);

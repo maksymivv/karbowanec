@@ -83,7 +83,7 @@ Platform::lmdb::Cur::~Cur() {
 
 DBlmdb::DBlmdb(Common::OpenMode open_mode, const std::string &full_path, uint64_t max_tx_size)
     : full_path(full_path), db_env(open_mode == Common::O_READ_EXISTING), max_tx_size(max_tx_size) {
-	//	std::cout << "lmdb libversion=" << mdb_version(nullptr, nullptr, nullptr) << std::endl;
+		std::cout << "lmdb libversion=" << mdb_version(nullptr, nullptr, nullptr) << std::endl;
 	create_folders_if_necessary(full_path);
 	lmdb_check(::mdb_env_open(db_env.handle, Platform::expand_path(full_path).c_str(),
 	               MDB_NOMETASYNC | (open_mode == Common::O_READ_EXISTING ? MDB_RDONLY : 0), 0644),

@@ -488,9 +488,9 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     b.majorVersion = m_blockchain.getBlockMajorVersionForHeight(height);
 
     if (b.majorVersion == BLOCK_MAJOR_VERSION_1) {
-      b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_2) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
+      b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_2) == CryptoNote::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
     } else if (b.majorVersion == BLOCK_MAJOR_VERSION_2 || b.majorVersion == BLOCK_MAJOR_VERSION_3) {
-      if (m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_3) == UpgradeDetectorBase::UNDEF_HEIGHT) {
+      if (m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_3) == CryptoNote::UNDEF_HEIGHT) {
         b.minorVersion = b.majorVersion == BLOCK_MAJOR_VERSION_2 ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
       } else {
         b.minorVersion = BLOCK_MINOR_VERSION_0;
@@ -506,9 +506,9 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
         return false;
       }
     } else if (b.majorVersion == BLOCK_MAJOR_VERSION_4) {
-      b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_4) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
+      b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_4) == CryptoNote::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
     } else if (b.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-      b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_5) == UpgradeDetectorBase::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
+      b.minorVersion = m_currency.upgradeHeight(BLOCK_MAJOR_VERSION_5) == CryptoNote::UNDEF_HEIGHT ? BLOCK_MINOR_VERSION_1 : BLOCK_MINOR_VERSION_0;
     }
 
     b.previousBlockHash = get_tail_id();

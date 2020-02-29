@@ -41,7 +41,7 @@
 #include "CryptoNoteCore/IBlockchainStorageObserver.h"
 #include "CryptoNoteCore/ITransactionValidator.h"
 #include "CryptoNoteCore/SwappedVector.h"
-#include "CryptoNoteCore/UpgradeDetector.h"
+//#include "CryptoNoteCore/UpgradeDetector.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/TransactionPool.h"
 #include "CryptoNoteCore/BlockchainIndices.h"
@@ -333,7 +333,7 @@ namespace CryptoNote {
     typedef SwappedVector<BlockEntry> Blocks;
     typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
     typedef std::unordered_map<Crypto::Hash, TransactionIndex> TransactionMap;
-    typedef BasicUpgradeDetector<DB> UpgradeDetector;
+    //typedef BasicUpgradeDetector<DB> UpgradeDetector;
 
     friend class BlockCacheSerializer;
     friend class BlockchainIndicesSerializer;
@@ -342,10 +342,10 @@ namespace CryptoNote {
     CryptoNote::BlockIndex m_blockIndex;
     TransactionMap m_transactionMap;
     MultisignatureOutputsContainer m_multisignatureOutputs;
-    UpgradeDetector m_upgradeDetectorV2;
-    UpgradeDetector m_upgradeDetectorV3;
-    UpgradeDetector m_upgradeDetectorV4;
-    UpgradeDetector m_upgradeDetectorV5;
+    //UpgradeDetector m_upgradeDetectorV2;
+    //UpgradeDetector m_upgradeDetectorV3;
+    //UpgradeDetector m_upgradeDetectorV4;
+    //UpgradeDetector m_upgradeDetectorV5;
 
     PaymentIdIndex m_paymentIdIndex;
     TimestampBlocksIndex m_timestampIndex;
@@ -354,6 +354,7 @@ namespace CryptoNote {
     bool m_blockchainIndexesEnabled;
     bool m_synchronized;
 
+    // perhaps should be atomic
     uint32_t m_height; // blockchain height including genesis block nr zero (total blocks count)
     uint64_t m_lastGeneratedTxNumber;
 
@@ -394,7 +395,7 @@ namespace CryptoNote {
     bool validateInput(const MultisignatureInput& input, const Crypto::Hash& transactionHash, const Crypto::Hash& transactionPrefixHash, const std::vector<Crypto::Signature>& transactionSignatures);
     bool checkCheckpoints(uint32_t& lastValidCheckpointHeight);
     void removeLastBlock();
-    bool checkUpgradeHeight(const UpgradeDetector& upgradeDetector);
+    //bool checkUpgradeHeight(const UpgradeDetector& upgradeDetector);
 
     bool storeBlockchainIndices();
     bool loadBlockchainIndices();

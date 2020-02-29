@@ -112,4 +112,8 @@ struct KeyPair {
 
 using BinaryArray = std::vector<uint8_t>;
 
+enum : uint32_t {
+  UNDEF_HEIGHT = static_cast<uint32_t>(-1),
+};
+
 }
