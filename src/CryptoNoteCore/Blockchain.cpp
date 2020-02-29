@@ -3009,8 +3009,8 @@ bool Blockchain::getBlockIdsByTimestamp(uint64_t timestampBegin, uint64_t timest
         hashes.push_back(i.second);
       }
     }
-    lim += t.blocks.size();
-    nr += t.blocks.size();
+    lim += (uint32_t)t.blocks.size();
+    nr += (uint32_t)t.blocks.size();
     if (Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(cur.get_suffix())) >= timestampEnd) {
       break;
     }
