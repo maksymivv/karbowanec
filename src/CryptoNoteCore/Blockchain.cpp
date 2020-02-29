@@ -212,8 +212,8 @@ public:
     logger(INFO) << operation << "block index...";
     s(m_bs.m_blockIndex, "block_index");
 
-    logger(INFO) << operation << "transaction map...";
-    s(m_bs.m_transactionMap, "transactions");
+    //logger(INFO) << operation << "transaction map...";
+    //s(m_bs.m_transactionMap, "transactions");
 
     /*logger(INFO) << operation << "spent keys...";
     if (s.type() == ISerializer::OUTPUT) {
@@ -544,6 +544,9 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     }
   }
 
+  DB::Cursor cur2 = m_db.rbegin(GENERATED_TRANSACTIONS_INDEX_PREFIX);
+  m_lastGeneratedTxNumber = cur2.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur2.get_suffix()));
+
   uint32_t lastValidCheckpointHeight = 0;
   if (!checkCheckpoints(lastValidCheckpointHeight)) {
     logger(WARNING, BRIGHT_YELLOW) << "Invalid checkpoint found. Rollback blockchain to height=" << lastValidCheckpointHeight;
@@ -590,9 +593,9 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 
   update_next_cumulative_size_limit();
 
-  DB::Cursor cur2 = m_db.rbegin(TIMESTAMP_INDEX_PREFIX);
+  DB::Cursor cur3 = m_db.rbegin(TIMESTAMP_INDEX_PREFIX);
   uint64_t tip_timestamp = cur1.end() ? time(NULL) : 
-    Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(cur2.get_suffix()));
+    Common::integer_cast<uint64_t>(Common::read_varint_sqlite4(cur3.get_suffix()));
   uint64_t timestamp_diff = time(NULL) - tip_timestamp;
   if (!m_blocks.back().bl.timestamp) {
     timestamp_diff = time(NULL) - 1341378000;
@@ -619,7 +622,7 @@ void Blockchain::on_synchronized() {
 void Blockchain::rebuildCache() {
   std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
   m_blockIndex.clear();
-  m_transactionMap.clear();
+  //m_transactionMap.clear();
   //spentKeyImages.clear();
   m_outputs.clear();
   m_multisignatureOutputs.clear();
@@ -634,7 +637,7 @@ void Blockchain::rebuildCache() {
       const TransactionEntry& transaction = block.transactions[t];
       Crypto::Hash transactionHash = getObjectHash(transaction.tx);
       TransactionIndex transactionIndex = { b, t };
-      m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
+      //m_transactionMap.insert(std::make_pair(transactionHash, transactionIndex));
 
       // process inputs
       for (auto& i : transaction.tx.inputs) {
@@ -691,7 +694,7 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   m_blocks.clear();
   m_blockIndex.clear();
-  m_transactionMap.clear();
+  //m_transactionMap.clear();
 
   //spentKeyImages.clear();
   m_alternative_chains.clear();
@@ -1774,8 +1777,11 @@ bool Blockchain::haveBlock(const Crypto::Hash& id) {
 }
 
 size_t Blockchain::getTotalTransactions() {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  return m_transactionMap.size();
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //return m_transactionMap.size();
+
+  //GENERATED_TRANSACTIONS_INDEX_PREFIX
+  return m_lastGeneratedTxNumber;
 }
 
 bool Blockchain::getTransactionOutputGlobalIndexes(const Crypto::Hash& tx_id, std::vector<uint32_t>& indexs) {
