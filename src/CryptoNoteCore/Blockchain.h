@@ -382,7 +382,7 @@ namespace CryptoNote {
     bool checkBlockVersion(const Block& b, const Crypto::Hash& blockHash);
     bool checkParentBlockSize(const Block& b, const Crypto::Hash& blockHash);
     bool checkCumulativeBlockSize(const Crypto::Hash& blockId, size_t cumulativeBlockSize, uint64_t height);
-    std::vector<Crypto::Hash> doBuildSparseChain(const Crypto::Hash& startBlockId) const;
+    std::vector<Crypto::Hash> doBuildSparseChain(const Crypto::Hash& startBlockId);
     bool getBlockCumulativeSize(const Block& block, size_t& cumulativeSize);
     bool update_next_cumulative_size_limit();
     bool check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height = NULL);
