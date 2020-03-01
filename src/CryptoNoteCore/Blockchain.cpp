@@ -2765,10 +2765,10 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   if (!m_synchronized) {
     if (block.height % 1000 == 0) {
       db_commit();
-      logger(INFO, BLUE) << block.height;
+      logger(INFO, BRIGHT_MAGENTA) << "Blockchain synchronized to height " << block.height;
     }
   } else {
-    logger(INFO) << "Blockchain::db_commit on single push block started...";
+    logger(DEBUGGING) << "Blockchain::db_commit on single push block started...";
     db_commit();
   }
 
