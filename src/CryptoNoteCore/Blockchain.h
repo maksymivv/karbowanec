@@ -156,6 +156,7 @@ namespace CryptoNote {
     size_t getTotalTransactions();
     std::vector<Crypto::Hash> buildSparseChain();
     std::vector<Crypto::Hash> buildSparseChain(const Crypto::Hash& startBlockId);
+    std::vector<Crypto::Hash> build_sparse_chain(const Crypto::Hash& startBlockId);
     uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& qblock_ids); // !!!!
     std::vector<Crypto::Hash> findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds, size_t maxCount,
       uint32_t& totalBlockCount, uint32_t& startBlockIndex);

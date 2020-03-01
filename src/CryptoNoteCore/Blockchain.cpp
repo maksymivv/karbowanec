@@ -769,6 +769,42 @@ std::vector<Crypto::Hash> Blockchain::buildSparseChain(const Crypto::Hash& start
   return doBuildSparseChain(startBlockId);
 }
 
+std::vector<Crypto::Hash> Blockchain::build_sparse_chain(const Crypto::Hash& startBlockId) {
+  //assert(m_index.count(startBlockId) > 0);
+
+  uint32_t startBlockHeight = 0;
+  if(!getBlockHeight(startBlockId, startBlockHeight))
+    throw std::runtime_error("Blockchain::build_sparse_chain, failed to get entry from DB");
+
+  std::vector<Crypto::Hash> result;
+  size_t sparseChainEnd = static_cast<size_t>(startBlockHeight + 1);
+  //for (size_t i = 1; i <= sparseChainEnd; i *= 2) {
+  //  result.emplace_back(m_container[sparseChainEnd - i]);
+  //}
+
+  for (size_t i = 1; i <= sparseChainEnd; i *= 2) {
+    std::string s;
+    Crypto::Hash h = NULL_HASH;
+    if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(sparseChainEnd - i), s))
+      throw std::runtime_error("Blockchain::build_sparse_chain, failed to get entry from DB");
+    Common::podFromHex(s, h);
+    result.emplace_back(h);
+  }
+
+  //if (result.back() != m_container[0]) {
+  //  result.emplace_back(m_container[0]);
+  //}
+  DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
+  auto v = cur.get_value_array();
+  Crypto::Hash tid;
+  std::copy(v.begin(), v.end(), tid.data);
+  if (result.back() != tid) {
+    result.emplace_back(tid);
+  }
+
+  return result;
+}
+
 std::vector<Crypto::Hash> Blockchain::doBuildSparseChain(const Crypto::Hash& startBlockId) {
   assert(m_blockIndex.size() != 0);
 
@@ -776,8 +812,8 @@ std::vector<Crypto::Hash> Blockchain::doBuildSparseChain(const Crypto::Hash& sta
 
   //if (m_blockIndex.hasBlock(startBlockId)) {
   if (haveBlock(startBlockId)) {
-    //TODO DB replace m_blockIndex
-    sparseChain = m_blockIndex.buildSparseChain(startBlockId);
+    //sparseChain = m_blockIndex.buildSparseChain(startBlockId);
+    sparseChain = build_sparse_chain(startBlockId);
   } else {
     assert(m_alternative_chains.count(startBlockId) > 0);
 
@@ -795,8 +831,8 @@ std::vector<Crypto::Hash> Blockchain::doBuildSparseChain(const Crypto::Hash& sta
     assert(!sparseChain.empty());
     //assert(m_blockIndex.hasBlock(blockchainAncestor));
     assert(haveBlock(blockchainAncestor));
-    //TODO DB replace m_blockIndex
-    std::vector<Crypto::Hash> sparseMainChain = m_blockIndex.buildSparseChain(blockchainAncestor);
+    //std::vector<Crypto::Hash> sparseMainChain = m_blockIndex.buildSparseChain(blockchainAncestor);
+    std::vector<Crypto::Hash> sparseMainChain = build_sparse_chain(blockchainAncestor);
     sparseChain.reserve(sparseChain.size() + sparseMainChain.size());
     std::copy(sparseMainChain.begin(), sparseMainChain.end(), std::back_inserter(sparseChain));
   }
