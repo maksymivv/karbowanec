@@ -100,7 +100,7 @@ uint64_t FileStream::seek(uint64_t pos, int whence) {
 #else
 	off_t res = lseek(fd, pos, whence);
 	if (res == -1)
-		throw Common::StreamError("Error seeking file in seek, errno=" + Common::to_string(errno));
+		throw std::runtime_error("Error seeking file in seek, errno=" + Common::to_string(errno));
 	return res;
 #endif
 }
@@ -115,7 +115,7 @@ size_t FileStream::writeSome(const void *data, size_t size) {
 #else
 	size_t si = ::write(fd, data, size);
 	if (si == (size_t)-1)
-		throw Common::StreamError("Error writing file, errno=" + Common::to_string(errno));
+		throw std::runtime_error("Error writing file, errno=" + Common::to_string(errno));
 	return si;
 #endif
 }
@@ -129,7 +129,7 @@ size_t FileStream::readSome(void *data, size_t size) {
 #else
 	ssize_t si = ::read(fd, data, size);
 	if (si == -1)
-		throw Common::StreamError("Error reading file, errno=" + Common::to_string(errno));
+		throw std::runtime_error("Error reading file, errno=" + Common::to_string(errno));
 	return (size_t)si;
 #endif
 }
@@ -140,7 +140,7 @@ void FileStream::fsync() {
 		throw std::runtime_error("Error syncing file to disk, GetLastError()=" + Common::to_string(GetLastError()));
 #else
 	if (::fsync(fd) == -1)
-		throw Common::StreamError("Error syncing file to disk, errno=" + Common::to_string(errno));
+		throw std::runtime_error("Error syncing file to disk, errno=" + Common::to_string(errno));
 #endif
 }
 
@@ -151,7 +151,7 @@ void FileStream::truncate(uint64_t size) {
 		throw std::runtime_error("Error truncating file on disk, GetLastError()=" + Common::to_string(GetLastError()));
 #else
 	if (::ftruncate(fd, size) == -1)
-		throw Common::StreamError("Error truncating file on disk, errno=" + Common::to_string(errno));
+		throw std::runtime_error("Error truncating file on disk, errno=" + Common::to_string(errno));
 #endif
 }
 
