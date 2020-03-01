@@ -521,7 +521,8 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     }
   }
   else {
-    auto v = cur1.get_value_array();
+    DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX);
+    auto v = cur.get_value_array();
     std::copy(v.begin(), v.end(), firstBlockHash.data);
     if (!(firstBlockHash == m_currency.genesisBlockHash())) {
       logger(ERROR, BRIGHT_RED) << "Failed to init: genesis block mismatch. "
@@ -806,7 +807,7 @@ std::vector<Crypto::Hash> Blockchain::build_sparse_chain(const Crypto::Hash& sta
 }
 
 std::vector<Crypto::Hash> Blockchain::doBuildSparseChain(const Crypto::Hash& startBlockId) {
-  assert(m_blockIndex.size() != 0);
+  //assert(m_blockIndex.size() != 0);
 
   std::vector<Crypto::Hash> sparseChain;
 
@@ -1436,7 +1437,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
 }
 
 bool Blockchain::getBackwardBlocksSize(size_t from_height, std::vector<size_t>& sz, size_t count) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (!(from_height < m_height)) {
     logger(ERROR, BRIGHT_RED)
       << "Internal error: get_backward_blocks_sizes called with from_height="
@@ -1464,8 +1465,8 @@ bool Blockchain::getBackwardBlocksSize(size_t from_height, std::vector<size_t>& 
 }
 
 bool Blockchain::get_last_n_blocks_sizes(std::vector<size_t>& sz, size_t count) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (m_height = 0) {
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (m_height == 0) {
     return true;
   }
 
@@ -2143,7 +2144,7 @@ bool Blockchain::get_out_by_msig_gindex(uint64_t amount, uint64_t gindex, Multis
 
 
 bool Blockchain::checkTransactionInputs(const Transaction& tx, uint32_t& max_used_block_height, Crypto::Hash& max_used_block_id, BlockInfo* tail) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   if (tail)
     tail->id = getTailId(tail->height);
@@ -2153,11 +2154,7 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, uint32_t& max_use
   if (!(max_used_block_height < m_height)) { logger(ERROR, BRIGHT_RED) << "internal error: max used block index=" 
     << max_used_block_height << " is not less then blockchain size = " << m_height; return false; }
   //get_block_hash(m_blocks[max_used_block_height].bl, max_used_block_id);
-  std::string s;
-  if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(max_used_block_height), s))
-    return false;
-  if (!Common::podFromHex(s, max_used_block_id))
-    return false;
+  max_used_block_id = getBlockIdByHeight(max_used_block_height);
 
   return true;
 }
