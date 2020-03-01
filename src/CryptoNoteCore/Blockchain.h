@@ -129,6 +129,7 @@ namespace CryptoNote {
     bool getAlternativeBlocks(std::list<Block>& blocks);
     uint32_t getAlternativeBlocksCount();
     Crypto::Hash getBlockIdByHeight(uint32_t height);
+    bool getBlockIdByHeight(uint32_t height, Crypto::Hash &hash);
     bool getBlockByHash(const Crypto::Hash &h, Block &blk);
     bool getBlockEntryByHeight(const uint32_t &height, BlockEntry &e);
     bool getBlockByHeight(const uint32_t &height, Block &blk);

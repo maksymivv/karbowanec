@@ -544,9 +544,9 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
       rebuildCache();
     }
 
-    //if (m_blockchainIndexesEnabled) {
-    //  loadBlockchainIndices();
-    //}
+    if (m_blockchainIndexesEnabled) {
+      loadBlockchainIndices();
+    }
   } /*else {
     m_blocks.clear();
   }*/
@@ -788,7 +788,7 @@ std::vector<Crypto::Hash> Blockchain::build_sparse_chain(const Crypto::Hash& sta
     Crypto::Hash h = NULL_HASH;
     if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(sparseChainEnd - i), s))
       throw std::runtime_error("Blockchain::build_sparse_chain, failed to get entry from DB");
-    Common::podFromHex(s, h);
+    std::copy(s.begin(), s.end(), h.data);
     result.emplace_back(h);
   }
 
@@ -845,12 +845,25 @@ Crypto::Hash Blockchain::getBlockIdByHeight(uint32_t height) {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //assert(height < m_blockIndex.size());
   //return m_blockIndex.getBlockId(height);
+
   std::string s;
   Crypto::Hash h = NULL_HASH;
-  if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(height), s))
-    throw std::runtime_error("Blockchain::getBlockIdByHeight, failed to get entry from DB");
-  Common::podFromHex(s, h);
+  getBlockIdByHeight(height, h);
+  
   return h;
+}
+
+bool Blockchain::getBlockIdByHeight(uint32_t height, Crypto::Hash &hash) {
+  std::string s;
+  if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(height), s)) {
+    logger(ERROR, BRIGHT_RED) << "Blockchain::getBlockIdByHeight, failed to get entry from DB";
+    return false;
+  }
+  Crypto::Hash h = NULL_HASH;
+  std::copy(s.begin(), s.end(), h.data);
+  hash = h;
+
+  return true;
 }
 
 bool Blockchain::getBlockByHash(const Crypto::Hash& blockHash, Block& b) {
@@ -889,7 +902,7 @@ bool Blockchain::getBlockEntryByHeight(const uint32_t &height, BlockEntry &e) {
   Crypto::Hash h;
   if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(height), s))
     return false;
-  Common::podFromHex(s, h);
+  std::copy(s.begin(), s.end(), h.data);
 
   auto key = BLOCK_PREFIX + DB::to_binary_key(h.data, sizeof(h.data)) + BLOCK_SUFFIX;
   BinaryArray ba;
@@ -1493,7 +1506,7 @@ bool Blockchain::complete_timestamps_vector(uint8_t blockMajorVersion, uint64_t 
     Crypto::Hash h;
     if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(start_top_height), s))
       return false;
-    Common::podFromHex(s, h);
+    std::copy(s.begin(), s.end(), h.data);
 
     auto key = BLOCK_PREFIX + DB::to_binary_key(h.data, sizeof(h.data)) + BLOCK_SUFFIX;
     BlockEntry e;
@@ -1584,7 +1597,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
       std::string s;
       if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(alt_chain.front()->second.height - 1), s))
         return false;
-      Common::podFromHex(s, h);
+      std::copy(s.begin(), s.end(), h.data);
 
       if (!(h == alt_chain.front()->second.bl.previousBlockHash)) { logger(ERROR, BRIGHT_RED) << "alternative chain have wrong connection to main chain"; return false; }
       complete_timestamps_vector(b.majorVersion, alt_chain.front()->second.height - 1, timestamps);
@@ -1651,7 +1664,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     Crypto::Hash h;
     if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(mainPrevHeight), s))
       return false;
-    Common::podFromHex(s, h);
+    std::copy(s.begin(), s.end(), h.data);
     auto key = BLOCK_PREFIX + DB::to_binary_key(h.data, sizeof(h.data)) + BLOCK_SUFFIX;
     BlockEntry e;
     BinaryArray ba;
@@ -2502,7 +2515,7 @@ const Blockchain::TransactionEntry& Blockchain::transactionByIndex(TransactionIn
   std::string s;
   Crypto::Hash h;
   m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(index.block), s);
-  Common::podFromHex(s, h);
+  std::copy(s.begin(), s.end(), h.data);
 
   auto key = BLOCK_PREFIX + DB::to_binary_key(h.data, sizeof(h.data)) + BLOCK_SUFFIX;
   BinaryArray ba;
@@ -2586,6 +2599,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   auto longhashTimeStart = std::chrono::steady_clock::now();
   Crypto::Hash proof_of_work = NULL_HASH;
+
   if (m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
     if (!m_checkpoints.check_block(getCurrentBlockchainHeight(), blockHash)) {
       logger(ERROR, BRIGHT_RED) <<
