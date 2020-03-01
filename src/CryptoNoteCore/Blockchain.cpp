@@ -779,11 +779,8 @@ std::vector<Crypto::Hash> Blockchain::build_sparse_chain(const Crypto::Hash& sta
 
   std::vector<Crypto::Hash> result;
   size_t sparseChainEnd = static_cast<size_t>(startBlockHeight + 1);
-  //for (size_t i = 1; i <= sparseChainEnd; i *= 2) {
-  //  result.emplace_back(m_container[sparseChainEnd - i]);
-  //}
-
   for (size_t i = 1; i <= sparseChainEnd; i *= 2) {
+    //  result.emplace_back(m_container[sparseChainEnd - i]);
     std::string s;
     Crypto::Hash h = NULL_HASH;
     if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(sparseChainEnd - i), s))
@@ -795,12 +792,12 @@ std::vector<Crypto::Hash> Blockchain::build_sparse_chain(const Crypto::Hash& sta
   //if (result.back() != m_container[0]) {
   //  result.emplace_back(m_container[0]);
   //}
-  DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
+  DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX);
   auto v = cur.get_value_array();
-  Crypto::Hash tid;
-  std::copy(v.begin(), v.end(), tid.data);
-  if (result.back() != tid) {
-    result.emplace_back(tid);
+  Crypto::Hash z;
+  std::copy(v.begin(), v.end(), z.data);
+  if (result.back() != z) {
+    result.emplace_back(z);
   }
 
   return result;
@@ -933,6 +930,7 @@ bool Blockchain::getBlockHeight(const Crypto::Hash& blockId, uint32_t& blockHeig
   if (!fromBinaryArray(e, ba))
     return false;
   blockHeight = e.height;
+  assert(e.height == boost::get<BaseInput>(e.bl.baseTransaction.inputs.front()).blockIndex);
 
   return true;
 }
