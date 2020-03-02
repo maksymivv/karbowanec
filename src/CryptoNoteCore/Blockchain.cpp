@@ -2507,7 +2507,7 @@ bool Blockchain::addNewBlock(const Block& bl, block_verification_context& bvc) {
   return add_result;
 }
 
-const Blockchain::TransactionEntry& Blockchain::transactionByIndex(TransactionIndex index) {
+const Blockchain::TransactionEntry Blockchain::transactionByIndex(TransactionIndex index) {
   //return m_blocks[index.block].transactions[index.transaction];
   std::string s;
   Crypto::Hash h;
