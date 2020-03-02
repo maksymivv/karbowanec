@@ -1568,7 +1568,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
   //block is not related with head of main chain
   //first of all - look in alternative chains container
   uint32_t mainPrevHeight = 0;
-  const bool mainPrev = m_blockIndex.getBlockHeight(b.previousBlockHash, mainPrevHeight);
+  const bool mainPrev = getBlockHeight(b.previousBlockHash, mainPrevHeight);
   const auto it_prev = m_alternative_chains.find(b.previousBlockHash);
 
   if (it_prev != m_alternative_chains.end() || mainPrev) {
@@ -2266,7 +2266,7 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height)
 }
 
 bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   struct outputs_visitor {
     std::vector<const Crypto::PublicKey *>& m_results_collector;
@@ -2509,19 +2509,24 @@ bool Blockchain::addNewBlock(const Block& bl, block_verification_context& bvc) {
 
 const Blockchain::TransactionEntry& Blockchain::transactionByIndex(TransactionIndex index) {
   //return m_blocks[index.block].transactions[index.transaction];
-  // get block by height, and in block tx from DB
   std::string s;
   Crypto::Hash h;
-  m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(index.block), s);
+  if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(index.block), s)) {
+    logger(ERROR, BRIGHT_RED) << "Blockchain::transactionByIndex, failed to get block index from DB";
+  } 
   std::copy(s.begin(), s.end(), h.data);
 
   auto key = BLOCK_PREFIX + DB::to_binary_key(h.data, sizeof(h.data)) + BLOCK_SUFFIX;
   BinaryArray ba;
-  m_db.get(key, ba);
-  BlockEntry pb;
-  fromBinaryArray(pb, ba);
+  if (!m_db.get(key, ba)) {
+    logger(ERROR, BRIGHT_RED) << "Blockchain::transactionByIndex, failed to get block entry from DB";
+  }
+  BlockEntry e;
+  if (!fromBinaryArray(e, ba)) {
+    logger(ERROR, BRIGHT_RED) << "Blockchain::transactionByIndex, failed to parse block entry from DB";
+  }
 
-  return pb.transactions[index.transaction];
+  return e.transactions[index.transaction];
 }
 
 bool Blockchain::pushBlock(const Block& blockData, const Crypto::Hash& id, block_verification_context& bvc) {
@@ -2544,12 +2549,15 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   auto blockProcessingStart = std::chrono::steady_clock::now();
 
-  if (m_blockIndex.hasBlock(blockHash)) {
+  // already checked in addNewBlock
+  // TODO make sure doesn't influence other cases
+  /*if (m_blockIndex.hasBlock(blockHash)) {
     logger(ERROR, BRIGHT_RED) <<
       "Block " << blockHash << " already exists in blockchain.";
     bvc.m_verification_failed = true;
+    //bvc.m_already_exists = true;
     return false;
-  }
+  }*/
 
   if (!checkBlockVersion(blockData, blockHash)) {
     bvc.m_verification_failed = true;
@@ -2577,15 +2585,18 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     return false;
   }
 
-  // make sure block timestamp is not less than the median timestamp
-  // of a set number of the most recent blocks.
-  if (!check_block_timestamp_main(blockData)) {
-    logger(INFO, BRIGHT_WHITE) <<
-      "Block " << blockHash << " has invalid timestamp: " << blockData.timestamp;
-    bvc.m_verification_failed = true;
-    return false;
+  if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
+    // make sure block timestamp is not less than the median timestamp
+    // of a set number of the most recent blocks.
+    if (!check_block_timestamp_main(blockData)) {
+      logger(INFO, BRIGHT_WHITE) <<
+        "Block " << blockHash << " has invalid timestamp: " << blockData.timestamp;
+      bvc.m_verification_failed = true;
+      return false;
+    }
   }
 
+  // have to calc. current difficulty, can't skip under checkpoints
   auto targetTimeStart = std::chrono::steady_clock::now();
   difficulty_type currentDifficulty = getDifficultyForNextBlock();
   auto target_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - targetTimeStart).count();
@@ -2616,7 +2627,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   auto longhash_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - longhashTimeStart).count();
 
-  if (!prevalidate_miner_transaction(blockData, m_height)) { // blockchain height (incl. zero block)
+  if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight()) && !prevalidate_miner_transaction(blockData, m_height)) { // blockchain height (incl. zero block)
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " failed to pass prevalidation";
     bvc.m_verification_failed = true;
@@ -2662,7 +2673,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
     blob_size = toBinaryArray(block.transactions.back().tx).size();
     fee = getInputAmount(block.transactions.back().tx) - getOutputAmount(block.transactions.back().tx);
-    if (!checkTransactionInputs(block.transactions.back().tx)) {
+    if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight()) && !checkTransactionInputs(block.transactions.back().tx)) {
       logger(INFO, BRIGHT_WHITE) <<
         "Block " << blockHash << " has at least one transaction with wrong inputs: " << tx_id;
       bvc.m_verification_failed = true;
@@ -2687,7 +2698,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   int64_t emissionChange = 0;
   uint64_t reward = 0;
   uint64_t already_generated_coins = cur.end() ? 0 : e.already_generated_coins;
-  if (!validate_miner_transaction(blockData, m_height, cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
+  if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight()) && !validate_miner_transaction(blockData, m_height, cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
     logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
     bvc.m_verification_failed = true;
     popTransactions(block, minerTransactionHash);
@@ -2733,7 +2744,7 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   m_db.put(key, toBinaryArray(block), true);
 
   // push to block index
-  m_blockIndex.push(blockHash); // old
+  //m_blockIndex.push(blockHash); // old
   m_db.put(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(block.height), blockHash.as_binary_array(), true);
 
   // push to timestamp index
@@ -2892,9 +2903,9 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
   transaction.m_global_output_indexes.resize(transaction.tx.outputs.size());
   for (uint16_t output = 0; output < transaction.tx.outputs.size(); ++output) {
     if (transaction.tx.outputs[output].target.type() == typeid(KeyOutput)) {
-      auto& amountOutputs = m_outputs[transaction.tx.outputs[output].amount];
+      auto& amountOutputs = m_outputs[transaction.tx.outputs[output].amount]; // m_outputs
       transaction.m_global_output_indexes[output] = static_cast<uint32_t>(amountOutputs.size());
-      amountOutputs.push_back(std::make_pair<>(transactionIndex, output));
+      amountOutputs.push_back(std::make_pair<>(transactionIndex, output)); // push to m_outputs
     } else if (transaction.tx.outputs[output].target.type() == typeid(MultisignatureOutput)) {
       auto& amountOutputs = m_multisignatureOutputs[transaction.tx.outputs[output].amount];
       transaction.m_global_output_indexes[output] = static_cast<uint32_t>(amountOutputs.size());
@@ -3339,10 +3350,20 @@ bool Blockchain::getBlockSize(const Crypto::Hash& hash, size_t& size) {
 
   // try to find block in main chain
   uint32_t height = 0;
-  if (m_blockIndex.getBlockHeight(hash, height)) {
-    size = m_blocks[height].block_cumulative_size;
-    return true;
-  }
+  //if (m_blockIndex.getBlockHeight(hash, height)) {
+  //  size = m_blocks[height].block_cumulative_size;
+  //  return true;
+  //}
+  BinaryArray ba;
+  auto key = BLOCK_PREFIX + DB::to_binary_key(hash.data, sizeof(hash.data)) + BLOCK_SUFFIX;
+  if (!m_db.get(key, ba))
+    return false;
+  BlockEntry e;
+  if (!fromBinaryArray(e, ba))
+    return false;
+  size = e.block_cumulative_size;
+
+  return true;
 
   // try to find block in alternative chain
   auto blockByHashIterator = m_alternative_chains.find(hash);
@@ -3541,7 +3562,7 @@ void Blockchain::sendMessage(const BlockchainMessage& message) {
 }
 
 bool Blockchain::isBlockInMainChain(const Crypto::Hash& blockId) {
-  return m_blockIndex.hasBlock(blockId);
+  return haveBlock(blockId);
 }
 
 bool Blockchain::isInCheckpointZone(const uint32_t height) {

@@ -431,7 +431,7 @@ namespace CryptoNote {
   };
 
   template<class visitor_t> bool Blockchain::scanOutputKeysForIndexes(const KeyInput& tx_in_to_key, visitor_t& vis, uint32_t* pmax_related_block_height) {
-    std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+    //std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
     auto it = m_outputs.find(tx_in_to_key.amount);
     if (it == m_outputs.end() || !tx_in_to_key.outputIndexes.size())
       return false;
