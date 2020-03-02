@@ -2526,7 +2526,7 @@ const Blockchain::TransactionEntry Blockchain::transactionByIndex(TransactionInd
     logger(ERROR, BRIGHT_RED) << "Blockchain::transactionByIndex, failed to parse block entry from DB";
   }
 
-  return e.transactions[index.transaction];
+  return std::move(e.transactions[index.transaction]);
 }
 
 bool Blockchain::pushBlock(const Block& blockData, const Crypto::Hash& id, block_verification_context& bvc) {

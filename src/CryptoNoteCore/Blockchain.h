@@ -448,7 +448,7 @@ namespace CryptoNote {
       //auto tx_it = m_transactionMap.find(amount_outs_vec[i].first);
       //if (!(tx_it != m_transactionMap.end())) { logger(ERROR, BRIGHT_RED) << "Wrong transaction id in output indexes: " << Common::podToHex(amount_outs_vec[i].first); return false; }
 
-      const TransactionEntry& tx = transactionByIndex(amount_outs_vec[i].first);
+      const TransactionEntry tx = transactionByIndex(amount_outs_vec[i].first);
 
       if (!(amount_outs_vec[i].second < tx.tx.outputs.size())) {
         logger(Logging::ERROR, Logging::BRIGHT_RED)
