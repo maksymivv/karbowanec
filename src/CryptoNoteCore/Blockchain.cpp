@@ -619,6 +619,8 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 }
 
 void Blockchain::db_commit() {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+
   //logger(INFO) << "Blockchain::db_commit started...";
   m_db.commit_db_txn();
   //logger(INFO) << "BlockChain::db_commit finished...";
@@ -1100,7 +1102,7 @@ uint8_t Blockchain::getBlockMajorVersionForHeight(uint32_t height) const {
 }
 
 bool Blockchain::rollback_blockchain_switching(std::list<Block> &original_chain, size_t rollback_height) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   // remove failed subchain
   for (size_t i = m_height - 1; i >= rollback_height; i--) {
     popBlock();
@@ -1123,7 +1125,7 @@ bool Blockchain::rollback_blockchain_switching(std::list<Block> &original_chain,
 }
 
 bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::iterator>& alt_chain, bool discard_disconnected_chain) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   if (!(alt_chain.size())) {
     logger(ERROR, BRIGHT_RED) << "switch_to_alternative_blockchain: empty chain passed";
@@ -1315,7 +1317,7 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
   // if the alt chain isn't long enough to calculate the difficulty target
   // based on its blocks alone, need to get more blocks from the main chain
   if (alt_chain.size() < m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)) {
-    std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+    //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
     size_t main_chain_stop_offset = alt_chain.size() ? alt_chain.front()->second.height : bei.height;
     size_t main_chain_count = m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion) - std::min(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion), alt_chain.size());
     main_chain_count = std::min(main_chain_count, main_chain_stop_offset);
@@ -1492,7 +1494,7 @@ bool Blockchain::complete_timestamps_vector(uint8_t blockMajorVersion, uint64_t 
   if (timestamps.size() >= m_currency.timestampCheckWindow(blockMajorVersion))
     return true;
 
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   size_t need_elements = m_currency.timestampCheckWindow(blockMajorVersion) - timestamps.size();
   if (!(start_top_height < m_height)) { logger(ERROR, BRIGHT_RED) << "internal error: passed start_height = "
     << start_top_height << " not less then m_height=" << m_height; return false; }
@@ -1522,7 +1524,7 @@ bool Blockchain::complete_timestamps_vector(uint8_t blockMajorVersion, uint64_t 
 }
 
 bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id, block_verification_context& bvc, bool sendNewAlternativeBlockMessage) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   auto block_height = get_block_height(b);
   if (block_height == 0) {
@@ -1810,7 +1812,7 @@ bool Blockchain::getBlocks(uint32_t start_offset, uint32_t count, std::list<Bloc
 }
 
 bool Blockchain::handleGetObjects(NOTIFY_REQUEST_GET_OBJECTS::request& arg, NOTIFY_RESPONSE_GET_OBJECTS::request& rsp) { //Deprecated. Should be removed with CryptoNoteProtocolHandler.
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   rsp.current_blockchain_height = getCurrentBlockchainHeight();
   std::list<Block> blocks;
   getBlocks(arg.blocks, blocks, rsp.missed_ids);
@@ -1874,7 +1876,7 @@ bool Blockchain::add_out_to_get_random_outs(std::vector<std::pair<TransactionInd
 }
 
 size_t Blockchain::find_end_of_allowed_index(const std::vector<std::pair<TransactionIndex, uint16_t>>& amount_outs) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (amount_outs.empty()) {
     return 0;
   }
@@ -1891,7 +1893,7 @@ size_t Blockchain::find_end_of_allowed_index(const std::vector<std::pair<Transac
 }
 
 bool Blockchain::getRandomOutsByAmount(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::request& req, COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::response& res) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   for (uint64_t amount : req.amounts) {
     COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs = *res.outs.insert(res.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount());
@@ -1940,7 +1942,7 @@ uint32_t Blockchain::findBlockchainSupplement(const std::vector<Crypto::Hash>& q
   assert(!qblock_ids.empty());
   assert(qblock_ids.back() == m_blockIndex.getBlockId(0));
 
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   uint32_t blockIndex;
   // assert above guarantees that method returns true
   m_blockIndex.findSupplement(qblock_ids, blockIndex);
@@ -1963,7 +1965,7 @@ uint64_t Blockchain::blockDifficulty(size_t i) {
 }
 
 uint64_t Blockchain::blockCumulativeDifficulty(size_t i) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (!(i < m_height)) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
 
   BlockEntry e;
@@ -1973,7 +1975,7 @@ uint64_t Blockchain::blockCumulativeDifficulty(size_t i) {
 }
 
 bool Blockchain::getblockEntry(size_t i, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (!(i < m_height)) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::get_block_entry()"; return false; }
 
   BlockEntry e1, e2;
@@ -1992,7 +1994,7 @@ bool Blockchain::getblockEntry(size_t i, uint64_t& block_cumulative_size, diffic
 
 void Blockchain::print_blockchain(uint64_t start_index, uint64_t end_index) {
   std::stringstream ss;
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (start_index >= m_height) {
     logger(INFO, BRIGHT_WHITE) <<
       "Wrong starter index set: " << start_index << ", expected max index " << m_height - 1;
@@ -2028,7 +2030,7 @@ void Blockchain::print_blockchain(uint64_t start_index, uint64_t end_index) {
 
 void Blockchain::print_blockchain_index() {
   std::stringstream ss;
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   std::vector<Crypto::Hash> blockIds = getBlockIds(0, std::numeric_limits<uint32_t>::max());   //m_blockIndex.getBlockIds(0, std::numeric_limits<uint32_t>::max());
   logger(INFO, BRIGHT_WHITE) << "Current blockchain index:";
@@ -2042,7 +2044,7 @@ void Blockchain::print_blockchain_index() {
 
 void Blockchain::print_blockchain_outs(const std::string& file) {
   std::stringstream ss;
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   for (const outputs_container::value_type& v : m_outputs) {
     const std::vector<std::pair<TransactionIndex, uint16_t>>& vals = v.second;
     if (!vals.empty()) {
@@ -2069,7 +2071,7 @@ std::vector<Crypto::Hash> Blockchain::findBlockchainSupplement(const std::vector
   // TODO DB
   assert(remoteBlockIds.back() == m_blockIndex.getBlockId(0));
 
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   totalBlockCount = getCurrentBlockchainHeight();
   startBlockIndex = findBlockchainSupplement(remoteBlockIds);
 
@@ -2132,7 +2134,7 @@ bool Blockchain::getTransactionOutputGlobalIndexes(const Crypto::Hash& tx_id, st
 }
 
 bool Blockchain::get_out_by_msig_gindex(uint64_t amount, uint64_t gindex, MultisignatureOutput& out) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   auto it = m_multisignatureOutputs.find(amount);
   if (it == m_multisignatureOutputs.end()) {
     return false;
@@ -2545,7 +2547,7 @@ bool Blockchain::pushBlock(const Block& blockData, const Crypto::Hash& id, block
 }
 
 bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction>& transactions, const Crypto::Hash& blockHash, block_verification_context& bvc) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   auto blockProcessingStart = std::chrono::steady_clock::now();
 
@@ -3226,7 +3228,7 @@ void Blockchain::removeLastBlock() {
 }*/
 
 bool Blockchain::getLowerBound(uint64_t timestamp, uint64_t startOffset, uint32_t& height) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   assert(startOffset < m_blocks.size());
 
@@ -3311,7 +3313,7 @@ bool Blockchain::getBlockContainingTransaction(const Crypto::Hash& txId, Crypto:
 }
 
 bool Blockchain::getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& generatedCoins) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   /*
   // try to find block in main chain
   uint32_t height = 0;
@@ -3346,7 +3348,7 @@ bool Blockchain::getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& ge
 // TODO optimize this, usually you already have BlockEntry where you requesting from
 // no need to query it again from DB
 bool Blockchain::getBlockSize(const Crypto::Hash& hash, size_t& size) {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   // try to find block in main chain
   uint32_t height = 0;
