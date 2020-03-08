@@ -294,6 +294,14 @@ namespace CryptoNote {
       }
     };
 
+    struct MultisignatureOutputEntry {
+      std::vector<MultisignatureOutputUsage> multisignatureOutputs;
+
+      void serialize(ISerializer& s) {
+        s(multisignatureOutputs, "multisignature_outputs");
+      }
+    };
+
     typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction

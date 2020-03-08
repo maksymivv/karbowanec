@@ -22,6 +22,7 @@ namespace CryptoNote {
   static const std::string TIMESTAMP_INDEX_PREFIX = "T";
   static const std::string TRANSACTIONS_INDEX_PREFIX = "i";
   static const std::string OUTPUTS_INDEX_PREFIX = "o";
+  static const std::string MULTUSIGNATURE_OUTPUTS_INDEX_PREFIX = "m";
   static const std::string SPENT_KEY_IMAGES_INDEX_PREFIX = "k";
   static const std::string PAYMENT_ID_INDEX_PREFIX = "p";
   static const std::string GENERATED_TRANSACTIONS_INDEX_PREFIX = "g";
