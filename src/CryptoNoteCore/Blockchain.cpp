@@ -636,7 +636,7 @@ void Blockchain::db_commit() {
 
 void Blockchain::on_synchronized() {
   m_synchronized = true;
-  db_commit();
+  //db_commit();
 }
 
 void Blockchain::rebuildCache() {
@@ -2793,12 +2793,12 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   // commit every 1k blocks when syncing, on every block when was synced
   if (!m_synchronized) {
     if (block.height % 1000 == 0) {
-      db_commit();
+      //db_commit();
       logger(INFO, BRIGHT_MAGENTA) << "Blockchain synchronized to height " << block.height;
     }
   } else {
     logger(DEBUGGING) << "Blockchain::db_commit on single push block started...";
-    db_commit();
+    //db_commit();
   }
 
   //m_height = block.height + 1; // +1 incl. zero block
