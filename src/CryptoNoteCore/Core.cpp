@@ -1040,7 +1040,7 @@ bool Core::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t c
 }
 
 bool Core::scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pair<Crypto::Hash, size_t>>& outputReferences) {
-  struct outputs_visitor
+/*  struct outputs_visitor
   {
     std::list<std::pair<Crypto::Hash, size_t>>& m_resultsCollector;
     outputs_visitor(std::list<std::pair<Crypto::Hash, size_t>>& resultsCollector):m_resultsCollector(resultsCollector){}
@@ -1053,7 +1053,8 @@ bool Core::scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pa
     
   outputs_visitor vi(outputReferences);
     
-  return m_blockchain.scanOutputKeysForIndexes(txInToKey, vi);
+  return m_blockchain.scanOutputKeysForIndexes(txInToKey, vi);*/
+  return m_blockchain.scanOutputkeysForIndices(txInToKey, outputReferences);
 }
 
 bool Core::getBlockTimestamp(uint32_t height, uint64_t& timestamp) {

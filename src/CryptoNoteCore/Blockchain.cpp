@@ -3736,4 +3736,78 @@ bool Blockchain::isInCheckpointZone(const uint32_t height) {
   return m_checkpoints.is_in_checkpoint_zone(height);
 }
 
+
+template<class visitor_t>
+bool Blockchain::scanOutputKeysForIndexes(const KeyInput& tx_in_to_key, visitor_t& vis, uint32_t* pmax_related_block_height)
+{
+  std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+  //auto it = m_outputs.find(tx_in_to_key.amount);
+  //if (it == m_outputs.end() || !tx_in_to_key.outputIndexes.size())
+  //  return false;
+
+  BinaryArray ba;
+  const auto key = OUTPUTS_INDEX_PREFIX + Common::write_varint_sqlite4(tx_in_to_key.amount);
+  if (!m_db.get(key, ba)) {
+    return false;
+  }
+  OutputsEntry oe;
+  if (!fromBinaryArray(oe, ba)) {
+    throw std::runtime_error("Blockchain::scanOutputKeysForIndexes, failed to parse output entry from DB");
+  }
+
+  std::vector<uint32_t> absolute_offsets = relative_output_offsets_to_absolute(tx_in_to_key.outputIndexes);
+  //std::vector<std::pair<TransactionIndex, uint16_t>>& amount_outs_vec = it->second;
+  std::vector<std::pair<TransactionIndex, uint16_t>>& amount_outs_vec = oe.outputs;
+  size_t count = 0;
+  for (uint64_t i : absolute_offsets) {
+    if (i >= amount_outs_vec.size()) {
+      logger(Logging::INFO) << "Wrong index in transaction inputs: " << i << ", expected maximum " << amount_outs_vec.size() - 1;
+      return false;
+    }
+
+    //auto tx_it = m_transactionMap.find(amount_outs_vec[i].first);
+    //if (!(tx_it != m_transactionMap.end())) { logger(ERROR, BRIGHT_RED) << "Wrong transaction id in output indexes: " << Common::podToHex(amount_outs_vec[i].first); return false; }
+
+    const TransactionEntry tx = transactionByIndex(amount_outs_vec[i].first);
+
+    if (!(amount_outs_vec[i].second < tx.tx.outputs.size())) {
+      logger(Logging::ERROR, Logging::BRIGHT_RED)
+        << "Wrong index in transaction outputs: "
+        << amount_outs_vec[i].second << ", expected less then "
+        << tx.tx.outputs.size();
+      return false;
+    }
+
+    if (!vis.handle_output(tx.tx, tx.tx.outputs[amount_outs_vec[i].second], amount_outs_vec[i].second)) {
+      logger(Logging::INFO) << "Failed to handle_output for output no = " << count << ", with absolute offset " << i;
+      return false;
+    }
+
+    if (count++ == absolute_offsets.size() - 1 && pmax_related_block_height) {
+      if (*pmax_related_block_height < amount_outs_vec[i].first.block) {
+        *pmax_related_block_height = amount_outs_vec[i].first.block;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool Blockchain::scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pair<Crypto::Hash, size_t>>& outputReferences) {
+  struct outputs_visitor
+  {
+    std::list<std::pair<Crypto::Hash, size_t>>& m_resultsCollector;
+    outputs_visitor(std::list<std::pair<Crypto::Hash, size_t>>& resultsCollector) :m_resultsCollector(resultsCollector) {}
+    bool handle_output(const Transaction& tx, const TransactionOutput& out, size_t transactionOutputIndex)
+    {
+      m_resultsCollector.push_back(std::make_pair(getObjectHash(tx), transactionOutputIndex));
+      return true;
+    }
+  };
+
+  outputs_visitor vi(outputReferences);
+
+  return scanOutputKeysForIndexes(txInToKey, vi);
+}
+
 }
