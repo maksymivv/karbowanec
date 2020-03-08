@@ -72,7 +72,7 @@ bool operator<(const Crypto::KeyImage& keyImage1, const Crypto::KeyImage& keyIma
 }
 }
 
-#define CURRENT_BLOCKCACHE_STORAGE_ARCHIVE_VER 1
+#define CURRENT_BLOCKCACHE_STORAGE_ARCHIVE_VER 2
 #define CURRENT_BLOCKCHAININDICES_STORAGE_ARCHIVE_VER 1
 
 namespace CryptoNote {
@@ -138,11 +138,6 @@ bool serialize(std::vector<std::pair<Blockchain::TransactionIndex, uint16_t>>& v
 void serialize(Blockchain::TransactionIndex& value, ISerializer& s) {
   s(value.block, "block");
   s(value.transaction, "tx");
-}
-
-void serialize(Blockchain::SpentKeyImage& value, ISerializer& s) {
-  s(value.blockIndex, "block_index");
-  s(value.keyImage, "key_image");
 }
 
 class BlockCacheSerializer {
@@ -215,14 +210,8 @@ public:
     //logger(INFO) << operation << "transaction map...";
     //s(m_bs.m_transactionMap, "transactions");
 
-    /*logger(INFO) << operation << "spent keys...";
-    if (s.type() == ISerializer::OUTPUT) {
-      writeSequence<Blockchain::SpentKeyImage>(m_bs.spentKeyImages.begin(), m_bs.spentKeyImages.end(), "spent_key_images", s);
-    } else {
-      Blockchain::SpentKeyImagesContainer restoredSpentKeyImages;
-      readSequence<Blockchain::SpentKeyImage>(std::inserter(restoredSpentKeyImages, restoredSpentKeyImages.end()), "spent_key_images", s);
-      m_bs.spentKeyImages = std::move(restoredSpentKeyImages);
-    }*/
+    //logger(INFO) << operation << "spent keys...";
+    //s(m_bs.m_spent_key_images, "spent_keys");
 
     logger(INFO) << operation << "outputs...";
     s(m_bs.m_outputs, "outputs");
@@ -447,12 +436,12 @@ bool Blockchain::have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im) {
 
 bool Blockchain::checkIfSpent(const Crypto::KeyImage& keyImage, uint32_t blockIndex) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  /*auto it = spentKeyImages.get<KeyImageTag>().find(keyImage);
-  if (it == spentKeyImages.get<KeyImageTag>().end()) {
+  /*auto it = m_spent_key_images.find(keyImage);
+  if (it == m_spent_key_images.end()) {
     return false;
   }
 
-  return it->blockIndex <= blockIndex;*/
+  return it->second <= blockIndex;*/
 
   std::string s;
   if (!m_db.get(SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(keyImage.data, sizeof(keyImage.data)), s))
@@ -643,7 +632,7 @@ void Blockchain::rebuildCache() {
   std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
   //m_blockIndex.clear();
   //m_transactionMap.clear();
-  //spentKeyImages.clear();
+  //m_spent_key_images.clear();
   m_outputs.clear();
   m_multisignatureOutputs.clear();
   //for (uint32_t b = 0; b < m_blocks.size(); ++b) {
@@ -668,7 +657,7 @@ void Blockchain::rebuildCache() {
       // process inputs
       for (auto& i : transaction.tx.inputs) {
         if (i.type() == typeid(KeyInput)) {
-          //spentKeyImages.get<BlockIndexTag>().insert(SpentKeyImage{ b, ::boost::get<KeyInput>(i).keyImage });
+          //m_spent_key_images.insert(std::make_pair(::boost::get<KeyInput>(i).keyImage, b));
         } else if (i.type() == typeid(MultisignatureInput)) {
           auto out = ::boost::get<MultisignatureInput>(i);
           m_multisignatureOutputs[out.amount][out.outputIndex].isUsed = true;
@@ -722,7 +711,7 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
   //m_blockIndex.clear();
   //m_transactionMap.clear();
 
-  //spentKeyImages.clear();
+  //m_spent_key_images.clear();
   m_alternative_chains.clear();
   m_outputs.clear();
 
@@ -2871,16 +2860,13 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
   for (size_t i = 0; i < transaction.tx.inputs.size(); ++i) {
     if (transaction.tx.inputs[i].type() == typeid(KeyInput)) {
       Crypto::KeyImage ki = ::boost::get<KeyInput>(transaction.tx.inputs[i]).keyImage;
-      /*auto result = spentKeyImages.get<KeyImageTag>().insert(SpentKeyImage{ block.height, ki });
+      /*auto result = m_spent_key_images.insert(std::make_pair(::boost::get<KeyInput>(transaction.tx.inputs[i]).keyImage, block.height));
       if (!result.second) {
         logger(ERROR, BRIGHT_RED) <<
           "Double spending transaction was pushed to blockchain.";
         for (size_t j = 0; j < i; ++j) {
-          auto& imagesIndex = spentKeyImages.get<KeyImageTag>();
-          auto it = imagesIndex.find(::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage);
-          imagesIndex.erase(it);
+          m_spent_key_images.erase(::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage);
         }
-        
         m_transactionMap.erase(transactionHash);
         auto tkey = TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(transactionHash.data, sizeof(transactionHash.data));
         m_db.del(tkey, true);
@@ -3048,13 +3034,11 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
 
   for (auto& input : transaction.inputs) {
     if (input.type() == typeid(KeyInput)) {
-      /*auto& imagesIndex = spentKeyImages.get<KeyImageTag>();
-      auto it = imagesIndex.find(::boost::get<KeyInput>(input).keyImage);
-      if (it == imagesIndex.end()) {
+      /*size_t count = m_spent_key_images.erase(::boost::get<KeyInput>(input).keyImage);
+      if (count != 1) {
         logger(ERROR, BRIGHT_RED) <<
           "Blockchain consistency broken - cannot find spent key.";
-      }
-      imagesIndex.erase(it);*/
+      }*/
       Platform::DB::Value v;
       auto ki = ::boost::get<KeyInput>(input).keyImage;
       auto kikey = SPENT_KEY_IMAGES_INDEX_PREFIX + DB::to_binary_key(ki.data, sizeof(ki.data));
@@ -3063,7 +3047,6 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
           "Blockchain consistency broken - cannot find spent key.";
       }
       m_db.del(kikey, true);
-
     } else if (input.type() == typeid(MultisignatureInput)) {
       const MultisignatureInput& in = ::boost::get<MultisignatureInput>(input);
       auto& amountOutputs = m_multisignatureOutputs[in.amount];
