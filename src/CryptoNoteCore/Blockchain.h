@@ -190,7 +190,7 @@ namespace CryptoNote {
 
     template<class t_ids_container, class t_blocks_container, class t_missed_container>
     bool getBlocks(const t_ids_container& block_ids, t_blocks_container& blocks, t_missed_container& missed_bs) {
-      //std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+      std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
 
       for (const auto& bl_id : block_ids) {
         try {
@@ -213,7 +213,7 @@ namespace CryptoNote {
 
     template<class t_ids_container, class t_tx_container, class t_missed_container>
     void getBlockchainTransactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs) {
-      //std::lock_guard<decltype(m_blockchain_lock)> bcLock(m_blockchain_lock);
+      std::lock_guard<decltype(m_blockchain_lock)> bcLock(m_blockchain_lock);
 
       for (const auto& tx_id : txs_ids) {
         TransactionIndex ti;
@@ -431,7 +431,7 @@ namespace CryptoNote {
   };
 
   template<class visitor_t> bool Blockchain::scanOutputKeysForIndexes(const KeyInput& tx_in_to_key, visitor_t& vis, uint32_t* pmax_related_block_height) {
-    //std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+    std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
     auto it = m_outputs.find(tx_in_to_key.amount);
     if (it == m_outputs.end() || !tx_in_to_key.outputIndexes.size())
       return false;
