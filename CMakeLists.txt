@@ -12,6 +12,8 @@ string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
 
 enable_language(C)
 enable_language(CXX)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_C_STANDARD 11)
 
 # ARCH defines the target architecture, either by an explicit identifier or
 # one of the following two keywords. By default, ARCH a value of 'native':
@@ -322,15 +324,11 @@ else()
     message(STATUS "AES support disabled")
   endif()
   
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c14 -D_GNU_SOURCE ${MINGW_FLAG} ${STATIC_ASSERT_FLAG} ${WARNINGS} ${C_WARNINGS} ${ARCH_FLAG} ${PIC_FLAG}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -D_GNU_SOURCE ${MINGW_FLAG} ${STATIC_ASSERT_CPP_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} ${PIC_FLAG}")
+  set(SECURITY_FLAG "-fstack-protector-strong")
+  
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -D_GNU_SOURCE ${MINGW_FLAG} ${STATIC_ASSERT_FLAG} ${WARNINGS} ${C_WARNINGS} ${ARCH_FLAG} ${PIC_FLAG} ${SECURITY_FLAG}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -D_GNU_SOURCE ${MINGW_FLAG} ${STATIC_ASSERT_CPP_FLAG} ${WARNINGS} ${CXX_WARNINGS} ${ARCH_FLAG} ${PIC_FLAG} ${SECURITY_FLAG}")
 
-  # With GCC 6.1.1 the compiled binary malfunctions due to aliasing. Until that
-  # is fixed in the code (Issue #847), force compiler to be conservative.
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
-  
-  
   if(ARM)
     message(STATUS "Setting FPU Flags for ARM Processors")
 
