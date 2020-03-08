@@ -239,16 +239,6 @@ namespace CryptoNote {
     void print_blockchain_index();
     void print_blockchain_outs(const std::string& file);
 
-    struct TransactionIndex {
-      uint32_t block;
-      uint16_t transaction;
-
-      void serialize(ISerializer& s) {
-        s(block, "block");
-        s(transaction, "tx");
-      }
-    };
-
     void rollbackBlockchainTo(uint32_t height);
     bool have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im);
 
