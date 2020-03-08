@@ -213,8 +213,8 @@ public:
     //logger(INFO) << operation << "spent keys...";
     //s(m_bs.m_spent_key_images, "spent_keys");
 
-    logger(INFO) << operation << "outputs...";
-    s(m_bs.m_outputs, "outputs");
+    //logger(INFO) << operation << "outputs...";
+    //s(m_bs.m_outputs, "outputs");
 
     logger(INFO) << operation << "multi-signature outputs...";
     s(m_bs.m_multisignatureOutputs, "multisig_outputs");
@@ -349,7 +349,7 @@ m_height(0),
 m_lastGeneratedTxNumber(0),
 m_synchronized(false)
 {
-  m_outputs.set_deleted_key(0);
+  //m_outputs.set_deleted_key(0);
 }
 
 bool Blockchain::addObserver(IBlockchainStorageObserver* observer) {
@@ -633,7 +633,7 @@ void Blockchain::rebuildCache() {
   //m_blockIndex.clear();
   //m_transactionMap.clear();
   //m_spent_key_images.clear();
-  m_outputs.clear();
+  //m_outputs.clear();
   m_multisignatureOutputs.clear();
   //for (uint32_t b = 0; b < m_blocks.size(); ++b) {
 
@@ -668,7 +668,7 @@ void Blockchain::rebuildCache() {
       for (uint16_t o = 0; o < transaction.tx.outputs.size(); ++o) {
         const auto& out = transaction.tx.outputs[o];
         if (out.target.type() == typeid(KeyOutput)) {
-          m_outputs[out.amount].push_back(std::make_pair<>(transactionIndex, o));
+          //m_outputs[out.amount].push_back(std::make_pair<>(transactionIndex, o));
         } else if (out.target.type() == typeid(MultisignatureOutput)) {
           MultisignatureOutputUsage usage = { transactionIndex, o, false };
           m_multisignatureOutputs[out.amount].push_back(usage);
@@ -713,8 +713,8 @@ bool Blockchain::resetAndSetGenesisBlock(const Block& b) {
 
   //m_spent_key_images.clear();
   m_alternative_chains.clear();
-  m_outputs.clear();
-
+  //m_outputs.clear();
+  m_multisignatureOutputs.clear();
   //m_paymentIdIndex.clear();
   //m_timestampIndex.clear();
   //m_generatedTransactionsIndex.clear();
@@ -1901,14 +1901,23 @@ bool Blockchain::getRandomOutsByAmount(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_
   for (uint64_t amount : req.amounts) {
     COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& result_outs = *res.outs.insert(res.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount());
     result_outs.amount = amount;
-    auto it = m_outputs.find(amount);
-    if (it == m_outputs.end()) {
+    //auto it = m_outputs.find(amount);
+    //if (it == m_outputs.end()) {
+
+    BinaryArray ba;
+    const auto key = OUTPUTS_INDEX_PREFIX + Common::write_varint_sqlite4(amount);
+    if (!m_db.get(key, ba)) {
       logger(ERROR, BRIGHT_RED) <<
         "COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS: not outs for amount " << amount << ", wallet should use some real outs when it lookup for some mix, so, at least one out for this amount should exist";
       continue;//actually this is strange situation, wallet should use some real outs when it lookup for some mix, so, at least one out for this amount should exist
     }
+    OutputsEntry oe;
+    if (!fromBinaryArray(oe, ba)) {
+      throw std::runtime_error("Blockchain::getRandomOutsByAmount, failed to parse output entry from DB");
+    }
 
-    std::vector<std::pair<TransactionIndex, uint16_t>>& amount_outs = it->second;
+    //std::vector<std::pair<TransactionIndex, uint16_t>>& amount_outs = it->second;
+    std::vector<std::pair<TransactionIndex, uint16_t>>& amount_outs = oe.outputs;
     //it is not good idea to use top fresh outs, because it increases possibility of transaction canceling on split
     //lets find upper bound of not fresh outs
     size_t up_index_limit = find_end_of_allowed_index(amount_outs);
@@ -2046,7 +2055,8 @@ void Blockchain::print_blockchain_index() {
 }
 
 void Blockchain::print_blockchain_outs(const std::string& file) {
-  std::stringstream ss;
+  // TODO DB
+  /*std::stringstream ss;
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   for (const outputs_container::value_type& v : m_outputs) {
     const std::vector<std::pair<TransactionIndex, uint16_t>>& vals = v.second;
@@ -2064,7 +2074,7 @@ void Blockchain::print_blockchain_outs(const std::string& file) {
   } else {
     logger(WARNING, BRIGHT_YELLOW) <<
       "Failed to write current outputs index to file: " << file;
-  }
+  }*/
 }
 
 std::vector<Crypto::Hash> Blockchain::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds, size_t maxCount,
@@ -2906,9 +2916,29 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
   transaction.m_global_output_indexes.resize(transaction.tx.outputs.size());
   for (uint16_t output = 0; output < transaction.tx.outputs.size(); ++output) {
     if (transaction.tx.outputs[output].target.type() == typeid(KeyOutput)) {
-      auto& amountOutputs = m_outputs[transaction.tx.outputs[output].amount]; // m_outputs
-      transaction.m_global_output_indexes[output] = static_cast<uint32_t>(amountOutputs.size());
-      amountOutputs.push_back(std::make_pair<>(transactionIndex, output)); // push to m_outputs
+      //auto& amountOutputs = m_outputs[transaction.tx.outputs[output].amount]; // m_outputs
+      //transaction.m_global_output_indexes[output] = static_cast<uint32_t>(amountOutputs.size()); // get size before the update
+      //amountOutputs.push_back(std::make_pair<>(transactionIndex, output)); // push to m_outputs
+
+      //get OutputsEntry vector for this amount
+      BinaryArray ba;
+      const auto key = OUTPUTS_INDEX_PREFIX + Common::write_varint_sqlite4(transaction.tx.outputs[output].amount);
+      if (m_db.get(key, ba)) { // if exists, update
+        OutputsEntry oe;
+        if (!fromBinaryArray(oe, ba)) {
+          throw std::runtime_error("Blockchain::pushTransaction, failed to parse output entry from DB");
+        }
+        transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update
+        oe.outputs.push_back(std::make_pair<>(transactionIndex, output));
+        // just put and update doesn't work, have to delete old first
+        m_db.del(key, false); // delete old
+        m_db.put(key, toBinaryArray(oe), true); // add new
+      } else {
+        OutputsEntry oe;
+        transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update
+        oe.outputs.push_back(std::make_pair<>(transactionIndex, output));
+        m_db.put(key, toBinaryArray(oe), true);
+      }
     } else if (transaction.tx.outputs[output].target.type() == typeid(MultisignatureOutput)) {
       auto& amountOutputs = m_multisignatureOutputs[transaction.tx.outputs[output].amount];
       transaction.m_global_output_indexes[output] = static_cast<uint32_t>(amountOutputs.size());
@@ -2964,34 +2994,52 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
   for (size_t outputIndex = 0; outputIndex < transaction.outputs.size(); ++outputIndex) {
     const TransactionOutput& output = transaction.outputs[transaction.outputs.size() - 1 - outputIndex];
     if (output.target.type() == typeid(KeyOutput)) {
-      auto amountOutputs = m_outputs.find(output.amount);
+      /*auto amountOutputs = m_outputs.find(output.amount);
       if (amountOutputs == m_outputs.end()) {
         logger(ERROR, BRIGHT_RED) <<
           "Blockchain consistency broken - cannot find specific amount in outputs map.";
         continue;
+      }*/
+
+      BinaryArray ba;
+      const auto key = OUTPUTS_INDEX_PREFIX + Common::write_varint_sqlite4(output.amount);
+      if (!m_db.get(key, ba)) {
+        logger(ERROR, BRIGHT_RED) <<
+          "Blockchain consistency broken - cannot find specific amount in outputs DB index";
+        return;
+      }
+      OutputsEntry oe;
+      if (!fromBinaryArray(oe, ba)) {
+        throw std::runtime_error("Blockchain::popTransaction, failed to parse output entry from DB");
       }
 
-      if (amountOutputs->second.empty()) {
+      //if (amountOutputs->second.empty()) {
+      if (oe.outputs.empty()) {
         logger(ERROR, BRIGHT_RED) <<
           "Blockchain consistency broken - output array for specific amount is empty.";
         continue;
       }
 
-      if (amountOutputs->second.back().first.block != transactionIndex.block || amountOutputs->second.back().first.transaction != transactionIndex.transaction) {
+      //if (amountOutputs->second.back().first.block != transactionIndex.block || amountOutputs->second.back().first.transaction != transactionIndex.transaction) {
+      if (oe.outputs.back().first.block != transactionIndex.block || oe.outputs.back().first.transaction != transactionIndex.transaction) {
         logger(ERROR, BRIGHT_RED) <<
           "Blockchain consistency broken - invalid transaction index.";
         continue;
       }
 
-      if (amountOutputs->second.back().second != transaction.outputs.size() - 1 - outputIndex) {
+      //if (amountOutputs->second.back().second != transaction.outputs.size() - 1 - outputIndex) {
+      if (oe.outputs.back().second != transaction.outputs.size() - 1 - outputIndex) {
         logger(ERROR, BRIGHT_RED) <<
           "Blockchain consistency broken - invalid output index.";
         continue;
       }
 
-      amountOutputs->second.pop_back();
-      if (amountOutputs->second.empty()) {
-        m_outputs.erase(amountOutputs);
+      //amountOutputs->second.pop_back();
+      oe.outputs.pop_back();
+      //if (amountOutputs->second.empty()) {
+      if (oe.outputs.empty()) {
+        //m_outputs.erase(amountOutputs);
+        m_db.del(key, true);
       }
     } else if (output.target.type() == typeid(MultisignatureOutput)) {
       auto amountOutputs = m_multisignatureOutputs.find(output.amount);

@@ -77,7 +77,7 @@ namespace CryptoNote {
 
     struct TransactionEntry {
       Transaction tx;
-      std::vector<uint32_t> m_global_output_indexes;
+      std::vector<uint32_t> m_global_output_indexes; //needed for getTransactionGlobalIndexes query
 
       void serialize(ISerializer& s) {
         s(tx, "tx");
@@ -285,6 +285,15 @@ namespace CryptoNote {
       }
     };
 
+    //Crypto::Hash - tx hash, size_t - index of out in transaction
+    struct OutputsEntry {
+      std::vector<std::pair<TransactionIndex, uint16_t>> outputs;
+
+      void serialize(ISerializer& s) {
+        s(outputs, "outputs");
+      }
+    };
+
     typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
@@ -299,7 +308,7 @@ namespace CryptoNote {
     SpentKeyImagesContainer m_spent_key_images;
     size_t m_current_block_cumul_sz_limit;
     blocks_ext_by_hash m_alternative_chains; // Crypto::Hash -> block_extended_info
-    outputs_container m_outputs;
+    outputs_container m_outputs; //TODO DB
 
     std::string m_config_folder;
     Checkpoints m_checkpoints;
