@@ -622,7 +622,15 @@ void Blockchain::db_commit() {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   //logger(INFO) << "Blockchain::db_commit started...";
-  m_db.commit_db_txn();
+  try {
+    m_db.commit_db_txn();
+  } 
+  catch (const std::exception& e) {
+    logger(ERROR, BRIGHT_RED) << "Exception during DB commit: " << e.what();
+  }
+  catch (...) {
+    logger(ERROR, BRIGHT_RED) << "Unknown error during DB commit";
+  }
   //logger(INFO) << "BlockChain::db_commit finished...";
 }
 
