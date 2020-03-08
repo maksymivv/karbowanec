@@ -360,8 +360,7 @@ namespace CryptoNote {
     bool m_blockchainIndexesEnabled;
     bool m_synchronized;
 
-    // perhaps should be atomic
-    uint32_t m_height; // blockchain height including genesis block nr zero (total blocks count)
+    std::atomic<uint32_t> m_height; // blockchain height including genesis block nr zero (total blocks count)
     uint64_t m_lastGeneratedTxNumber;
 
     IntrusiveLinkedList<MessageQueue<BlockchainMessage>> m_messageQueueList;

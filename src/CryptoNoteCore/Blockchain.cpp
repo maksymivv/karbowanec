@@ -474,7 +474,7 @@ uint32_t Blockchain::getCurrentBlockchainHeight() {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return static_cast<uint32_t>(m_blocks.size());
 
-  return m_height;
+  return m_height.load(std::memory_order_relaxed);
 }
 
 bool Blockchain::init(const std::string& config_folder, bool load_existing) {
@@ -501,7 +501,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   logger(INFO) << "Blockchain DB version: " << version;
 
   DB::Cursor cur1 = m_db.rbegin(BLOCK_INDEX_PREFIX);
-  m_height = cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix())) + 1;
+  m_height.store(cur1.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur1.get_suffix())) + 1, std::memory_order_relaxed);
 
   logger(INFO, BRIGHT_WHITE) << "Loading blockchain...";
 
@@ -612,7 +612,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   }
 
   logger(INFO, BRIGHT_GREEN)
-    << "Blockchain initialized. last block: " << (m_height - 1) << ", "
+    << "Blockchain initialized. last block: " << (m_height.load(std::memory_order_relaxed) - 1) << ", "
     << Common::timeIntervalToString(timestamp_diff)
     << " time ago, current difficulty: " << getDifficultyForNextBlock();
   return true;
@@ -651,7 +651,7 @@ void Blockchain::rebuildCache() {
   uint32_t b = 0;
   for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX); !cur.end(); ++b, cur.next()) {
     if (b % 1000 == 0) {
-      logger(INFO, BRIGHT_WHITE) << "Height " << b << " of " << m_height;
+      logger(INFO, BRIGHT_WHITE) << "Height " << b << " of " << m_height.load(std::memory_order_relaxed);
     }
     //const BlockEntry& block = m_blocks[b];
     auto v = cur.get_value_array();
@@ -695,7 +695,7 @@ void Blockchain::rebuildCache() {
 bool Blockchain::storeCache() {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-  logger(INFO, BRIGHT_WHITE) << "Saving blockchain at height " << m_height - 1 << "...";
+  logger(INFO, BRIGHT_WHITE) << "Saving blockchain at height " << m_height.load(std::memory_order_relaxed) - 1 << "...";
   db_commit();
 
   BlockCacheSerializer ser(*this, getTailId(), logger.getLogger());
@@ -951,9 +951,9 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
-  uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(m_height);
+  uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(m_height.load(std::memory_order_relaxed));
   size_t offset;
-  offset = m_height - std::min<size_t>(m_height, static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
+  offset = m_height.load(std::memory_order_relaxed) - std::min<size_t>(m_height.load(std::memory_order_relaxed), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
 
   if (offset == 0) {
     ++offset;
@@ -965,7 +965,7 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
 
   size_t start_offset = offset;
   auto middle = Common::write_varint_sqlite4(start_offset);
-  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); offset < m_height || !cur.end(); offset++, cur.next()) {
+  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); offset < m_height.load(std::memory_order_relaxed) || !cur.end(); offset++, cur.next()) {
     auto v = cur.get_value_array();
     Crypto::Hash id;
     std::copy(v.begin(), v.end(), id.data);
@@ -978,12 +978,12 @@ difficulty_type Blockchain::getDifficultyForNextBlock() {
     cumulative_difficulties.push_back(e.cumulative_difficulty);
   }
 
-  return m_currency.nextDifficulty(static_cast<uint32_t>(m_height), BlockMajorVersion, timestamps, cumulative_difficulties);
+  return m_currency.nextDifficulty(static_cast<uint32_t>(m_height.load(std::memory_order_relaxed)), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 
 difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  height = std::min<uint32_t>(height, m_height - 1);
+  height = std::min<uint32_t>(height, m_height.load(std::memory_order_relaxed) - 1);
   if (height <= 1)
     return 1;
 
@@ -995,7 +995,7 @@ difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window) {
   }
 
   size_t offset;
-  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(m_height - 1, static_cast<uint32_t>(window)));
+  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(m_height.load(std::memory_order_relaxed) - 1, static_cast<uint32_t>(window)));
   if (offset == 0) {
     ++offset;
   }
@@ -1004,12 +1004,12 @@ difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window) {
   getBlockEntryByHeight((uint32_t)offset, e2);
 
   difficulty_type cumulDiffForPeriod = e1.cumulative_difficulty - e2.cumulative_difficulty;
-  return cumulDiffForPeriod / std::min<uint32_t>(m_height - 1, static_cast<uint32_t>(window));
+  return cumulDiffForPeriod / std::min<uint32_t>(m_height.load(std::memory_order_relaxed) - 1, static_cast<uint32_t>(window));
 }
 
 difficulty_type Blockchain::getAvgDifficulty(uint32_t height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  height = std::min<uint32_t>(height, m_height - 1);
+  height = std::min<uint32_t>(height, m_height.load(std::memory_order_relaxed) - 1);
   if (height <= 1)
     return 1;
   
@@ -1020,7 +1020,7 @@ difficulty_type Blockchain::getAvgDifficulty(uint32_t height) {
 }
 
 uint64_t Blockchain::getBlockTimestamp(uint32_t height) {
-  assert(height < m_height - 1);
+  assert(height < m_height.load(std::memory_order_relaxed) - 1);
   //return m_blocks[height].bl.timestamp;
 
   BlockEntry e;
@@ -1031,16 +1031,16 @@ uint64_t Blockchain::getBlockTimestamp(uint32_t height) {
 
 uint64_t Blockchain::getMinimalFee(uint32_t height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (height == 0 || m_height <= 1) {
+  if (height == 0 || m_height.load(std::memory_order_relaxed) <= 1) {
     return 0;
   }
-  if (height > m_height - 1) {
-    height = m_height - 1;
+  if (height > m_height.load(std::memory_order_relaxed) - 1) {
+    height = m_height.load(std::memory_order_relaxed) - 1;
   }
   if (height < 3) {
     height = 3;
   }
-  uint32_t window = std::min(height, std::min<uint32_t>(m_height - 1, static_cast<uint32_t>(m_currency.expectedNumberOfBlocksPerDay())));
+  uint32_t window = std::min(height, std::min<uint32_t>(m_height.load(std::memory_order_relaxed) - 1, static_cast<uint32_t>(m_currency.expectedNumberOfBlocksPerDay())));
   if (window == 0) {
     ++window;
   }
@@ -1074,18 +1074,18 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
 
 uint64_t Blockchain::getCoinsInCirculation() {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (m_height == 0) {
+  if (m_height.load(std::memory_order_relaxed) == 0) {
     return 0;
   } else {
     BlockEntry e;
-    getBlockEntryByHeight(m_height - 1, e);
+    getBlockEntryByHeight(m_height.load(std::memory_order_relaxed) - 1, e);
     return e.already_generated_coins;
   }
 }
 
 uint64_t Blockchain::getCoinsInCirculation(uint32_t height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (m_height == 0) {
+  if (m_height.load(std::memory_order_relaxed) == 0) {
     return 0;
   }
   else {
@@ -1114,7 +1114,7 @@ uint8_t Blockchain::getBlockMajorVersionForHeight(uint32_t height) const {
 bool Blockchain::rollback_blockchain_switching(std::list<Block> &original_chain, size_t rollback_height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   // remove failed subchain
-  for (size_t i = m_height - 1; i >= rollback_height; i--) {
+  for (size_t i = m_height.load(std::memory_order_relaxed) - 1; i >= rollback_height; i--) {
     popBlock();
   }
 
@@ -1144,7 +1144,7 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::
 
   size_t split_height = alt_chain.front()->second.height;
 
-  if (!(m_height > split_height)) {
+  if (!(m_height.load(std::memory_order_relaxed) > split_height)) {
     logger(ERROR, BRIGHT_RED) << "switch_to_alternative_blockchain: blockchain size is lower than split height";
     return false;
   }
@@ -1241,8 +1241,8 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::
   //disconnecting old chain
   std::list<Block> disconnected_chain;
 
-  size_t i = m_height - 1;
-  auto middle = Common::write_varint_sqlite4(m_height - 1);
+  size_t i = m_height.load(std::memory_order_relaxed) - 1;
+  auto middle = Common::write_varint_sqlite4(m_height.load(std::memory_order_relaxed) - 1);
   for (DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX, middle); i >= split_height; i--, cur.next()) {
     auto v = cur.get_value_array();
     Crypto::Hash id;
@@ -1313,7 +1313,7 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::
 
   sendMessage(BlockchainMessage(ChainSwitchMessage(std::move(blocksFromCommonRoot))));
 
-  logger(INFO, BRIGHT_GREEN) << "REORGANIZE SUCCESS! on height: " << split_height << ", new blockchain size: " << m_height;
+  logger(INFO, BRIGHT_GREEN) << "REORGANIZE SUCCESS! on height: " << split_height << ", new blockchain size: " << m_height.load(std::memory_order_relaxed);
   return true;
 }
 
@@ -1322,7 +1322,7 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::
 difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std::list<blocks_ext_by_hash::iterator>& alt_chain, BlockEntry& bei) {
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
-  uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(m_height);
+  uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(m_height.load(std::memory_order_relaxed));
 
   // if the alt chain isn't long enough to calculate the difficulty target
   // based on its blocks alone, need to get more blocks from the main chain
@@ -1383,7 +1383,7 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
     }
   }
 
-  return m_currency.nextDifficulty(m_height, BlockMajorVersion, timestamps, cumulative_difficulties);
+  return m_currency.nextDifficulty(m_height.load(std::memory_order_relaxed), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 
 bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) {
@@ -1461,10 +1461,10 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
 
 bool Blockchain::getBackwardBlocksSize(size_t from_height, std::vector<size_t>& sz, size_t count) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (!(from_height < m_height)) {
+  if (!(from_height < m_height.load(std::memory_order_relaxed))) {
     logger(ERROR, BRIGHT_RED)
       << "Internal error: get_backward_blocks_sizes called with from_height="
-      << from_height << ", blockchain height = " << m_height;
+      << from_height << ", blockchain height = " << m_height.load(std::memory_order_relaxed);
     return false;
   }
   size_t start_offset = (from_height + 1) - std::min((from_height + 1), count);
@@ -1489,11 +1489,11 @@ bool Blockchain::getBackwardBlocksSize(size_t from_height, std::vector<size_t>& 
 
 bool Blockchain::get_last_n_blocks_sizes(std::vector<size_t>& sz, size_t count) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (m_height == 0) {
+  if (m_height.load(std::memory_order_relaxed) == 0) {
     return true;
   }
 
-  return getBackwardBlocksSize(m_height - 1, sz, count);
+  return getBackwardBlocksSize(m_height.load(std::memory_order_relaxed) - 1, sz, count);
 }
 
 uint64_t Blockchain::getCurrentCumulativeBlocksizeLimit() {
@@ -1506,8 +1506,8 @@ bool Blockchain::complete_timestamps_vector(uint8_t blockMajorVersion, uint64_t 
 
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   size_t need_elements = m_currency.timestampCheckWindow(blockMajorVersion) - timestamps.size();
-  if (!(start_top_height < m_height)) { logger(ERROR, BRIGHT_RED) << "internal error: passed start_height = "
-    << start_top_height << " not less then m_height=" << m_height; return false; }
+  if (!(start_top_height < m_height.load(std::memory_order_relaxed))) { logger(ERROR, BRIGHT_RED) << "internal error: passed start_height = "
+    << start_top_height << " not less then m_height=" << m_height.load(std::memory_order_relaxed); return false; }
   size_t stop_offset = start_top_height > need_elements ? start_top_height - need_elements : 0;
   do {
     //timestamps.push_back(m_blocks[start_top_height].bl.timestamp);
@@ -1600,7 +1600,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     // main chain -- that is, if we're adding on to an alternate chain
     if (alt_chain.size()) {
       // make sure alt chain doesn't somehow start past the end of the main chain
-      if (!(m_height > alt_chain.front()->second.height)) { logger(ERROR, BRIGHT_RED) << "main blockchain wrong height"; return false; }
+      if (!(m_height.load(std::memory_order_relaxed) > alt_chain.front()->second.height)) { logger(ERROR, BRIGHT_RED) << "main blockchain wrong height"; return false; }
       // make sure block connects correctly to the main chain
       Crypto::Hash h = NULL_HASH;
       //get_block_hash(m_blocks[alt_chain.front()->second.height - 1].bl, h);
@@ -1706,7 +1706,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     if (is_a_checkpoint) {
       //do reorganize!
       logger(INFO, BRIGHT_GREEN) <<
-        "###### REORGANIZE on height: " << alt_chain.front()->second.height << " of " << m_height - 1 <<
+        "###### REORGANIZE on height: " << alt_chain.front()->second.height << " of " << m_height.load(std::memory_order_relaxed) - 1 <<
         ", checkpoint is found in alternative chain on height " << bei.height;
       bool r = switch_to_alternative_blockchain(alt_chain, true);
       if (r) {
@@ -1720,7 +1720,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     {
       //do reorganize!
       logger(INFO, BRIGHT_GREEN) <<
-        "###### REORGANIZE on height: " << alt_chain.front()->second.height << " of " << m_height - 1 << " with cum_difficulty " << tip_be.cumulative_difficulty
+        "###### REORGANIZE on height: " << alt_chain.front()->second.height << " of " << m_height.load(std::memory_order_relaxed) - 1 << " with cum_difficulty " << tip_be.cumulative_difficulty
         << ENDL << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty;
       bool r = switch_to_alternative_blockchain(alt_chain, false);
       if (r) {
@@ -1764,7 +1764,7 @@ bool Blockchain::getBlocks(uint32_t start_offset, uint32_t count, std::list<Bloc
 
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-  if (start_offset >= m_height)
+  if (start_offset >= m_height.load(std::memory_order_relaxed))
     return false;
 
   uint32_t cnt = 0;
@@ -1802,7 +1802,7 @@ bool Blockchain::getBlocks(uint32_t start_offset, uint32_t count, std::list<Bloc
 
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-  if (start_offset >= m_height)
+  if (start_offset >= m_height.load(std::memory_order_relaxed))
     return false;
 
   uint32_t cnt = 0;
@@ -1965,7 +1965,7 @@ uint32_t Blockchain::findBlockchainSupplement(const std::vector<Crypto::Hash>& q
 
 uint64_t Blockchain::blockDifficulty(size_t i) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (!(i < m_height)) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
+  if (!(i < m_height.load(std::memory_order_relaxed))) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
   if (i == 0) {
     return 1;
   }
@@ -1980,7 +1980,7 @@ uint64_t Blockchain::blockDifficulty(size_t i) {
 
 uint64_t Blockchain::blockCumulativeDifficulty(size_t i) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (!(i < m_height)) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
+  if (!(i < m_height.load(std::memory_order_relaxed))) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
 
   BlockEntry e;
   getBlockEntryByHeight(i, e);
@@ -1990,7 +1990,7 @@ uint64_t Blockchain::blockCumulativeDifficulty(size_t i) {
 
 bool Blockchain::getblockEntry(size_t i, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (!(i < m_height)) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::get_block_entry()"; return false; }
+  if (!(i < m_height.load(std::memory_order_relaxed))) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::get_block_entry()"; return false; }
 
   BlockEntry e1, e2;
   getBlockEntryByHeight(i, e1);
@@ -2009,15 +2009,15 @@ bool Blockchain::getblockEntry(size_t i, uint64_t& block_cumulative_size, diffic
 void Blockchain::print_blockchain(uint64_t start_index, uint64_t end_index) {
   std::stringstream ss;
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-  if (start_index >= m_height) {
+  if (start_index >= m_height.load(std::memory_order_relaxed)) {
     logger(INFO, BRIGHT_WHITE) <<
-      "Wrong starter index set: " << start_index << ", expected max index " << m_height - 1;
+      "Wrong starter index set: " << start_index << ", expected max index " << m_height.load(std::memory_order_relaxed) - 1;
     return;
   }
 
   size_t i = start_index;
   auto middle = Common::write_varint_sqlite4(start_index);
-  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); (i != m_height && i != end_index) || !cur.end(); i++, cur.next()) {
+  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); (i != m_height.load(std::memory_order_relaxed) && i != end_index) || !cur.end(); i++, cur.next()) {
     auto v = cur.get_value_array();
     Crypto::Hash id;
     std::copy(v.begin(), v.end(), id.data);
@@ -2180,8 +2180,8 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, uint32_t& max_use
 
   bool res = checkTransactionInputs(tx, &max_used_block_height);
   if (!res) return false;
-  if (!(max_used_block_height < m_height)) { logger(ERROR, BRIGHT_RED) << "internal error: max used block index=" 
-    << max_used_block_height << " is not less then blockchain size = " << m_height; return false; }
+  if (!(max_used_block_height < m_height.load(std::memory_order_relaxed))) { logger(ERROR, BRIGHT_RED) << "internal error: max used block index="
+    << max_used_block_height << " is not less then blockchain size = " << m_height.load(std::memory_order_relaxed); return false; }
   //get_block_hash(m_blocks[max_used_block_height].bl, max_used_block_id);
   max_used_block_id = getBlockIdByHeight(max_used_block_height);
 
@@ -2359,12 +2359,12 @@ bool Blockchain::check_block_timestamp_main(const Block& b) {
   }
 
   std::vector<uint64_t> timestamps;
-  size_t offset = m_height <= m_currency.timestampCheckWindow(b.majorVersion) ? 0 : m_height - m_currency.timestampCheckWindow(b.majorVersion);
+  size_t offset = m_height.load(std::memory_order_relaxed) <= m_currency.timestampCheckWindow(b.majorVersion) ? 0 : m_height.load(std::memory_order_relaxed) - m_currency.timestampCheckWindow(b.majorVersion);
   //for (; offset != m_blocks.size(); ++offset) {
   //  timestamps.push_back(m_blocks[offset].bl.timestamp);
   //}
   auto middle = Common::write_varint_sqlite4(offset);
-  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); offset != m_height || !cur.end(); ++offset, cur.next()) {
+  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); offset != m_height.load(std::memory_order_relaxed) || !cur.end(); ++offset, cur.next()) {
     auto v = cur.get_value_array();
     Crypto::Hash id;
     std::copy(v.begin(), v.end(), id.data);
@@ -2465,7 +2465,7 @@ bool Blockchain::getBlockCumulativeSize(const Block& block, size_t& cumulativeSi
 
 // Precondition: m_blockchain_lock is locked.
 bool Blockchain::update_next_cumulative_size_limit() {
-  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(m_height);
+  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(m_height.load(std::memory_order_relaxed));
   size_t nextBlockGrantedFullRewardZone = m_currency.blockGrantedFullRewardZoneByBlockVersion(nextBlockMajorVersion);
 
   std::vector<size_t> sz;
@@ -2645,7 +2645,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   auto longhash_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - longhashTimeStart).count();
 
-  if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight()) && !prevalidate_miner_transaction(blockData, m_height)) { // blockchain height (incl. zero block)
+  if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight()) && !prevalidate_miner_transaction(blockData, m_height.load(std::memory_order_relaxed))) { // blockchain height (incl. zero block)
     logger(INFO, BRIGHT_WHITE) <<
       "Block " << blockHash << " failed to pass prevalidation";
     bvc.m_verification_failed = true;
@@ -2659,7 +2659,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   
 
   DB::Cursor cur = m_db.rbegin(BLOCK_INDEX_PREFIX);
-  m_height = cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1;
+  m_height.store(cur.end() ? 0 : Common::integer_cast<uint32_t>(Common::read_varint_sqlite4(cur.get_suffix())) + 1, std::memory_order_relaxed);
   auto v = cur.get_value_array();
   Crypto::Hash id;
   std::copy(v.begin(), v.end(), id.data);
@@ -2672,11 +2672,11 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   // block.height = static_cast<uint32_t>(m_blocks.size());
   // block.height is used in pushTransaction()
   // blockchain height (incl. zero block!)
-  block.height = m_height;
+  block.height = m_height.load(std::memory_order_relaxed);
 
   block.transactions.resize(1);
   block.transactions[0].tx = blockData.baseTransaction;
-  TransactionIndex transactionIndex = { m_height, static_cast<uint16_t>(0) };
+  TransactionIndex transactionIndex = { m_height.load(std::memory_order_relaxed), static_cast<uint16_t>(0) };
   pushTransaction(block, minerTransactionHash, transactionIndex);
 
   size_t coinbase_blob_size = getObjectBinarySize(blockData.baseTransaction);
@@ -2708,7 +2708,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     fee_summary += fee;
   }
 
-  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_height)) {
+  if (!checkCumulativeBlockSize(blockHash, cumulative_block_size, m_height.load(std::memory_order_relaxed))) {
     bvc.m_verification_failed = true;
     return false;
   }
@@ -2716,7 +2716,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   int64_t emissionChange = 0;
   uint64_t reward = 0;
   uint64_t already_generated_coins = cur.end() ? 0 : e.already_generated_coins;
-  if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight()) && !validate_miner_transaction(blockData, m_height, cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
+  if (!m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight()) && !validate_miner_transaction(blockData, m_height.load(std::memory_order_relaxed), cumulative_block_size, already_generated_coins, fee_summary, reward, emissionChange)) {
     logger(INFO, BRIGHT_WHITE) << "Block " << blockHash << " has invalid miner transaction";
     bvc.m_verification_failed = true;
     popTransactions(block, minerTransactionHash);
@@ -2801,9 +2801,8 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
     db_commit();
   }
 
-  //db_commit(); // Have to commit every block to DB for e.g. upgrade detector to work
-
-  m_height = block.height + 1; // +1 incl. zero block
+  //m_height = block.height + 1; // +1 incl. zero block
+  m_height.store(block.height + 1, std::memory_order_relaxed);
 
   return true;
 }
@@ -3172,7 +3171,7 @@ bool Blockchain::validateInput(const MultisignatureInput& input, const Crypto::H
 bool Blockchain::checkCheckpoints(uint32_t& lastValidCheckpointHeight) {
   std::vector<uint32_t> checkpointHeights = m_checkpoints.getCheckpointHeights();
   for (const auto& checkpointHeight : checkpointHeights) {
-    if (m_height <= checkpointHeight) {
+    if (m_height.load(std::memory_order_relaxed) <= checkpointHeight) {
       return true;
     }
 
@@ -3187,7 +3186,7 @@ bool Blockchain::checkCheckpoints(uint32_t& lastValidCheckpointHeight) {
 }
 
 void Blockchain::rollbackBlockchainTo(uint32_t height) {
-  while (height + 1 < m_height) {
+  while (height + 1 < m_height.load(std::memory_order_relaxed)) {
     removeLastBlock();
   }
 }
@@ -3228,7 +3227,8 @@ void Blockchain::removeLastBlock() {
   m_db.del(key, true);
   m_db.del(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(height), true);
 
-  m_height--;
+  uint32_t temp_height = m_height.load(std::memory_order_relaxed);
+  m_height.store(temp_height--, std::memory_order_relaxed);
 }
 
 /*bool Blockchain::checkUpgradeHeight(const UpgradeDetector& upgradeDetector) {
@@ -3467,7 +3467,7 @@ bool Blockchain::getGeneratedTransactionsNumber(uint32_t height, uint64_t& gener
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   //return m_generatedTransactionsIndex.find(height, generatedTransactions);
 
-  if (height > m_height - 1) {
+  if (height > m_height.load(std::memory_order_relaxed) - 1) {
     return false;
   }
 
