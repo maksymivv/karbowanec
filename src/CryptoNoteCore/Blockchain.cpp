@@ -525,17 +525,17 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   if (load_existing && !cur1.end()/* && !m_blocks.empty()*/) {
     logger(INFO, BRIGHT_WHITE) << "Loading blockchain cache...";
 
-    BlockCacheSerializer loader(*this, firstBlockHash, logger.getLogger());
-    loader.load(appendPath(config_folder, m_currency.blocksCacheFileName()));
+    //BlockCacheSerializer loader(*this, firstBlockHash, logger.getLogger());
+    //loader.load(appendPath(config_folder, m_currency.blocksCacheFileName()));
 
-    if (!loader.loaded()) {
-      logger(WARNING, BRIGHT_YELLOW) << "No actual blockchain cache found, rebuilding internal structures...";
-      rebuildCache();
-    }
+    //if (!loader.loaded()) {
+    //  logger(WARNING, BRIGHT_YELLOW) << "No actual blockchain cache found, rebuilding internal structures...";
+    //  rebuildCache();
+    //}
 
-    if (m_blockchainIndexesEnabled) {
-      loadBlockchainIndices();
-    }
+    //if (m_blockchainIndexesEnabled) {
+    //  loadBlockchainIndices();
+    //}
   } /*else {
     m_blocks.clear();
   }*/
@@ -629,24 +629,18 @@ void Blockchain::on_synchronized() {
 }
 
 void Blockchain::rebuildCache() {
-  std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
+ /* std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
   //m_blockIndex.clear();
   //m_transactionMap.clear();
   //m_spent_key_images.clear();
   //m_outputs.clear();
   //m_multisignatureOutputs.clear();
-  //for (uint32_t b = 0; b < m_blocks.size(); ++b) {
+  for (uint32_t b = 0; b < m_blocks.size(); ++b) {
 
-  uint32_t b = 0;
-  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX); !cur.end(); ++b, cur.next()) {
     if (b % 1000 == 0) {
       logger(INFO, BRIGHT_WHITE) << "Height " << b << " of " << m_height.load(std::memory_order_relaxed);
     }
     //const BlockEntry& block = m_blocks[b];
-    auto v = cur.get_value_array();
-    BlockEntry block;
-    fromBinaryArray(block, v);
-    Crypto::Hash blockHash = get_block_hash(block.bl);
     //m_blockIndex.push(blockHash);
     for (uint16_t t = 0; t < block.transactions.size(); ++t) {
       const TransactionEntry& transaction = block.transactions[t];
@@ -678,7 +672,7 @@ void Blockchain::rebuildCache() {
   }
 
   std::chrono::duration<double> duration = std::chrono::steady_clock::now() - timePoint;
-  logger(INFO, BRIGHT_WHITE) << "Rebuilding internal structures took: " << duration.count();
+  logger(INFO, BRIGHT_WHITE) << "Rebuilding internal structures took: " << duration.count();*/
 }
 
 bool Blockchain::storeCache() {
@@ -697,10 +691,10 @@ bool Blockchain::storeCache() {
 }
 
 bool Blockchain::deinit() {
-  storeCache();
-  if (m_blockchainIndexesEnabled) {
-    storeBlockchainIndices();
-  }
+  //storeCache();
+  //if (m_blockchainIndexesEnabled) {
+  //  storeBlockchainIndices();
+  //}
   assert(m_messageQueueList.empty());
   return true;
 }
@@ -1950,14 +1944,25 @@ bool Blockchain::getRandomOutsByAmount(const COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_
   return true;
 }
 
-uint32_t Blockchain::findBlockchainSupplement(const std::vector<Crypto::Hash>& qblock_ids) {
-  assert(!qblock_ids.empty());
-  assert(qblock_ids.back() == m_blockIndex.getBlockId(0));
+bool Blockchain::findSupplement(const std::vector<Crypto::Hash>& ids, uint32_t& offset) {
+  for (const auto& id : ids) {
+    if (getBlockHeight(id, offset)) {
+      return true;
+    }
+  }
 
+  return false;
+}
+
+uint32_t Blockchain::findBlockchainSupplement(const std::vector<Crypto::Hash>& qblock_ids) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  assert(!qblock_ids.empty());
+  //assert(qblock_ids.back() == m_blockIndex.getBlockId(0));
+  assert(qblock_ids.back() == getBlockIdByHeight(0));
+
   uint32_t blockIndex;
   // assert above guarantees that method returns true
-  m_blockIndex.findSupplement(qblock_ids, blockIndex);
+  findSupplement(qblock_ids, blockIndex);
   return blockIndex;
 }
 
@@ -2081,14 +2086,15 @@ std::vector<Crypto::Hash> Blockchain::findBlockchainSupplement(const std::vector
   uint32_t& totalBlockCount, uint32_t& startBlockIndex) {
 
   assert(!remoteBlockIds.empty());
-  // TODO DB
-  assert(remoteBlockIds.back() == m_blockIndex.getBlockId(0));
+  //assert(remoteBlockIds.back() == m_blockIndex.getBlockId(0));
+  assert(remoteBlockIds.back() == getBlockIdByHeight(0));
 
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   totalBlockCount = getCurrentBlockchainHeight();
   startBlockIndex = findBlockchainSupplement(remoteBlockIds);
 
-  return m_blockIndex.getBlockIds(startBlockIndex, static_cast<uint32_t>(maxCount));
+  //return m_blockIndex.getBlockIds(startBlockIndex, static_cast<uint32_t>(maxCount));
+  return getBlockIds(startBlockIndex, static_cast<uint32_t>(maxCount));
 }
 
 bool Blockchain::haveBlock(const Crypto::Hash& id) {
@@ -2101,7 +2107,6 @@ bool Blockchain::haveBlock(const Crypto::Hash& id) {
   if (m_db.get(key, ba))
     return true;
   
-  // TODO DB
   if (m_alternative_chains.count(id))
     return true;
 
@@ -2931,8 +2936,8 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         }
         me.multisignatureOutputs[in.outputIndex].isUsed = true;
         // just put and update doesn't work, have to delete old first
-        m_db.del(key, false);
-        m_db.put(key, toBinaryArray(me), true);
+        //m_db.del(key, false);
+        m_db.put(key, toBinaryArray(me), false);
       } else {
         MultisignatureOutputEntry me;
         me.multisignatureOutputs[in.outputIndex].isUsed = true;
@@ -2958,8 +2963,8 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update
         oe.outputs.push_back(std::make_pair<>(transactionIndex, output));
         // just put and update doesn't work, have to delete old first
-        m_db.del(key, false);
-        m_db.put(key, toBinaryArray(oe), true);
+        //m_db.del(key, false);
+        m_db.put(key, toBinaryArray(oe), false);
       } else {
         OutputsEntry oe;
         transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update
@@ -2983,8 +2988,8 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         me.multisignatureOutputs.push_back(outputUsage);
 
         // just put and update doesn't work, have to delete old first
-        m_db.del(key, false);
-        m_db.put(key, toBinaryArray(me), true);
+        //m_db.del(key, false);
+        m_db.put(key, toBinaryArray(me), false);
       } else {
         MultisignatureOutputEntry me;
         MultisignatureOutputUsage outputUsage = { transactionIndex, output, false };
@@ -3017,8 +3022,8 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       }
       pe.transactionHashes.push_back(transactionHash);
       try {
-        m_db.del(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), false);
-        m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), toBinaryArray(pe), true);
+        //m_db.del(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), false);
+        m_db.put(PAYMENT_ID_INDEX_PREFIX + DB::to_binary_key(paymentId.data, sizeof(paymentId.data)), toBinaryArray(pe), false);
       }
       catch (std::runtime_error& e) {
         logger(ERROR, BRIGHT_RED) << e.what();
@@ -3365,9 +3370,11 @@ void Blockchain::removeLastBlock() {
 
 bool Blockchain::getLowerBound(uint64_t timestamp, uint64_t startOffset, uint32_t& height) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-
-  assert(startOffset < m_blocks.size());
-
+ 
+  //assert(startOffset < m_blocks.size());
+  assert(startOffset < m_height.load(std::memory_order_relaxed));
+  
+  /*
   auto bound = std::lower_bound(m_blocks.begin() + startOffset, m_blocks.end(), timestamp - m_currency.blockFutureTimeLimit(),
     [](const BlockEntry& b, uint64_t timestamp) { return b.bl.timestamp < timestamp; });
 
@@ -3376,7 +3383,37 @@ bool Blockchain::getLowerBound(uint64_t timestamp, uint64_t startOffset, uint32_
   }
 
   height = static_cast<uint32_t>(std::distance(m_blocks.begin(), bound));
-  return true;
+  */
+  /*
+  auto middle = Common::write_varint_sqlite4(timestamp);
+  DB::Cursor cur = m_db.begin(TIMESTAMP_INDEX_PREFIX, middle);
+  if (cur.end())
+    height = m_height.load(std::memory_order_relaxed);
+  auto v = cur.get_value_array();
+  TimestampEntry t;
+  if (!fromBinaryArray(t, v)) {
+    throw std::runtime_error("Blockchain::getLowerBound, failed to parse entry from DB");
+  }
+  height = t.blocks[0].first - 1;
+  */
+
+  auto middle = Common::write_varint_sqlite4(startOffset);
+  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); !cur.end(); cur.next()) {
+    auto v = cur.get_value_array();
+    Crypto::Hash id;
+    std::copy(v.begin(), v.end(), id.data);
+    auto key = BLOCK_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)) + BLOCK_SUFFIX;
+    BinaryArray ba;
+    m_db.get(key, ba);
+    BlockEntry e;
+    fromBinaryArray(e, ba);
+    if (e.bl.timestamp < timestamp) {
+      height = e.height;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 std::vector<Crypto::Hash> Blockchain::getBlockIds(uint32_t startHeight, uint32_t maxCount) {
@@ -3577,7 +3614,7 @@ bool Blockchain::storeBlockchainIndices() {
 
 bool Blockchain::loadBlockchainIndices() {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-
+/*
   logger(INFO, BRIGHT_WHITE) << "Loading blockchain indices for BlockchainExplorer...";
   BlockchainIndicesSerializer loader(*this, get_block_hash(m_blocks.back().bl), logger.getLogger());
 
@@ -3586,7 +3623,7 @@ bool Blockchain::loadBlockchainIndices() {
   if (!loader.loaded()) {
     logger(WARNING, BRIGHT_YELLOW) << "No actual blockchain indices for BlockchainExplorer found, rebuilding...";
     std::chrono::steady_clock::time_point timePoint = std::chrono::steady_clock::now();
-
+*/
     //m_paymentIdIndex.clear();
     //m_timestampIndex.clear();
     //m_generatedTransactionsIndex.clear();
@@ -3605,10 +3642,10 @@ bool Blockchain::loadBlockchainIndices() {
     }*/
 
     // Store these indexes in db by default
-
+/*
     std::chrono::duration<double> duration = std::chrono::steady_clock::now() - timePoint;
     logger(INFO, BRIGHT_WHITE) << "Rebuilding blockchain indices took: " << duration.count();
-  }
+  }*/
   return true;
 }
 

@@ -151,7 +151,8 @@ namespace CryptoNote {
     std::vector<Crypto::Hash> buildSparseChain();
     std::vector<Crypto::Hash> buildSparseChain(const Crypto::Hash& startBlockId);
     std::vector<Crypto::Hash> build_sparse_chain(const Crypto::Hash& startBlockId);
-    uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& qblock_ids); // !!!!
+    bool findSupplement(const std::vector<Crypto::Hash>& ids, uint32_t& offset);
+    uint32_t findBlockchainSupplement(const std::vector<Crypto::Hash>& qblock_ids);
     std::vector<Crypto::Hash> findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds, size_t maxCount,
       uint32_t& totalBlockCount, uint32_t& startBlockIndex);
     bool handleGetObjects(NOTIFY_REQUEST_GET_OBJECTS_request& arg, NOTIFY_RESPONSE_GET_OBJECTS_request& rsp); //Deprecated. Should be removed with CryptoNoteProtocolHandler.
@@ -286,7 +287,6 @@ namespace CryptoNote {
       }
     };
 
-    //Crypto::Hash - tx hash, size_t - index of out in transaction
     struct OutputsEntry {
       std::vector<std::pair<TransactionIndex, uint16_t>> outputs;
 
@@ -303,10 +303,10 @@ namespace CryptoNote {
       }
     };
 
-    typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
+    //typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
-    typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
-    typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
+    //typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
+    //typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
 
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
@@ -314,10 +314,10 @@ namespace CryptoNote {
     Crypto::cn_context m_cn_context;
     Tools::ObserverManager<IBlockchainStorageObserver> m_observerManager;
 
-    SpentKeyImagesContainer m_spent_key_images;
+    //SpentKeyImagesContainer m_spent_key_images;
     size_t m_current_block_cumul_sz_limit;
     blocks_ext_by_hash m_alternative_chains; // Crypto::Hash -> block_extended_info
-    outputs_container m_outputs; //TODO DB
+    //outputs_container m_outputs;
 
     std::string m_config_folder;
     Checkpoints m_checkpoints;
@@ -330,10 +330,10 @@ namespace CryptoNote {
     friend class BlockCacheSerializer;
     friend class BlockchainIndicesSerializer;
 
-    Blocks m_blocks;
-    CryptoNote::BlockIndex m_blockIndex;
+    //Blocks m_blocks;
+    //CryptoNote::BlockIndex m_blockIndex;
     //TransactionMap m_transactionMap;
-    MultisignatureOutputsContainer m_multisignatureOutputs;
+    //MultisignatureOutputsContainer m_multisignatureOutputs;
     //UpgradeDetector m_upgradeDetectorV2;
     //UpgradeDetector m_upgradeDetectorV3;
     //UpgradeDetector m_upgradeDetectorV4;
