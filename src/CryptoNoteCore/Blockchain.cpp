@@ -523,7 +523,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   }
 
   if (load_existing && !cur1.end()/* && !m_blocks.empty()*/) {
-    logger(INFO, BRIGHT_WHITE) << "Loading blockchain cache...";
+    //logger(INFO, BRIGHT_WHITE) << "Loading blockchain cache...";
 
     //BlockCacheSerializer loader(*this, firstBlockHash, logger.getLogger());
     //loader.load(appendPath(config_folder, m_currency.blocksCacheFileName()));
