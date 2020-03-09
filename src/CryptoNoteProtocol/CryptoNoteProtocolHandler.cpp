@@ -499,6 +499,7 @@ int CryptoNoteProtocolHandler::handle_response_get_objects(int command, NOTIFY_R
 
     int result = processObjects(context, parsed_blocks);
     if (result != 0) {
+      //m_core.saveBlockchain();
       return result;
     }
   }
