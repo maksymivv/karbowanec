@@ -608,7 +608,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 }
 
 void Blockchain::db_commit() {
-  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
   //logger(INFO) << "Blockchain::db_commit started...";
   try {
@@ -3778,7 +3778,7 @@ bool Blockchain::isInCheckpointZone(const uint32_t height) {
 template<class visitor_t>
 bool Blockchain::scanOutputKeysForIndexes(const KeyInput& tx_in_to_key, visitor_t& vis, uint32_t* pmax_related_block_height)
 {
-  std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+  //std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
   //auto it = m_outputs.find(tx_in_to_key.amount);
   //if (it == m_outputs.end() || !tx_in_to_key.outputIndexes.size())
   //  return false;
@@ -3786,6 +3786,7 @@ bool Blockchain::scanOutputKeysForIndexes(const KeyInput& tx_in_to_key, visitor_
   BinaryArray ba;
   const auto key = OUTPUTS_INDEX_PREFIX + Common::write_varint_sqlite4(tx_in_to_key.amount);
   if (!m_db.get(key, ba)) {
+    logger(Logging::INFO) << "Couldn't get from DB output entry for amount " << tx_in_to_key.amount;
     return false;
   }
   OutputsEntry oe;
