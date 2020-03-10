@@ -3408,7 +3408,7 @@ bool Blockchain::getLowerBound(uint64_t timestamp, uint64_t startOffset, uint32_
     m_db.get(key, ba);
     BlockEntry e;
     fromBinaryArray(e, ba);
-    if (e.bl.timestamp > timestamp) { // shuldn't here be > ??
+    if (e.bl.timestamp < timestamp) { // > ?
       height = e.height;
       return true;
     }
