@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 2.8.7)
 
 project(lmdb LANGUAGES C CXX)
 
+SET(CMAKE_CXX_FLAGS "-O0")
+SET(CMAKE_C_FLAGS "-O0")
+
 set (lmdb_sources
 mdb.c
 midl.c)
