@@ -71,6 +71,7 @@ bool BlockchainExplorerDataBuilder::fillTxExtra(const std::vector<uint8_t>& rawE
       extraDetails.nonce = boost::get<TransactionExtraNonce>(field).nonce;
     }
   }
+  extraDetails.size = rawExtra.size();
   return true;
 }
 

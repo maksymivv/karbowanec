@@ -166,9 +166,10 @@ namespace CryptoNote {
       // flat rate tail emission reward,
       // inflation slowly diminishing in relation to supply
       //baseReward = CryptoNote::parameters::TAIL_EMISSION_REWARD;
-
+      // changed to
       // Friedman's k-percent rule,
       // inflation 2% of total coins in circulation per year
+      // according to Whitepaper v. 1, p. 16 (with change of 1% to 2%)
       const uint64_t blocksInOneYear = expectedNumberOfBlocksPerDay() * 365;
       uint64_t twoPercentOfEmission = static_cast<uint64_t>(static_cast<double>(alreadyGeneratedCoins) / 100.0 * 2.0);
       baseReward = twoPercentOfEmission / blocksInOneYear;
@@ -177,29 +178,29 @@ namespace CryptoNote {
     return baseReward;
   }
 
-	bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
-		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
-		
+  bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
+    uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
+
     uint64_t baseReward = calculateReward(alreadyGeneratedCoins);
 
-		size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
-		medianSize = std::max(medianSize, blockGrantedFullRewardZone);
-		if (currentBlockSize > UINT64_C(2) * medianSize) {
-			logger(DEBUGGING) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
-			return false;
-		}
+    size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
+    medianSize = std::max(medianSize, blockGrantedFullRewardZone);
+    if (currentBlockSize > UINT64_C(2) * medianSize) {
+      logger(DEBUGGING) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
+      return false;
+    }
 
-		uint64_t penalizedBaseReward = getPenalizedAmount(baseReward, medianSize, currentBlockSize);
-		uint64_t penalizedFee = blockMajorVersion >= BLOCK_MAJOR_VERSION_2 ? getPenalizedAmount(fee, medianSize, currentBlockSize) : fee;
-		if (cryptonoteCoinVersion() == 1) {
-			penalizedFee = getPenalizedAmount(fee, medianSize, currentBlockSize);
-		}
+    uint64_t penalizedBaseReward = getPenalizedAmount(baseReward, medianSize, currentBlockSize);
+    uint64_t penalizedFee = blockMajorVersion >= BLOCK_MAJOR_VERSION_2 ? getPenalizedAmount(fee, medianSize, currentBlockSize) : fee;
+    if (cryptonoteCoinVersion() == 1) {
+      penalizedFee = getPenalizedAmount(fee, medianSize, currentBlockSize);
+    }
 
-		emissionChange = penalizedBaseReward - (fee - penalizedFee);
-		reward = penalizedBaseReward + penalizedFee;
+    emissionChange = penalizedBaseReward - (fee - penalizedFee);
+    reward = penalizedBaseReward + penalizedFee;
 
-		return true;
-	}
+    return true;
+  }
 
 	size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
 		assert(height <= std::numeric_limits<uint64_t>::max() / m_maxBlockSizeGrowthSpeedNumerator);
@@ -403,24 +404,18 @@ namespace CryptoNote {
 		return Common::Format::parseAmount(str, amount);
 	}
 
-  // Copyright (c) 2017-2018 Zawy 
+  // The idea is based on Zawy's post
   // http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
   // Moore's law application by Sergey Kozlov
-  uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const {
+  uint64_t Currency::getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t currentReward, uint64_t avgReferenceDifficulty, uint64_t avgReferenceReward, uint32_t height) const {
     uint64_t minimumFee(0);
     double minFee(0.0);
-    const double gauge = double(0.25);
-    const double baseFee = static_cast<double>(CryptoNote::parameters::MAXIMUM_FEE);
-
-    if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-      const uint64_t blocksInTwoYears = expectedNumberOfBlocksPerDay() * 365 * 2;
-      double dailyDifficultyMoore = static_cast<double>(avgCurrentDifficulty) / pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
-      minFee = gauge * CryptoNote::parameters::COIN * static_cast<double>(avgHistoricDifficulty) /
-        dailyDifficultyMoore * static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
-    }
-    else {
-      minFee = baseFee * static_cast<double>(avgHistoricDifficulty) / static_cast<double>(avgCurrentDifficulty) * static_cast<double>(avgCurrentReward) / static_cast<double>(avgHistoricReward);
-    }
+    const double baseFee = height <= CryptoNote::parameters::FEE_PER_BYTE_HEIGHT ? static_cast<double>(250000000000) : static_cast<double>(50000000000);
+    const uint64_t blocksInTwoYears = expectedNumberOfBlocksPerDay() * 365 * 2;
+    double currentDifficultyMoore = static_cast<double>(avgCurrentDifficulty) / 
+                                    pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
+    minFee = baseFee * static_cast<double>(avgReferenceDifficulty) / currentDifficultyMoore *
+             static_cast<double>(currentReward) / static_cast<double>(avgReferenceReward);
 
     // zero test 
     if (minFee == 0 || !std::isfinite(minFee))
@@ -428,7 +423,7 @@ namespace CryptoNote {
 
     minimumFee = static_cast<uint64_t>(minFee);
 
-    if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    if (height > CryptoNote::parameters::FEE_PER_BYTE_HEIGHT) {
       // Make all insignificant digits zero
       uint64_t i = 1000000000;
       while (i > 1) {
@@ -451,6 +446,12 @@ namespace CryptoNote {
     std::string roundedFeeString = ss.str();
     parseAmount(roundedFeeString, ret);
     return ret;
+  }
+
+  // All that exceeds 100 bytes is charged per byte,
+  // the cost of one byte is 1/100 of minimal fee
+  uint64_t Currency::getFeePerByte(const uint64_t txExtraSize, const uint64_t minFee) const {
+    return txExtraSize > 100 ? minFee / 100 * (txExtraSize - 100) : 0;
   }
 
   uint64_t Currency::calculateStake(uint64_t& alreadyGeneratedCoins) const {
