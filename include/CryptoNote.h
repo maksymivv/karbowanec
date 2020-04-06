@@ -59,10 +59,12 @@ struct TransactionOutput {
   //uint64_t unlockTime;
 };
 
+using TransactionInputs = std::vector<TransactionInput>;
+
 struct TransactionPrefix {
   uint8_t version;
   uint64_t unlockTime;
-  std::vector<TransactionInput> inputs;
+  TransactionInputs inputs;
   std::vector<TransactionOutput> outputs;
   std::vector<uint8_t> extra;
   std::vector<uint64_t> outputUnlockTimes;
