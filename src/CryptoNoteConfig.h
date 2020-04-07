@@ -76,6 +76,15 @@ const uint32_t MIN_TX_MIXIN_V2_HEIGHT                        = 216394;
 const uint32_t FEE_PER_BYTE_HEIGHT                           = 490000;
 const uint64_t MAX_EXTRA_SIZE                                = 1024;
 
+const uint64_t DEPOSIT_MIN_AMOUNT                            = 150 * COIN;
+const uint32_t DEPOSIT_MIN_TERM                              = 11000; // ~ 1 month
+const uint32_t DEPOSIT_MAX_TERM                              = 12 * 11000;
+const uint64_t DEPOSIT_MIN_TOTAL_RATE_FACTOR                 = 77000;
+const uint64_t DEPOSIT_MAX_TOTAL_RATE                        = 11;
+static_assert(DEPOSIT_MIN_TERM > 0, "Bad DEPOSIT_MIN_TERM");
+static_assert(DEPOSIT_MIN_TERM <= DEPOSIT_MAX_TERM, "Bad DEPOSIT_MAX_TERM");
+static_assert(DEPOSIT_MIN_TERM * DEPOSIT_MAX_TOTAL_RATE > DEPOSIT_MIN_TOTAL_RATE_FACTOR, "Bad DEPOSIT_MIN_TOTAL_RATE_FACTOR or DEPOSIT_MAX_TOTAL_RATE");
+
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT / 4 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 
 const size_t   DANDELION_EPOCH                               = 600;
@@ -136,6 +145,7 @@ const char     DNS_CHECKPOINTS_HOST[]                        = "checkpoints.karb
 
 const uint8_t  TRANSACTION_VERSION_1                         =  1;
 const uint8_t  TRANSACTION_VERSION_2                         =  2;
+const uint8_t  DEPOSIT_TRANSACTION_VERSION                   =  TRANSACTION_VERSION_2;
 const uint8_t  CURRENT_TRANSACTION_VERSION                   =  TRANSACTION_VERSION_1;
 
 const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;

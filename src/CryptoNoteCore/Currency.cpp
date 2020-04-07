@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2018  zawy12
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2014-2017, XDN-project developers
+// Copyright (c) 2016-2018, zawy12
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -193,6 +194,129 @@ namespace CryptoNote {
     reward = penalizedBaseReward + penalizedFee;
 
     return true;
+  }
+
+  uint64_t Currency::calculateInterest(uint64_t amount, uint32_t term) const {
+    assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
+    assert(static_cast<uint64_t>(term)* m_depositMaxTotalRate > m_depositMinTotalRateFactor);
+
+    uint64_t a = static_cast<uint64_t>(term) * m_depositMaxTotalRate - m_depositMinTotalRateFactor;
+    uint64_t bHi;
+    uint64_t bLo = mul128(amount, a, &bHi);
+
+    uint64_t interestHi;
+    uint64_t interestLo;
+    assert(std::numeric_limits<uint32_t>::max() / 100 > m_depositMaxTerm);
+    div128_32(bHi, bLo, static_cast<uint32_t>(100 * m_depositMaxTerm), &interestHi, &interestLo);
+    assert(interestHi == 0);
+
+    return interestLo;
+  }
+
+  // unlockTime must be the same as largest of outputUnlockTimes
+  bool Currency::getDepositTerm(const Transaction& tx, uint32_t& term) const {
+    std::vector<uint64_t> unlocktimes = tx.outputUnlockTimes;
+    sort(unlocktimes.begin(), unlocktimes.end());
+    std::reverse(unlocktimes.begin(), unlocktimes.end());
+    if (unlocktimes.front() < depositMinTerm() && tx.unlockTime != unlocktimes.front()) {
+      logger(ERROR) << "Invalid deposit term";
+      return false;
+    }
+
+    term = (uint32_t)tx.unlockTime;
+    return true;
+  }
+
+  bool Currency::getTransactionDepositInfo(const Transaction& tx, uint64_t& deposit, uint64_t& interest, uint64_t& fee, uint32_t& term) const {
+    uint64_t inputsAmount = getInputAmount(tx);
+    uint64_t outputsAmount = 0, calculatedInterest = 0, actualInterest = 0, change = 0;
+    std::vector<std::pair<uint32_t, uint64_t>> unlockTimesAndAmounts; // term, amount
+
+    for (uint64_t i = 0; i < tx.outputs.size(); ++i) {
+      TransactionOutput o = tx.outputs[i];
+      outputsAmount += o.amount;
+      unlockTimesAndAmounts.push_back(std::make_pair(tx.outputUnlockTimes[i], o.amount));
+    }
+
+    if (!(outputsAmount > inputsAmount)) {
+      logger(DEBUGGING) << "Not a deposit";
+      return false;
+    }
+
+    // deposit term is the largest unlock time
+    sort(unlockTimesAndAmounts.begin(), unlockTimesAndAmounts.end());
+    std::reverse(unlockTimesAndAmounts.begin(), unlockTimesAndAmounts.end());
+
+    // unlockTime must be the same as the largest of outputUnlockTimes
+    if (unlockTimesAndAmounts.front().first < depositMinTerm() || (uint32_t)tx.unlockTime != unlockTimesAndAmounts.front().first) {
+      logger(DEBUGGING) << "Invalid deposit term";
+      return false;
+    }
+    term = unlockTimesAndAmounts.front().first;
+
+    for (uint64_t i = 0; i < unlockTimesAndAmounts.size(); ++i) {
+      if (unlockTimesAndAmounts[i].first == (uint32_t)tx.unlockTime) {
+        deposit += unlockTimesAndAmounts[i].second;
+      }
+      else if (unlockTimesAndAmounts[i].first != 0) {
+        actualInterest += unlockTimesAndAmounts[i].second;
+      }
+      else {
+        change += unlockTimesAndAmounts[i].second;
+      }
+    }
+
+    if (deposit < depositMinAmount()) {
+      logger(DEBUGGING) << "Insufficient deposit amount: " << formatAmount(deposit) << " whereas minimum is " << formatAmount(depositMinAmount());
+      return false;
+    }
+
+    calculatedInterest = calculateInterest(deposit, term);
+
+    // compare calculated with actual
+    if (actualInterest > calculatedInterest) {
+      logger(DEBUGGING) << "Invalid deposit: interest amount " << formatAmount(actualInterest) << " is bigger than expected " << formatAmount(calculatedInterest);
+      return false;
+    }
+    else if (actualInterest < calculatedInterest) {
+      logger(DEBUGGING) << "Invalid deposit: underpaid interest " << formatAmount(actualInterest) << " of expected " << formatAmount(calculatedInterest);
+      return false;
+    }
+
+    /// TODO check gradual interest disbursement
+
+    // the fee can NOT be in outputs, it's just burned and resurrected in miner's tx
+    if (inputsAmount <= deposit + change) {
+      logger(DEBUGGING) << "Invalid deposit due to wrong fee";
+      return false;
+    }
+    fee = inputsAmount - (deposit + change);
+
+    return true;
+  }
+
+  bool Currency::getTransactionFee(const Transaction& tx, uint64_t & fee) const {
+    uint64_t amount_in = getInputAmount(tx);
+    uint64_t amount_out = getOutputAmount(tx);
+    uint64_t deposit_amount = 0, deposit_interest = 0, deposit_fee = 0;
+    uint32_t deposit_term = 0;
+    if (amount_out > amount_in) {
+      if (!getTransactionDepositInfo(tx, deposit_amount, deposit_interest, deposit_fee, deposit_term)) {
+        logger(ERROR) << "Invalid deposit...";
+        return false;
+      }
+    }
+    fee = deposit_fee;
+
+    return true;
+  }
+
+  uint64_t Currency::getTransactionFee(const Transaction& tx) const {
+    uint64_t r = 0;
+    if (!getTransactionFee(tx, r)) {
+      r = 0;
+    }
+    return r;
   }
 
 	size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
@@ -871,6 +995,13 @@ namespace CryptoNote {
 		numberOfDecimalPlaces(parameters::CRYPTONOTE_DISPLAY_DECIMAL_POINT);
 
 		minimumFee(parameters::MINIMUM_FEE);
+
+    depositMinAmount(parameters::DEPOSIT_MIN_AMOUNT);
+    depositMinTerm(parameters::DEPOSIT_MIN_TERM);
+    depositMaxTerm(parameters::DEPOSIT_MAX_TERM);
+    depositMinTotalRateFactor(parameters::DEPOSIT_MIN_TOTAL_RATE_FACTOR);
+    depositMaxTotalRate(parameters::DEPOSIT_MAX_TOTAL_RATE);
+
 		defaultDustThreshold(parameters::DEFAULT_DUST_THRESHOLD);
 
 		difficultyTarget(parameters::DIFFICULTY_TARGET);
