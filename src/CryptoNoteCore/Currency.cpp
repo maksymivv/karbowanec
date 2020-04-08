@@ -305,8 +305,10 @@ namespace CryptoNote {
         logger(ERROR) << "Invalid deposit...";
         return false;
       }
+      fee = deposit_fee;
+    } else {
+      fee = amount_in - amount_out;
     }
-    fee = deposit_fee;
 
     return true;
   }
