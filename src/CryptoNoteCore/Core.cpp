@@ -311,13 +311,6 @@ bool Core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
 
   uint64_t outputs_amount = get_outs_money_amount(tx);
 
-  if (outputs_amount > inputs_amount) {
-    logger(DEBUGGING) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
-      ", have " << m_currency.formatAmount(inputs_amount);
-    tvc.m_verification_failed = true;
-    return false;
-  }
-
   // tx extra size in bytes, uint8_t is a one byte
   uint64_t extraSize = (uint64_t)tx.extra.size();
 
@@ -327,7 +320,15 @@ bool Core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
 
   Crypto::Hash h = NULL_HASH;
   getObjectHash(tx, h, blobSize);
-  const uint64_t fee = inputs_amount - outputs_amount;
+
+  uint64_t fee = 0;
+  if (!m_currency.getTransactionFee(tx, fee)) {
+    logger(DEBUGGING) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
+      ", have " << m_currency.formatAmount(inputs_amount);
+    tvc.m_verification_failed = true;
+    return false;
+  }
+
   bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
   bool enough = true;
   if (!isFusionTransaction && !m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
