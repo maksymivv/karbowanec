@@ -151,10 +151,10 @@ public:
   const Crypto::Hash& genesisBlockHash() const { return m_genesisBlockHash; }
 
   uint64_t calculateReward(uint64_t alreadyGeneratedCoins) const;
-  bool getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins, uint64_t fee,
-    uint64_t& reward, int64_t& emissionChange) const;
+  bool getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange) const;
 
   uint64_t calculateInterest(uint64_t amount, uint32_t term) const;
+  std::vector<std::pair<uint32_t, uint64_t>> disburseInterest(uint64_t amount, uint32_t term) const;
   bool getTransactionDepositInfo(const Transaction& tx, uint64_t& deposit, uint64_t& interest, uint64_t& fee, uint32_t& term) const;
   bool getDepositTerm(const Transaction& tx, uint32_t& term) const;
   bool getTransactionFee(const Transaction& tx, uint64_t & fee) const;

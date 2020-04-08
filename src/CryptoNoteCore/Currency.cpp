@@ -213,6 +213,52 @@ namespace CryptoNote {
     return interestLo;
   }
 
+  std::vector<std::pair<uint32_t, uint64_t>> Currency::disburseInterest(uint64_t amount, uint32_t term) const {
+    assert(m_depositMinAmount <= amount);
+    assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
+    const size_t n = CryptoNote::parameters::DEPOSIT_DISBURSEMENT_PARTS; // always disburse interest in 12 parts
+
+    std::vector<std::pair<uint32_t, uint64_t>> chunks;
+    std::vector<uint32_t> terms;
+    std::vector<uint64_t> amounts;
+
+    if (amount % n == 0) {
+      for (size_t i = 0; i < n; i++) {
+        amounts.push_back(amount / n);
+      }
+    } else {
+      uint64_t zp = n - (amount % n);
+      uint64_t pp = amount / n;
+      for (size_t i = 0; i < n; i++) {
+        if (i >= zp) {
+          amounts.push_back(pp + 1);
+        } else {
+          amounts.push_back(pp);
+        }
+      }
+    }
+    if (term % n == 0) {
+      for (size_t i = 0; i < n; i++) {
+        terms.push_back(term / n);
+      }
+    } else {
+      uint32_t zp = n - (term % n);
+      uint32_t pp = term / n;
+      for (size_t i = 0; i < n; i++) {
+        if (i >= zp) {
+          terms.push_back(pp + 1);
+        } else {
+          terms.push_back(pp);
+        }
+      }
+    }
+    for (size_t i = 0; i < n; i++) {
+      chunks.push_back(std::make_pair(terms[i], amounts[i]));
+    }
+
+    return chunks;
+  }
+
   // unlockTime must be the same as largest of outputUnlockTimes
   bool Currency::getDepositTerm(const Transaction& tx, uint32_t& term) const {
     std::vector<uint64_t> unlocktimes = tx.outputUnlockTimes;
@@ -231,6 +277,7 @@ namespace CryptoNote {
     uint64_t inputsAmount = getInputAmount(tx);
     uint64_t outputsAmount = 0, calculatedInterest = 0, actualInterest = 0, change = 0;
     std::vector<std::pair<uint32_t, uint64_t>> unlockTimesAndAmounts; // term, amount
+    std::vector<std::pair<uint32_t, uint64_t>> actualInterestPayouts;
 
     for (uint64_t i = 0; i < tx.outputs.size(); ++i) {
       TransactionOutput o = tx.outputs[i];
@@ -260,6 +307,7 @@ namespace CryptoNote {
       }
       else if (unlockTimesAndAmounts[i].first != 0) {
         actualInterest += unlockTimesAndAmounts[i].second;
+        actualInterestPayouts.push_back(unlockTimesAndAmounts[i]);
       }
       else {
         change += unlockTimesAndAmounts[i].second;
@@ -282,15 +330,20 @@ namespace CryptoNote {
       logger(DEBUGGING) << "Invalid deposit: underpaid interest " << formatAmount(actualInterest) << " of expected " << formatAmount(calculatedInterest);
       return false;
     }
-
-    /// TODO check gradual interest disbursement
-
+        
     // the fee can NOT be in outputs, it's just burned and resurrected in miner's tx
     if (inputsAmount <= deposit + change) {
       logger(DEBUGGING) << "Invalid deposit due to wrong fee";
       return false;
     }
     fee = inputsAmount - (deposit + change);
+
+    //check gradual interest disbursement
+    std::vector<std::pair<uint32_t, uint64_t>> calculatedInterestPayouts = disburseInterest(deposit, term);
+    if (actualInterestPayouts != calculatedInterestPayouts) {
+      logger(DEBUGGING) << "Invalid deposit interest disbursement";
+      return false;
+    }
 
     return true;
   }

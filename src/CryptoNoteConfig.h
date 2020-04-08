@@ -81,6 +81,7 @@ const uint32_t DEPOSIT_MIN_TERM                              = 11000; // ~ 1 mon
 const uint32_t DEPOSIT_MAX_TERM                              = 12 * 11000;
 const uint64_t DEPOSIT_MIN_TOTAL_RATE_FACTOR                 = 77000;
 const uint64_t DEPOSIT_MAX_TOTAL_RATE                        = 11;
+const size_t   DEPOSIT_DISBURSEMENT_PARTS                    = 12;
 static_assert(DEPOSIT_MIN_TERM > 0, "Bad DEPOSIT_MIN_TERM");
 static_assert(DEPOSIT_MIN_TERM <= DEPOSIT_MAX_TERM, "Bad DEPOSIT_MAX_TERM");
 static_assert(DEPOSIT_MIN_TERM * DEPOSIT_MAX_TOTAL_RATE > DEPOSIT_MIN_TOTAL_RATE_FACTOR, "Bad DEPOSIT_MIN_TOTAL_RATE_FACTOR or DEPOSIT_MAX_TOTAL_RATE");
