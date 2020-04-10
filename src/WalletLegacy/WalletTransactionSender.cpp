@@ -275,14 +275,16 @@ void WalletTransactionSender::digitSplitStrategy(TransferId firstTransferId, siz
       throw std::system_error(make_error_code(error::BAD_ADDRESS));
     }
 
-    decompose_amount_into_digits(de.amount, dust_threshold,
-      [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, addr)); },
-      [&](uint64_t a_dust) { splitted_dsts.push_back(TransactionDestinationEntry(a_dust, addr)); });
+    //decompose_amount_into_digits(de.amount, dust_threshold,
+    //  [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, addr)); },
+    //  [&](uint64_t a_dust) { splitted_dsts.push_back(TransactionDestinationEntry(a_dust, addr)); });
+    splitted_dsts.push_back(TransactionDestinationEntry(de.amount, addr));
   }
 
-  decompose_amount_into_digits(change_dst.amount, dust_threshold,
-    [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, change_dst.addr)); },
-    [&](uint64_t a_dust) { dust = a_dust; } );
+  //decompose_amount_into_digits(change_dst.amount, dust_threshold,
+  //  [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, change_dst.addr)); },
+  //  [&](uint64_t a_dust) { dust = a_dust; } );
+  splitted_dsts.push_back(TransactionDestinationEntry(change_dst.amount, change_dst.addr));
 }
 
 

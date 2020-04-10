@@ -533,8 +533,8 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     already_generated_coins = m_blockchain.getCoinsInCirculation();
   }
 
-  size_t txs_size;
-  uint64_t fee;
+  size_t txs_size = 0;
+  uint64_t fee = 0;
   if (!m_mempool.fill_block_template(b, median_size, m_currency.maxBlockCumulativeSize(height), already_generated_coins, txs_size, fee)) {
     return false;
   }
@@ -544,7 +544,7 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
      block size, so first miner transaction generated with fake amount of money, and with phase we know think we know expected block size
      */
   //make blocks coin-base tx looks close to real coinbase tx to get truthful blob size
-  bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, ex_nonce, 100);
+  bool r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, txs_size, fee, adr, b.baseTransaction, ex_nonce, 1);
   if (!r) { 
     logger(ERROR, BRIGHT_RED) << "Failed to construct miner tx, first chance"; 
     return false; 
@@ -552,7 +552,7 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
 
   size_t cumulative_size = txs_size + getObjectBinarySize(b.baseTransaction);
   for (size_t try_count = 0; try_count != 10; ++try_count) {
-    r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, cumulative_size, fee, adr, b.baseTransaction, ex_nonce, 100);
+    r = m_currency.constructMinerTx(b.majorVersion, height, median_size, already_generated_coins, cumulative_size, fee, adr, b.baseTransaction, ex_nonce, 1);
 
     if (!(r)) { logger(ERROR, BRIGHT_RED) << "Failed to construct miner tx, second chance"; return false; }
     size_t coinbase_blob_size = getObjectBinarySize(b.baseTransaction);
@@ -1247,7 +1247,7 @@ bool Core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
       return false;
     }
 
-    if (!check_tx_mixin(tx, height)) {
+    /*if (!check_tx_mixin(tx, height)) {
       logger(INFO) << "Transaction verification failed: mixin count for transaction " << txHash << " is too large, rejected";
       tvc.m_verification_failed = true;
       return false;
@@ -1257,7 +1257,7 @@ bool Core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
       logger(ERROR) << "Transaction verification failed: unmixable output for transaction " << txHash << ", rejected";
       tvc.m_verification_failed = true;
       return false;
-	}
+    }*/
 
   }
 
