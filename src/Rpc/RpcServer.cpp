@@ -260,6 +260,11 @@ bool RpcServer::setFeeAddress(const std::string& fee_address, const AccountPubli
   return true;
 }
 
+bool RpcServer::setFeeAmount(const uint64_t fee_amount) {
+  m_fee_amount = fee_amount;
+  return true;
+}
+
 bool RpcServer::setViewKey(const std::string& view_key) {
   Crypto::Hash private_view_key_hash;
   size_t size;
@@ -281,40 +286,38 @@ bool RpcServer::isCoreReady() {
 }
 
 bool RpcServer::checkIncomingTransactionForFee(const BinaryArray& tx_blob) {
-	Crypto::Hash tx_hash = NULL_HASH;
-	Crypto::Hash tx_prefixt_hash = NULL_HASH;
-	Transaction tx;
-	if (!parseAndValidateTransactionFromBinaryArray(tx_blob, tx, tx_hash, tx_prefixt_hash)) {
-		logger(Logging::INFO) << "Could not parse tx from blob";
-		return false;
-	}
-	
-	// always relay fusion transactions
-	uint64_t inputs_amount = 0;
-	get_inputs_money_amount(tx, inputs_amount);
-	uint64_t outputs_amount = get_outs_money_amount(tx);
+  Crypto::Hash tx_hash = NULL_HASH;
+  Crypto::Hash tx_prefixt_hash = NULL_HASH;
+  Transaction tx;
+  if (!parseAndValidateTransactionFromBinaryArray(tx_blob, tx, tx_hash, tx_prefixt_hash)) {
+    logger(Logging::INFO) << "Could not parse tx from blob";
+    return false;
+  }
 
-	const uint64_t fee = inputs_amount - outputs_amount;
-	if (fee == 0 && m_core.currency().isFusionTransaction(tx, tx_blob.size(), m_core.getCurrentBlockchainHeight() - 1)) {
-		logger(Logging::DEBUGGING) << "Masternode received fusion transaction, relaying with no fee check";
-		return true;
-	}
+  // always relay fusion transactions
+  uint64_t inputs_amount = 0;
+  get_inputs_money_amount(tx, inputs_amount);
+  uint64_t outputs_amount = get_outs_money_amount(tx);
 
-	CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
+  const uint64_t fee = inputs_amount - outputs_amount;
+  if (fee == 0 && m_core.currency().isFusionTransaction(tx, tx_blob.size(), m_core.getCurrentBlockchainHeight() - 1)) {
+    logger(Logging::DEBUGGING) << "Masternode received fusion transaction, relaying with no fee check";
+    return true;
+  }
 
-	std::vector<uint32_t> out;
-	uint64_t amount;
+  CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
 
-	if (!CryptoNote::findOutputsToAccount(transaction, m_fee_acc, m_view_key, out, amount)) {
-		logger(Logging::INFO) << "Could not find outputs to masternode fee address";
-		return false;
-	}
+  std::vector<uint32_t> out;
+  uint64_t amount;
 
-	if (amount != 0) {
-		logger(Logging::INFO) << "Masternode received relayed transaction fee: " << m_core.currency().formatAmount(amount) << " KRB";
-		return true;
-	}
-	return false;
+  CryptoNote::findOutputsToAccount(transaction, m_fee_acc, m_view_key, out, amount);
+
+  if (amount < m_fee_amount)
+    return false;
+
+  logger(Logging::INFO) << "Masternode received relayed transaction fee: " << m_core.currency().formatAmount(amount) << " KRB";
+
+  return true;
 }
 
 //
@@ -644,7 +647,6 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   Crypto::Hash last_block_hash = m_core.getBlockIdByHeight(res.height - 1);
   res.top_block_hash = Common::podToHex(last_block_hash);
   res.version = PROJECT_VERSION_LONG;
-  res.fee_address = m_fee_address.empty() ? std::string() : m_fee_address;
   res.contact = m_contact_info.empty() ? std::string() : m_contact_info;
   res.min_fee = m_core.getMinimalFee();
   res.start_time = (uint64_t)m_core.getStartTime();
@@ -828,17 +830,17 @@ bool RpcServer::on_send_raw_transaction(const COMMAND_RPC_SEND_RAW_TRANSACTION::
   }
 
   if (!m_fee_address.empty() && m_view_key != NULL_SECRET_KEY) {
-	if (!checkIncomingTransactionForFee(tx_blob)) {
-	  logger(Logging::INFO) << "Transaction not relayed due to lack of node fee";		
+    if (!checkIncomingTransactionForFee(tx_blob)) {
+      logger(Logging::INFO) << "Transaction not relayed due to lack of node fee";
       res.status = "Not relayed due to lack of node fee";
       return true;
-	}
+    }
   }
 
   NOTIFY_NEW_TRANSACTIONS::request r;
+  r.stem = true;
   r.txs.push_back(Common::asString(tx_blob));
   m_core.get_protocol()->relay_transactions(r);
-  //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }
@@ -900,6 +902,7 @@ bool RpcServer::on_get_fee_address(const COMMAND_RPC_GET_FEE_ADDRESS::request& r
 	return false; 
   }
   res.fee_address = m_fee_address;
+  res.fee_amount = m_fee_amount;
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }
@@ -1470,25 +1473,16 @@ bool RpcServer::on_check_transaction_proof(const COMMAND_RPC_CHECK_TRANSACTION_P
 		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse address " + req.destination_address + '.' };
 	}
 	// parse pubkey r*A & signature
-	const size_t header_len = strlen("ProofV1");
-	if (req.signature.size() < header_len || req.signature.substr(0, header_len) != "ProofV1") {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature header check error" };
+	std::string decoded_data;
+	uint64_t prefix;
+	if (!Tools::Base58::decode_addr(req.signature, prefix, decoded_data) || prefix != CryptoNote::parameters::CRYPTONOTE_TX_PROOF_BASE58_PREFIX) {
+		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Transaction proof decoding error" };
 	}
 	Crypto::PublicKey rA;
 	Crypto::Signature sig;
-	const size_t rA_len = Tools::Base58::encode(std::string((const char *)&rA, sizeof(Crypto::PublicKey))).size();
-	const size_t sig_len = Tools::Base58::encode(std::string((const char *)&sig, sizeof(Crypto::Signature))).size();
-	std::string rA_decoded;
-	std::string sig_decoded;
-	if (!Tools::Base58::decode(req.signature.substr(header_len, rA_len), rA_decoded)) {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature decoding error" };
-	}
-	if (!Tools::Base58::decode(req.signature.substr(header_len + rA_len, sig_len), sig_decoded)) {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature decoding error" };
-	}
-	if (sizeof(Crypto::PublicKey) != rA_decoded.size() || sizeof(Crypto::Signature) != sig_decoded.size()) {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Signature decoding error" };
-	}
+	std::string rA_decoded = decoded_data.substr(0, sizeof(Crypto::PublicKey));
+	std::string sig_decoded = decoded_data.substr(sizeof(Crypto::PublicKey), sizeof(Crypto::Signature));
+
 	memcpy(&rA, rA_decoded.data(), sizeof(Crypto::PublicKey));
 	memcpy(&sig, sig_decoded.data(), sizeof(Crypto::Signature));
 
@@ -1577,24 +1571,15 @@ bool RpcServer::on_check_reserve_proof(const COMMAND_RPC_CHECK_RESERVE_PROOF::re
 	}
 	
 	// parse sugnature
-	const char header[] = "ReserveProofV1";
-	const size_t header_len = strlen(header);
-	if (req.signature.size() < header_len || req.signature.substr(0, header_len) != header) {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Signature header check error" };
+	std::string decoded_data;
+	uint64_t prefix;
+	if (!Tools::Base58::decode_addr(req.signature, prefix, decoded_data) || prefix != CryptoNote::parameters::CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX) {
+		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Reserve proof decoding error" };
 	}
-
-	std::string sig_decoded;
-	if (!Tools::Base58::decode(req.signature.substr(header_len), sig_decoded)) {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Signature decoding error" };
-	}
-
-	BinaryArray ba;
-	if (!Common::fromHex(sig_decoded, ba)) {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Proof decoding error" };
-	}
+	BinaryArray ba(decoded_data.begin(), decoded_data.end());
 	reserve_proof proof_decoded;
 	if (!fromBinaryArray(proof_decoded, ba)) {
-		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "BinaryArray decoding error" };
+		throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Reserve proof BinaryArray decoding error" };
 	}
 
 	std::vector<reserve_proof_entry>& proofs = proof_decoded.proofs;
