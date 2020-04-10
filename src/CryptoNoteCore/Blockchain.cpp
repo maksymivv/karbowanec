@@ -1229,11 +1229,6 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     return false;
   }
 
-  //if (!checkParentBlockSize(b, id)) {
-  //  bvc.m_verification_failed = true;
-  //  return false;
-  //}
-
   size_t cumulativeSize;
   if (!getBlockCumulativeSize(b, cumulativeSize)) {
     logger(TRACE) << "Block with id: " << id << " has at least one unknown transaction. Cumulative size is calculated imprecisely";
@@ -1303,14 +1298,12 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     }
 
     // Disable merged mining
-    if (bei.bl.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-      TransactionExtraMergeMiningTag mmTag;
-      if (getMergeMiningTagFromExtra(bei.bl.baseTransaction.extra, mmTag)) {
-        logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
-        return false;
-      }
+    TransactionExtraMergeMiningTag mmTag;
+    if (getMergeMiningTagFromExtra(bei.bl.baseTransaction.extra, mmTag)) {
+      logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
+      return false;
     }
-
+    
     // Check the block's hash against the difficulty target for its alt chain
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     if (!(current_diff)) { logger(ERROR, BRIGHT_RED) << "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!"; return false; }
@@ -1944,27 +1937,6 @@ bool Blockchain::checkBlockVersion(const Block& b, const Crypto::Hash& blockHash
   return true;
 }
 
-bool Blockchain::checkParentBlockSize(const Block& b, const Crypto::Hash& blockHash) {
-  if (b.majorVersion == BLOCK_MAJOR_VERSION_2 || b.majorVersion == BLOCK_MAJOR_VERSION_3) {
-    auto serializer = makeParentBlockSerializer(b, false, false);
-    size_t parentBlockSize;
-    if (!getObjectBinarySize(serializer, parentBlockSize)) {
-      logger(ERROR, BRIGHT_RED) <<
-        "Block " << blockHash << ": failed to determine parent block size";
-      return false;
-    }
-
-    if (parentBlockSize > 2 * 1024) {
-      logger(INFO, BRIGHT_WHITE) <<
-        "Block " << blockHash << " contains too big parent block: " << parentBlockSize <<
-        " bytes, expected no more than " << 2 * 1024 << " bytes";
-      return false;
-    }
-  }
-
-  return true;
-}
-
 bool Blockchain::checkCumulativeBlockSize(const Crypto::Hash& blockId, size_t cumulativeBlockSize, uint64_t height) {
   size_t maxBlockCumulativeSize = m_currency.maxBlockCumulativeSize(height);
   if (cumulativeBlockSize > maxBlockCumulativeSize) {
@@ -2089,18 +2061,11 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
     return false;
   }
 
-  //if (!checkParentBlockSize(blockData, blockHash)) {
-  //  bvc.m_verification_failed = true;
-  //  return false;
-  //}
-
   // Disable merged mining
-  if (blockData.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
-    TransactionExtraMergeMiningTag mmTag;
-    if (getMergeMiningTagFromExtra(blockData.baseTransaction.extra, mmTag)) {
-      logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
-      return false;
-    }
+  TransactionExtraMergeMiningTag mmTag;
+  if (getMergeMiningTagFromExtra(blockData.baseTransaction.extra, mmTag)) {
+    logger(ERROR, BRIGHT_RED) << "Merge mining tag was found in extra of miner transaction";
+    return false;
   }
 
   if (blockData.previousBlockHash != getTailId()) {
