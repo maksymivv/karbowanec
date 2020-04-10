@@ -3807,17 +3807,17 @@ bool Blockchain::scanOutputKeysForIndexes(const KeyInput& tx_in_to_key, visitor_
     //auto tx_it = m_transactionMap.find(amount_outs_vec[i].first);
     //if (!(tx_it != m_transactionMap.end())) { logger(ERROR, BRIGHT_RED) << "Wrong transaction id in output indexes: " << Common::podToHex(amount_outs_vec[i].first); return false; }
 
-    const TransactionEntry tx = transactionByIndex(amount_outs_vec[i].first);
+    const TransactionEntry te = transactionByIndex(amount_outs_vec[i].first);
 
-    if (!(amount_outs_vec[i].second < tx.tx.outputs.size())) {
+    if (!(amount_outs_vec[i].second < te.tx.outputs.size())) {
       logger(Logging::ERROR, Logging::BRIGHT_RED)
         << "Wrong index in transaction outputs: "
         << amount_outs_vec[i].second << ", expected less then "
-        << tx.tx.outputs.size();
+        << te.tx.outputs.size();
       return false;
     }
 
-    if (!vis.handle_output(tx.tx, tx.tx.outputs[amount_outs_vec[i].second], amount_outs_vec[i].second)) {
+    if (!vis.handle_output(te.tx, te.tx.outputs[amount_outs_vec[i].second], amount_outs_vec[i].second)) {
       logger(Logging::INFO) << "Failed to handle_output for output no = " << count << ", with absolute offset " << i;
       return false;
     }
