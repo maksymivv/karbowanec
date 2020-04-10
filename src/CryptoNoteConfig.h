@@ -33,7 +33,7 @@ const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DI
 const uint64_t CRYPTONOTE_MAX_BLOCK_NUMBER                   = 500000000;
 const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
-const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 111; // addresses start with "K"
+const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 118; // addresses start with "L"
 const uint64_t CRYPTONOTE_TX_PROOF_BASE58_PREFIX             = 3576968; // (0x369488), starts with "Proof..."
 const uint64_t CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX        = 44907175188; // (0xa74ad1d14), starts with "RsrvPrf..."
 const size_t   CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
@@ -45,9 +45,9 @@ const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V1          = 11;
 
 // MONEY_SUPPLY - total number coins to be generated
-const uint64_t MONEY_SUPPLY                                  = UINT64_C(10000000000000000000);
-const uint64_t COIN                                          = UINT64_C(1000000000000);
-const uint64_t TAIL_EMISSION_REWARD                          = UINT64_C(1000000000000);
+const uint64_t MONEY_SUPPLY                                  = UINT64_C(10000000000000);
+const uint64_t COIN                                          = UINT64_C(10);
+const uint64_t TAIL_EMISSION_REWARD                          = UINT64_C(10);
 const size_t CRYPTONOTE_COIN_VERSION                         = 1;
 const unsigned EMISSION_SPEED_FACTOR                         = 18;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
@@ -58,21 +58,21 @@ const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 100000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
-const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 12;
+const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 2;
 
-const uint64_t MINIMUM_FEE_V1                                = UINT64_C(100000000);
-const uint64_t MINIMUM_FEE_V2                                = UINT64_C(100000000000);
-const uint32_t MINIMUM_FEE_V2_HEIGHT                         = 216394;
+const uint64_t MINIMUM_FEE_V1                                = UINT64_C(1);
+const uint64_t MINIMUM_FEE_V2                                = UINT64_C(1);
+const uint32_t MINIMUM_FEE_V2_HEIGHT                         = 50;
 const uint64_t MINIMUM_FEE                                   = MINIMUM_FEE_V2;
-const uint64_t MAXIMUM_FEE                                   = UINT64_C(100000000000);
+const uint64_t MAXIMUM_FEE                                   = UINT64_C(10);
 
-const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(100000000);
+const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(1);
 const uint64_t MIN_TX_MIXIN_SIZE                             = 2;
 const uint64_t MAX_TX_MIXIN_SIZE_V1                          = 50;
 const uint64_t MAX_TX_MIXIN_SIZE_V2                          = 20;
 const uint64_t MAX_TX_MIXIN_SIZE                             = MAX_TX_MIXIN_SIZE_V2;
-const uint32_t MIN_TX_MIXIN_V1_HEIGHT                        = 216245;
-const uint32_t MIN_TX_MIXIN_V2_HEIGHT                        = 216394;
+const uint32_t MIN_TX_MIXIN_V1_HEIGHT                        = 50;
+const uint32_t MIN_TX_MIXIN_V2_HEIGHT                        = 50;
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT / 4 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 
 const size_t   DANDELION_EPOCH                               = 600;
@@ -107,11 +107,11 @@ const size_t   FUSION_TX_MAX_SIZE                            = CRYPTONOTE_BLOCK_
 const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 
-const uint32_t UPGRADE_HEIGHT_V2                             = 60000;
-const uint32_t UPGRADE_HEIGHT_V3                             = 216000;
-const uint32_t UPGRADE_HEIGHT_V4                             = 266000;
-const uint32_t UPGRADE_HEIGHT_LWMA3                          = 300000;
-const uint32_t UPGRADE_HEIGHT_V5                             = 437200;
+const uint32_t UPGRADE_HEIGHT_V2                             = 10;
+const uint32_t UPGRADE_HEIGHT_V3                             = 16;
+const uint32_t UPGRADE_HEIGHT_V4                             = 26;
+const uint32_t UPGRADE_HEIGHT_LWMA3                          = 30;
+const uint32_t UPGRADE_HEIGHT_V5                             = 50;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90; // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -127,9 +127,10 @@ const char     CRYPTONOTE_BLOCKCHAIN_INDICES_FILENAME[]      = "blockchainindice
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
 } // parameters
 
-const char     CRYPTONOTE_NAME[]                             = "karbowanec";
-const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
-const char     DNS_CHECKPOINTS_HOST[]                        = "checkpoints.karbo.org";
+const char     CRYPTONOTE_NAME[]                             = "krbcoin";
+//const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
+const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff000802029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd08807146022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa7091684070252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d6f02e02b8ed916c56b3a99c9cdf22c7be7ec4e85587e5d40bc46bf6995313c288ad841ec0b802021b452b4ac6c6419e06181f8c9f0734bd5bb132d8b75b44bbcd07dd8f553acba6a08d0602b10ba13e303cbe9abf7d5d44f1d417727abcc14903a74e071abd652ce1bf76dd80a4e8030205e440069d10646f1bbfaeee88a2db218017941c5fa7280849126d2372fc64348087a70e029cad2882bba92fb7ecc8136475dae03169839eee05ff3ee3232d0136712f08b7210127b752f1d921131ed1acd1e09565794cb4c6f3e9f0def391483c6a99ef9c3ff3";
+const char     DNS_CHECKPOINTS_HOST[]                        = "127.0.0.1";
 
 const uint8_t  CURRENT_TRANSACTION_VERSION                   =  1;
 const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;

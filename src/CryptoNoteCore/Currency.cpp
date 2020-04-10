@@ -107,8 +107,8 @@ namespace CryptoNote {
 
 		m_genesisBlock.majorVersion = BLOCK_MAJOR_VERSION_1;
 		m_genesisBlock.minorVersion = BLOCK_MINOR_VERSION_0;
-		m_genesisBlock.timestamp = 0;
-		m_genesisBlock.nonce = 70;
+		m_genesisBlock.timestamp = 1586476800;
+		m_genesisBlock.nonce = 77;
 		if (m_testnet) {
 			++m_genesisBlock.nonce;
 		}
