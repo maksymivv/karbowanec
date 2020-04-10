@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbowanec developers
+// Copyright (c) 2016-2020, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -82,7 +82,7 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
 
     for (size_t i = 0; i < threadCount; ++i) {
       m_workers.emplace_back(std::unique_ptr<System::RemoteContext<void>> (
-        new System::RemoteContext<void>(m_dispatcher, std::bind(&Miner::workerFunc, this, blockMiningParameters.blockTemplate, blockMiningParameters.difficulty, (uint32_t)threadCount)))
+        new System::RemoteContext<void>(m_dispatcher, std::bind(&Miner::workerFunc, this, blockMiningParameters.blockTemplate, blockMiningParameters.difficulty, threadCount)))
       );
 
       blockMiningParameters.blockTemplate.nonce++;
@@ -101,11 +101,11 @@ void Miner::runWorkers(BlockMiningParameters blockMiningParameters, size_t threa
 void Miner::workerFunc(const Block& blockTemplate, difficulty_type difficulty, uint32_t nonceStep) {
   try {
     Block block = blockTemplate;
-    Crypto::cn_context cryptoContext;
-
+    Crypto::cn_context context;
+    
     while (m_state == MiningState::MINING_IN_PROGRESS) {
       Crypto::Hash hash;
-      if (!get_block_longhash(cryptoContext, block, hash)) {
+	  if (!get_block_longhash(context, block, hash)) {
         //error occured
         m_logger(Logging::DEBUGGING) << "calculating long hash error occured";
         m_state = MiningState::MINING_STOPPED;

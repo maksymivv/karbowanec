@@ -99,7 +99,6 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
   blockDetails.prevBlockHash = block.previousBlockHash;
   blockDetails.nonce = block.nonce;
   blockDetails.hash = hash;
-
   blockDetails.reward = 0;
   for (const TransactionOutput& out : block.baseTransaction.outputs) {
     blockDetails.reward += out.amount;
@@ -236,7 +235,6 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
   transactionDetails.size = getObjectBinarySize(transaction);
   transactionDetails.unlockTime = transaction.unlockTime;
   transactionDetails.totalOutputsAmount = get_outs_money_amount(transaction);
-
   uint64_t inputsAmount;
   if (!get_inputs_money_amount(transaction, inputsAmount)) {
     return false;
@@ -248,7 +246,7 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
     transactionDetails.fee = 0;
     transactionDetails.mixin = 0;
   } else {
-    uint64_t fee;
+    uint64_t fee = 0;
     if (!get_tx_fee(transaction, fee)) {
       return false;
     }
