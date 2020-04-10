@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2016, The Forknote developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -240,6 +240,19 @@ int main(int argc, char* argv[])
 
     CoreConfig coreConfig;
     coreConfig.init(vm);
+
+    // create folders
+    if (!coreConfig.configFolderDefaulted) {
+      if (!Tools::directoryExists(coreConfig.configFolder)) {
+        throw std::runtime_error("Directory does not exist: " + coreConfig.configFolder);
+      }
+    }
+    else {
+      if (!Tools::create_directories_if_necessary(coreConfig.configFolder)) {
+        throw std::runtime_error("Failed to create data directory: " + coreConfig.configFolder);
+      }
+    }
+
     NetNodeConfig netNodeConfig;
     netNodeConfig.init(vm);
     netNodeConfig.setTestnet(testnet_mode);
@@ -272,7 +285,7 @@ int main(int argc, char* argv[])
     }
     CryptoNote::Currency currency = currencyBuilder.currency();
     System::Dispatcher dispatcher;
-    CryptoNote::Core m_core(currency, nullptr, logManager, dispatcher, vm["enable-blockchain-indexes"].as<bool>());
+    CryptoNote::Core m_core(currency, nullptr, logManager, dispatcher, vm["enable-blockchain-indexes"].as<bool>(), coreConfig.configFolder);
 
     bool disable_checkpoints = command_line::get_arg(vm, arg_disable_checkpoints);
     if (!disable_checkpoints) {
