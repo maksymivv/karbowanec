@@ -390,16 +390,17 @@ void serializeBlockHeader(BlockHeader& header, ISerializer& serializer) {
 
   serializer(header.minorVersion, "minor_version");
   
-  if (header.majorVersion == BLOCK_MAJOR_VERSION_2 || header.majorVersion == BLOCK_MAJOR_VERSION_3) {
-    serializer(header.previousBlockHash, "prev_id");
-  } else if (header.majorVersion == BLOCK_MAJOR_VERSION_1 || header.majorVersion >= BLOCK_MAJOR_VERSION_4) {
+  // disable mm shit
+  //if (header.majorVersion == BLOCK_MAJOR_VERSION_2 || header.majorVersion == BLOCK_MAJOR_VERSION_3) {
+  //  serializer(header.previousBlockHash, "prev_id");
+  //} else if (header.majorVersion == BLOCK_MAJOR_VERSION_1 || header.majorVersion >= BLOCK_MAJOR_VERSION_4) {
     serializer(header.timestamp, "timestamp");
     serializer(header.previousBlockHash, "prev_id");
     serializer.binary(&header.nonce, sizeof(header.nonce), "nonce");
-  }
-  else {
-    throw std::runtime_error("Wrong major version");
-  }
+  //}
+  //else {
+  //  throw std::runtime_error("Wrong major version");
+  //}
 }
 
 void serialize(BlockHeader& header, ISerializer& serializer) {
@@ -409,10 +410,11 @@ void serialize(BlockHeader& header, ISerializer& serializer) {
 void serialize(Block& block, ISerializer& serializer) {
   serializeBlockHeader(block, serializer);
 
-  if (block.majorVersion == BLOCK_MAJOR_VERSION_2 || block.majorVersion == BLOCK_MAJOR_VERSION_3) {
-    auto parentBlockSerializer = makeParentBlockSerializer(block, false, false);
-    serializer(parentBlockSerializer, "parent_block");
-  }
+  // disable mm shit
+  //if (block.majorVersion == BLOCK_MAJOR_VERSION_2 || block.majorVersion == BLOCK_MAJOR_VERSION_3) {
+  //  auto parentBlockSerializer = makeParentBlockSerializer(block, false, false);
+  //  serializer(parentBlockSerializer, "parent_block");
+  //}
 
   serializer(block.baseTransaction, "miner_tx");
   serializer(block.transactionHashes, "tx_hashes");

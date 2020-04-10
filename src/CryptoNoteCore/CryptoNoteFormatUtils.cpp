@@ -514,14 +514,15 @@ bool get_block_hash(const Block& b, Hash& res) {
   }
 
   // The header of block version 1 differs from headers of blocks starting from v.2
-  if (BLOCK_MAJOR_VERSION_2 == b.majorVersion || BLOCK_MAJOR_VERSION_3 == b.majorVersion) {
+  // disable this merged mining stuff
+  /*if (BLOCK_MAJOR_VERSION_2 == b.majorVersion || BLOCK_MAJOR_VERSION_3 == b.majorVersion) {
     BinaryArray parent_blob;
     auto serializer = makeParentBlockSerializer(b, true, false);
     if (!toBinaryArray(serializer, parent_blob))
       return false;
 
     ba.insert(ba.end(), parent_blob.begin(), parent_blob.end());
-  }
+  }*/
 
   return getObjectHash(ba, res);
 }

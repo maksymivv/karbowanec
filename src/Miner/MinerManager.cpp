@@ -49,7 +49,8 @@ MinerEvent BlockchainUpdatedEvent() {
 }
 
 void adjustMergeMiningTag(Block& blockTemplate) {
-  if (blockTemplate.majorVersion == BLOCK_MAJOR_VERSION_2 || blockTemplate.majorVersion >= BLOCK_MAJOR_VERSION_3) {
+  // disable mm shit
+/*  if (blockTemplate.majorVersion == BLOCK_MAJOR_VERSION_2 || blockTemplate.majorVersion >= BLOCK_MAJOR_VERSION_3) {
     CryptoNote::TransactionExtraMergeMiningTag mmTag;
     mmTag.depth = 0;
     if (!CryptoNote::get_aux_block_header_hash(blockTemplate, mmTag.merkleRoot)) {
@@ -60,7 +61,7 @@ void adjustMergeMiningTag(Block& blockTemplate) {
     if (!CryptoNote::appendMergeMiningTagToExtra(blockTemplate.parentBlock.baseTransaction.extra, mmTag)) {
       throw std::runtime_error("Couldn't append merge mining tag");
     }
-  }
+  }*/
 }
 
 }
