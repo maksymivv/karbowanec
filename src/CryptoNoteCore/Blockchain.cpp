@@ -3468,7 +3468,6 @@ bool Blockchain::getBlockContainingTransaction(const Crypto::Hash& txId, Crypto:
     return false;
   }
   std::copy(s.begin(), s.end(), blockHash.data);
-  std::cout << "Block containing tx hash " << Common::podToHex(blockHash);
   
   blockId = blockHash;
   blockHeight = ti.block;
