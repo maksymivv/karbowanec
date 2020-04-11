@@ -503,20 +503,21 @@ namespace CryptoNote {
     // https://github.com/zawy12/difficulty-algorithms/issues/3
 
     // reset difficulty for new epoch
-    if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_2) + 1) {
-      return 100000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
-    }
-    uint32_t count = (uint32_t)difficultyBlocksCountByBlockVersion(blockMajorVersion);
-    if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_2) && height < CryptoNote::parameters::UPGRADE_HEIGHT_V2 + count) {
-      uint32_t offset = count - (height - upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_2));
-      timestamps.erase(timestamps.begin(), timestamps.begin() + offset);
-      cumulativeDifficulties.erase(cumulativeDifficulties.begin(), cumulativeDifficulties.begin() + offset);
-    }
+    //if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_2) + 1) {
+    //  return 10000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
+    //}
+
+    //uint32_t count = (uint32_t)difficultyBlocksCountByBlockVersion(blockMajorVersion);
+    //if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_2) && height < CryptoNote::parameters::UPGRADE_HEIGHT_V2 + count) {
+    //  uint32_t offset = count - (height - upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_2));
+    //  timestamps.erase(timestamps.begin(), timestamps.begin() + offset);
+    //  cumulativeDifficulties.erase(cumulativeDifficulties.begin(), cumulativeDifficulties.begin() + offset);
+    //}
 
     assert(timestamps.size() == cumulativeDifficulties.size());
 
     const int64_t T = static_cast<int64_t>(m_difficultyTarget);
-    uint64_t N = std::min<uint64_t>(difficultyBlocksCount(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
+    uint64_t N = cumulativeDifficulties.size() - 1; // adjust for new epoch difficulty reset, N should be by 1 block smaller
     uint64_t L(0), avg_D, next_D, i, this_timestamp(0), previous_timestamp(0);
 
     previous_timestamp = timestamps[0] - T;
