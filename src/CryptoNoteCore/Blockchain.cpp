@@ -2807,7 +2807,7 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
 
   // committing helps to keep memory usage low
   // commit every 1k blocks when syncing, on every block when was synced
-  if (!m_synchronized) {
+  if (isInCheckpointZone(getCurrentBlockchainHeight() || !m_synchronized) {
     if (block.height != 0 && block.height % 1000 == 0) { // no commit on genesis
       db_commit();
       logger(INFO, BRIGHT_MAGENTA) << "Blockchain synchronized to height " << block.height;
