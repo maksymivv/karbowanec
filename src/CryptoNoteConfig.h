@@ -45,35 +45,27 @@ const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V1          = 11;
 
 // MONEY_SUPPLY - total number coins to be generated
-const uint64_t MONEY_SUPPLY                                  = UINT64_C(10000000000000);
+const uint64_t MONEY_SUPPLY                                  = UINT64_C(100000000000); // one billion
+const uint64_t START_BLOCK_REWARD                            = UINT64_C(100000000);
 const uint64_t COIN                                          = UINT64_C(10);
-const uint64_t TAIL_EMISSION_REWARD                          = UINT64_C(10);
 const size_t CRYPTONOTE_COIN_VERSION                         = 1;
 const unsigned EMISSION_SPEED_FACTOR                         = 18;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
-const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE     = 1000000; //size of block (bytes) after which reward for block calculated using block size
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 100000;
+const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE     = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1; //size of block (bytes) after which reward for block calculated using block size
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
 const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 2;
 
-const uint64_t MINIMUM_FEE_V1                                = UINT64_C(1);
-const uint64_t MINIMUM_FEE_V2                                = UINT64_C(1);
-const uint32_t MINIMUM_FEE_V2_HEIGHT                         = 50;
-const uint64_t MINIMUM_FEE                                   = MINIMUM_FEE_V2;
+const uint64_t MINIMUM_FEE                                   = UINT64_C(1);
 const uint64_t MAXIMUM_FEE                                   = UINT64_C(10);
-
 const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(1);
-const uint64_t MIN_TX_MIXIN_SIZE                             = 2;
-const uint64_t MAX_TX_MIXIN_SIZE_V1                          = 50;
-const uint64_t MAX_TX_MIXIN_SIZE_V2                          = 20;
-const uint64_t MAX_TX_MIXIN_SIZE                             = MAX_TX_MIXIN_SIZE_V2;
-const uint32_t MIN_TX_MIXIN_V1_HEIGHT                        = 50;
-const uint32_t MIN_TX_MIXIN_V2_HEIGHT                        = 50;
-const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT / 4 - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
+const uint64_t MAX_TX_MIXIN_SIZE                             = 3;
+const uint64_t MIN_TX_MIXIN_SIZE                             = 1;
+const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 
 const size_t   DANDELION_EPOCH                               = 600;
 const size_t   DANDELION_STEMS                               = 2;
@@ -90,7 +82,7 @@ const uint64_t POISSON_CHECK_TRIGGER = 10; // Reorg size that triggers poisson t
 const uint64_t POISSON_CHECK_DEPTH = 60;   // Main-chain depth of the poisson check. The attacker will have to tamper 50% of those blocks
 const double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the probablity that the timestamps are genuine is below e^x, -75 = 10^-33
 
-const size_t   MAX_BLOCK_SIZE_INITIAL                        = 1000000;
+const size_t   MAX_BLOCK_SIZE_INITIAL                        = 100000;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 
@@ -105,11 +97,10 @@ const size_t   FUSION_TX_MAX_SIZE                            = CRYPTONOTE_BLOCK_
 const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
 
-const uint32_t UPGRADE_HEIGHT_V2                             = 10;
-const uint32_t UPGRADE_HEIGHT_V3                             = 16;
-const uint32_t UPGRADE_HEIGHT_V4                             = 26;
-const uint32_t UPGRADE_HEIGHT_LWMA3                          = 30;
-const uint32_t UPGRADE_HEIGHT_V5                             = 50;
+const uint32_t UPGRADE_HEIGHT_V2                             = 1000;
+const uint32_t UPGRADE_HEIGHT_V3                             = 4294967294;
+const uint32_t UPGRADE_HEIGHT_V4                             = 4294967294;
+const uint32_t UPGRADE_HEIGHT_V5                             = 4294967294;
 const unsigned UPGRADE_VOTING_THRESHOLD                      = 90; // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -155,7 +146,7 @@ const uint8_t  P2P_VERSION_1                                 = 1;
 const uint8_t  P2P_VERSION_2                                 = 2;
 const uint8_t  P2P_VERSION_3                                 = 3;
 const uint8_t  P2P_VERSION_4                                 = 4;
-const uint8_t  P2P_CURRENT_VERSION                           = P2P_VERSION_4;
+const uint8_t  P2P_CURRENT_VERSION                           = P2P_VERSION_1;
 const uint8_t  P2P_MINIMUM_VERSION                           = 1;
 
 // This defines the number of versions ahead we must see peers before
@@ -184,18 +175,6 @@ const uint32_t P2P_IDLE_CONNECTION_KILL_INTERVAL             = (5 * 60);      //
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
 
 const char* const SEED_NODES[] = { 
-  /*"seed1.karbowanec.com:32347",
-  "seed2.karbowanec.com:32347",
-  "seed.karbo.cloud:32347",
-  "seed.karbo.org:32347",
-  "seed.karbo.io:32347",
-  "185.86.78.40:32347",
-  "108.61.198.115:32347",
-  "45.32.232.11:32347",
-  "46.149.182.151:32347",
-  "144.91.94.65:32347",
-  "95.216.195.104:32347"
-*/
   "46.149.182.151:12347"
 };
 

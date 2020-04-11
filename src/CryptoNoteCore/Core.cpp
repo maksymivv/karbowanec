@@ -284,16 +284,8 @@ bool Core::check_tx_mixin(const Transaction& tx, uint32_t height) {
     assert(inputIndex < tx.signatures.size());
     if (txin.type() == typeid(KeyInput)) {
       uint64_t txMixin = boost::get<KeyInput>(txin).outputIndexes.size();
-      if ((height > CryptoNote::parameters::MIN_TX_MIXIN_V1_HEIGHT &&
-           height < CryptoNote::parameters::MIN_TX_MIXIN_V2_HEIGHT &&
-           txMixin > CryptoNote::parameters::MAX_TX_MIXIN_SIZE_V1) ||
-          (height > CryptoNote::parameters::MIN_TX_MIXIN_V2_HEIGHT &&
-           txMixin > CryptoNote::parameters::MAX_TX_MIXIN_SIZE_V2)) {
+      if (txMixin > m_currency.maxMixin()) {
         logger(ERROR) << "Transaction " << getObjectHash(tx) << " has too large mixIn count, rejected";
-        return false;
-      }
-      if (getCurrentBlockMajorVersion() >= BLOCK_MAJOR_VERSION_4 && txMixin < m_currency.minMixin() && txMixin != 1) {
-        logger(ERROR) << "Transaction " << getObjectHash(tx) << " has mixIn count below the required minimum, rejected";
         return false;
       }
       ++inputIndex;
@@ -321,28 +313,17 @@ bool Core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
   Crypto::Hash h = NULL_HASH;
   getObjectHash(tx, h, blobSize);
   const uint64_t fee = inputs_amount - outputs_amount;
-  bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
-  bool enough = true;
-  if (!isFusionTransaction && !m_checkpoints.is_in_checkpoint_zone(getCurrentBlockchainHeight())) {
-    if (getBlockMajorVersionForHeight(height) < BLOCK_MAJOR_VERSION_4) {
-      if (fee < CryptoNote::parameters::MINIMUM_FEE_V1) {
-        logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(CryptoNote::parameters::MINIMUM_FEE_V1);
-        enough = false;
-      }
-    } else {
-      uint64_t min = getMinimalFeeForHeight(height);
-      if (fee < (min - min * 20 / 100)) {
-        logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(min);
-        enough = false;
-      }
-    }
-
-    if (!enough) {
+  // will use this for deposits
+  //bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
+  //if (!isFusionTransaction) {
+    uint64_t min = m_currency.minimumFee();
+    if (fee < min) {
+      logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(min);
       tvc.m_verification_failed = true;
       tvc.m_tx_fee_too_small = true;
       return false;
     }
-  }
+  //}
 
   return true;
 }
@@ -1182,14 +1163,6 @@ difficulty_type Core::getAvgDifficulty(uint32_t height) {
   return m_blockchain.getAvgDifficulty(height);
 }
 
-uint64_t Core::getMinimalFee() {
-  return getMinimalFeeForHeight(getCurrentBlockchainHeight() - 1);
-}
-
-uint64_t Core::getMinimalFeeForHeight(uint32_t height) {
-	return m_blockchain.getMinimalFee(height);
-}
-
 std::error_code Core::executeLocked(const std::function<std::error_code()>& func) {
   std::lock_guard<decltype(m_mempool)> lk(m_mempool);
   LockedBlockchainStorage lbs(m_blockchain);
@@ -1243,9 +1216,9 @@ bool Core::handleIncomingTransaction(const Transaction& tx, const Crypto::Hash& 
       logger(INFO) << "Transaction verification failed: mixin count for transaction " << txHash << " is too large, rejected";
       tvc.m_verification_failed = true;
       return false;
-    }
+    }*/
 
-    if (!check_tx_unmixable(tx, height)) {
+    /*if (!check_tx_unmixable(tx, height)) {
       logger(ERROR) << "Transaction verification failed: unmixable output for transaction " << txHash << ", rejected";
       tvc.m_verification_failed = true;
       return false;

@@ -431,7 +431,7 @@ uint64_t InProcessNode::getLastLocalBlockTimestamp() const {
 
 uint64_t InProcessNode::getMinimalFee() const {
   std::unique_lock<std::mutex> lock(mutex);
-  return core.getMinimalFee();
+  return CryptoNote::parameters::MINIMUM_FEE;
 }
 
 uint64_t InProcessNode::getNextDifficulty() const {
