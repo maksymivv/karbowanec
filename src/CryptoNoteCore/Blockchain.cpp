@@ -3440,8 +3440,10 @@ bool Blockchain::getTransactionIndex(const Crypto::Hash& txId, TransactionIndex&
   BinaryArray ba;
   if (!m_db.get(TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(txId.data, sizeof(txId.data)), ba))
     return false;
-  if (!fromBinaryArray(index, ba))
+  if (!fromBinaryArray(index, ba)) {
+    throw std::runtime_error("Blockchain::getTransactionIndex, failed to parse entry from DB");
     return false;
+  }
 
   return true;
 }
@@ -3458,12 +3460,9 @@ bool Blockchain::getBlockContainingTransaction(const Crypto::Hash& txId, Crypto:
   }*/
 
   TransactionIndex ti;
-  if (!getTransactionIndex(txId, ti)) {
-    logger(ERROR, RED) <<
-      "Couldn't get from DB transaction index " << Common::podToHex(txId);
+  if (!getTransactionIndex(txId, ti))
     return false;
-  }
-
+  
   std::string s;
   Crypto::Hash blockHash = NULL_HASH;
   if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(ti.block), s)) {
