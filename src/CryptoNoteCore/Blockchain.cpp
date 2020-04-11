@@ -3456,20 +3456,29 @@ bool Blockchain::getBlockContainingTransaction(const Crypto::Hash& txId, Crypto:
     return true;
   }*/
 
-  BinaryArray ba;
-  if (!m_db.get(TRANSACTIONS_INDEX_PREFIX + DB::to_binary_key(txId.data, sizeof(txId.data)), ba))
-    return false;
   TransactionIndex ti;
-  if (!fromBinaryArray(ti, ba))
+  if (!getTransactionIndex(txId, ti)) {
+    logger(ERROR, RED) <<
+      "Couldn't get from DB transaction index " << Common::podToHex(txId);
     return false;
-  
-  std::string s;
-  Crypto::Hash bid;
-  if(!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(ti.block), s))
-    return false;
-  Common::podFromHex(s, bid);
+  }
 
-  auto key = BLOCK_PREFIX + DB::to_binary_key(bid.data, sizeof(bid.data)) + BLOCK_SUFFIX;
+  std::string s;
+  Crypto::Hash blockHash = NULL_HASH;
+  if (!m_db.get(BLOCK_INDEX_PREFIX + Common::write_varint_sqlite4(ti.block), s)) {
+    throw std::runtime_error("Blockchain::getBlockContainingTransaction, failed to get block index entry from DB");
+    return false;
+  }
+  std::copy(s.begin(), s.end(), blockHash.data);
+  std::cout << "Block containing tx hash " << Common::podToHex(blockHash);
+  
+  blockId = blockHash;
+  blockHeight = ti.block;
+  return true;
+
+  // this sanity check may be skipped
+  /*BinaryArray ba;
+  auto key = BLOCK_PREFIX + DB::to_binary_key(blockHash.data, sizeof(blockHash.data)) + BLOCK_SUFFIX;
   if (!m_db.get(key, ba))
     return false;
   BlockEntry e;
@@ -3477,13 +3486,13 @@ bool Blockchain::getBlockContainingTransaction(const Crypto::Hash& txId, Crypto:
       return false;
   
   if (e.bl.transactionHashes[ti.transaction] == txId) {
-    blockId = bid;
-    blockHeight = ti.block;
+    blockId = blockHash;
+    blockHeight = e.height;
 
     return true;
   }
 
-  return false;
+  return false;*/
 }
 
 bool Blockchain::getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& generatedCoins) {
