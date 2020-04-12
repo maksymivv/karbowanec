@@ -29,7 +29,7 @@ struct CheckpointData {
 };
 
 const std::initializer_list<CheckpointData> CHECKPOINTS = { 
-  {  3436,  "fa0348c379f63af68304f9f256ea99cc8560eda5a25740dc7ff94631fc7fcf5d" },
+  /*{  3436,  "fa0348c379f63af68304f9f256ea99cc8560eda5a25740dc7ff94631fc7fcf5d" },
   { 16970,  "456e43e923a02516559d89f567c3fa2068051a9fdac562a937eeaaaf3e9aab46" },
   { 60001,  "8e39967eb50b8a922cbfe22fe02989218345cbd61ae651ddbecf00834910ff50" },
   { 98466,  "2a4f9183e801849c2b6b4a12324889efe3f22297c2ac8511c0644007eab9c728" },
@@ -64,7 +64,7 @@ const std::initializer_list<CheckpointData> CHECKPOINTS = {
   {383350,  "ae683f6f8f784dd5661214533a8ab443ec9908f512daafac791726e00c209d41" },
   {402737,  "aa1d5c7a172c02d63465d67d2f8c92e79ff6e0668e16e63abd1ad97189abc022" },
   {433960,  "ff92f9decd1e617054d121ddf26c315698a125e2d3254e0af07bac83ec81bbb1" },
-  {447500,  "e4a5b3d01ebea63a5cf40ae6c379585bdf3969e2097b7e746885cd8e2169b8f9" }
+  {447500,  "e4a5b3d01ebea63a5cf40ae6c379585bdf3969e2097b7e746885cd8e2169b8f9" }*/
 };
   
 }

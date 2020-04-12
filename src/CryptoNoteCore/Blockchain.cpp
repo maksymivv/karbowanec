@@ -515,7 +515,7 @@ bool Blockchain::loadMinersFromFile(const std::string& fileName) {
     }
   }
 
-  logger(Logging::INFO) << "Loaded " << count << " blessed miner(s) from " << fileName;
+  logger(Logging::INFO) << "Loaded " << count << " anointed miner(s) from " << fileName;
   file.close();
 
   return true;
@@ -646,7 +646,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     m_miners.insert(std::make_pair(a, bmd));
   }
   
-  logger(INFO) << "Loaded hardcoded blessed miner(s)...";
+  logger(INFO) << "Loaded hardcoded anointed miner(s)...";
 
   if (!loadMinersFromFile(CryptoNote::parameters::BLESSED_MINERS_CONFIG_FILE_NAME)) {
     return false;
@@ -1171,7 +1171,7 @@ bool Blockchain::checkAllowedMiner(const Transaction& tx) {
 
     if (CryptoNote::findOutputsToAccount(transaction, acc, miner.second.viewKey, out, amount) &&
       amount != 0 && out.size() != 0) { // found allowed miner
-     // check if its permit is not expired
+      // check if its permit is not expired
       if (miner.second.expirationHeight != 0 && getCurrentBlockchainHeight() > miner.second.expirationHeight) {
         logger(ERROR, BRIGHT_RED) << "Mining permit expired for " << miner.first;
         return false;
@@ -1184,6 +1184,7 @@ bool Blockchain::checkAllowedMiner(const Transaction& tx) {
       }
 
       uint64_t stake = total - spent;
+      logger(DEBUGGING) << "Miner's stake " << Common::Format::formatAmount(stake);
       if (stake < CryptoNote::parameters::MINER_STAKE_AMOUNT) {
         logger(ERROR, BRIGHT_RED) << "Insufficient miner's stake " << Common::Format::formatAmount(stake)
           << " minimum is " << Common::Format::formatAmount(CryptoNote::parameters::MINER_STAKE_AMOUNT);
@@ -1201,19 +1202,19 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 
   if (!(b.baseTransaction.inputs.size() == 1)) {
     logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction in the block has no inputs";
+      << "Coinbase transaction in the block has no inputs";
     return false;
   }
 
   if (!(b.baseTransaction.signatures.empty())) {
     logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction in the block shouldn't have signatures";
+      << "Coinbase transaction in the block shouldn't have signatures";
     return false;
   }
 
   if (!(b.baseTransaction.inputs[0].type() == typeid(BaseInput))) {
     logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction in the block has the wrong type";
+      << "Coinbase transaction in the block has the wrong type";
     return false;
   }
 
@@ -1225,19 +1226,20 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 
   if (!(b.baseTransaction.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
     logger(ERROR, BRIGHT_RED)
-      << "coinbase transaction transaction have wrong unlock time="
+      << "Coinbase transaction transaction have wrong unlock time="
       << b.baseTransaction.unlockTime << ", expected "
       << height + m_currency.minedMoneyUnlockWindow();
     return false;
   }
 
   if (!check_outs_overflow(b.baseTransaction)) {
-    logger(ERROR, BRIGHT_RED) << "miner transaction have money overflow in block " << get_block_hash(b);
+    logger(ERROR, BRIGHT_RED) << "The miner transaction have money overflow in block " << get_block_hash(b);
     return false;
   }
 
   // only selected miners allowed to mine blocks
-  if (!checkAllowedMiner(b.baseTransaction)) {
+  // skip this check under checkpoints
+  if (!isInCheckpointZone(getCurrentBlockchainHeight()) && !checkAllowedMiner(b.baseTransaction)) {
     logger(ERROR, BRIGHT_RED) << "Unauthorized miner of block " << height;
     return false;
   }
