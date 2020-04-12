@@ -23,7 +23,22 @@
 #include <numeric>
 #include <cstdio>
 #include <cmath>
+
+#include <cstdlib>
+#include <fstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <iterator>
+#include <cstring>
+#include <string>
+#include <string.h>
+#include <sstream>
+
 #include <boost/foreach.hpp>
+
+#include "../Miners.h"
+
 #include "Common/Math.h"
 #include "Common/int-util.h"
 #include "Common/ShuffleGenerator.h"
@@ -439,6 +454,69 @@ uint32_t Blockchain::getCurrentBlockchainHeight() {
   return static_cast<uint32_t>(m_blocks.size());
 }
 
+bool Blockchain::loadMinersFromFile(const std::string& fileName) {
+  std::ifstream file(fileName);
+  if (!file) {
+    logger(Logging::ERROR, BRIGHT_RED) << "Could not load " << fileName;
+    return false;
+  }
+  if (file.peek() == std::ifstream::traits_type::eof()) {
+    logger(Logging::ERROR, BRIGHT_RED) << "Empty " << fileName;
+    return false;
+  }
+
+  std::string line;
+  int count = 0;
+  while (std::getline(file, line))
+  {
+    std::stringstream ss(line);
+    std::string addr, key, proof, exp_str;
+    uint32_t expire;
+    std::getline(ss, addr, ',');
+    std::getline(ss, key, ',');
+    std::getline(ss, proof, ',');
+    std::getline(ss, exp_str, ',');
+    try {
+      expire = std::stoi(exp_str);
+    }
+    catch (const std::invalid_argument &) {
+      logger(ERROR, BRIGHT_RED) << "Invalid " << fileName << " format - "
+        << "could not parse height as a number";
+      return false;
+    }
+
+    AccountPublicAddress acc;
+    uint64_t prefix;
+    if (CryptoNote::parseAccountAddressString(prefix, acc, addr)) {
+      BlessedMinerData bmd;
+      Crypto::Hash key_hash;
+      size_t size;
+      if (!Common::fromHex(key, &key_hash, sizeof(key_hash), size) || size != sizeof(key_hash)) {
+        logger(ERROR, BRIGHT_RED) << "Invalid " << fileName << " format - "
+          << "could not parse view key";
+        return false;
+      }
+      bmd.viewKey = *(struct Crypto::SecretKey *) &key_hash;
+      bmd.reserveProof = proof; // TODO check proof
+      bmd.expirationHeight = expire;
+      auto result = m_miners.insert(std::make_pair(addr, bmd));
+      if (!result.second) {
+        logger(ERROR, BRIGHT_RED) << "Duplicate entry in " << fileName;
+        return false;
+      }
+      count++;
+    }
+    else {
+      logger(ERROR, BRIGHT_RED) << "Invalid " << fileName << " format - "
+        << "could not parse address";
+      return false;
+    }
+  }
+  logger(Logging::INFO) << "Loaded " << count << " blessed miners from " << fileName;
+  file.close();
+}
+
+
 bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (!config_folder.empty() && !Tools::create_directories_if_necessary(config_folder)) {
@@ -544,6 +622,33 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     << "Blockchain initialized. last block: " << m_blocks.size() - 1 << ", "
     << Common::timeIntervalToString(timestamp_diff)
     << " time ago, current difficulty: " << getDifficultyForNextBlock();
+
+  // init blessed miners
+  for (const auto& m : CryptoNote::BLESSED_MINERS) {
+    BlessedMinerData bmd;
+    bmd.expirationHeight = 0;
+    //bmd.viewKey = *reinterpret_cast<Crypto::SecretKey*>(*m.viewKey);
+    std::string a(m.address);
+    std::string s(m.viewKey);
+    std::string p(m.reserveProof);
+    Crypto::Hash key_hash;
+    size_t size;
+    if (!Common::fromHex(s, &key_hash, sizeof(key_hash), size) || size != sizeof(key_hash)) {
+      return false;
+    }
+    bmd.viewKey = *(struct Crypto::SecretKey *) &key_hash;
+    bmd.reserveProof = p;
+    bmd.expirationHeight = 0;
+    m_miners.insert(std::make_pair(a, bmd));
+  }
+  
+  logger(INFO, BRIGHT_GREEN) << "Loaded hardcoded blessed miner(s)...";
+
+  if (!loadMinersFromFile(CryptoNote::parameters::BLESSED_MINERS_CONFIG_FILE_NAME)) {
+    return false;
+  }
+
+
   return true;
 }
 

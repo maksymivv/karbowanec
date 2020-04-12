@@ -299,6 +299,21 @@ namespace CryptoNote {
 
     Logging::LoggerRef logger;
 
+    struct BlessedMinerData {
+      Crypto::SecretKey viewKey;
+      std::string reserveProof;
+      uint32_t expirationHeight;
+
+      void serialize(ISerializer& s) {
+        s(viewKey, "view_key");
+        s(reserveProof, "reserve_proof");
+        s(expirationHeight, "expiration_height");
+      }
+    };
+
+    typedef std::unordered_map<std::string, BlessedMinerData> BlessedMinersContainer;
+    BlessedMinersContainer m_miners;
+
     bool switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::iterator>& alt_chain, bool discard_disconnected_chain);
     bool handle_alternative_block(const Block& b, const Crypto::Hash& id, block_verification_context& bvc, bool sendNewAlternativeBlockMessage = true);
     difficulty_type get_next_difficulty_for_alternative_chain(const std::list<blocks_ext_by_hash::iterator>& alt_chain, BlockEntry& bei);
@@ -340,6 +355,8 @@ namespace CryptoNote {
     void saveTransactions(const std::vector<Transaction>& transactions);
 
     void sendMessage(const BlockchainMessage& message);
+
+    bool loadMinersFromFile(const std::string& fileName);
 
     friend class LockedBlockchainStorage;
   };

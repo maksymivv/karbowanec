@@ -20,6 +20,7 @@
 
 #include <sstream>
 #include <unordered_set>
+
 #include <boost/utility/value_init.hpp>
 #include <boost/range/combine.hpp>
 #include "../CryptoNoteConfig.h"
