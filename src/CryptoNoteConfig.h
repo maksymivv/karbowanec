@@ -47,6 +47,7 @@ const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V1          = 11;
 // MONEY_SUPPLY - total number coins to be generated
 const uint64_t MONEY_SUPPLY                                  = UINT64_C(100000000000); // one billion
 const uint64_t START_BLOCK_REWARD                            = UINT64_C(100000000);
+const uint64_t MINER_STAKE_AMOUNT                            = UINT64_C(100000);
 const uint64_t COIN                                          = UINT64_C(10);
 const size_t CRYPTONOTE_COIN_VERSION                         = 1;
 const unsigned EMISSION_SPEED_FACTOR                         = 18;

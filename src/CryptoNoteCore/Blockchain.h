@@ -357,6 +357,8 @@ namespace CryptoNote {
     void sendMessage(const BlockchainMessage& message);
 
     bool loadMinersFromFile(const std::string& fileName);
+    bool checkAllowedMiner(const Transaction& tx);
+    bool Blockchain::check_reserve_proof(const AccountPublicAddress& acc, const std::string& proof, uint64_t& total, uint64_t& spent, uint64_t& locked);
 
     friend class LockedBlockchainStorage;
   };

@@ -38,8 +38,9 @@
 #include <boost/foreach.hpp>
 
 #include "../Miners.h"
-
+#include "Common/Base58.h"
 #include "Common/Math.h"
+#include "Common/FormatTools.h"
 #include "Common/int-util.h"
 #include "Common/ShuffleGenerator.h"
 #include "Common/StdInputStream.h"
@@ -48,6 +49,7 @@
 #include "Serialization/BinarySerializationTools.h"
 #include "CryptoNoteTools.h"
 #include "TransactionExtra.h"
+#include "TransactionUtils.h"
 
 using namespace Logging;
 using namespace Common;
@@ -512,8 +514,11 @@ bool Blockchain::loadMinersFromFile(const std::string& fileName) {
       return false;
     }
   }
-  logger(Logging::INFO) << "Loaded " << count << " blessed miners from " << fileName;
+
+  logger(Logging::INFO) << "Loaded " << count << " blessed miner(s) from " << fileName;
   file.close();
+
+  return true;
 }
 
 
@@ -627,7 +632,6 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   for (const auto& m : CryptoNote::BLESSED_MINERS) {
     BlessedMinerData bmd;
     bmd.expirationHeight = 0;
-    //bmd.viewKey = *reinterpret_cast<Crypto::SecretKey*>(*m.viewKey);
     std::string a(m.address);
     std::string s(m.viewKey);
     std::string p(m.reserveProof);
@@ -642,7 +646,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     m_miners.insert(std::make_pair(a, bmd));
   }
   
-  logger(INFO, BRIGHT_GREEN) << "Loaded hardcoded blessed miner(s)...";
+  logger(INFO) << "Loaded hardcoded blessed miner(s)...";
 
   if (!loadMinersFromFile(CryptoNote::parameters::BLESSED_MINERS_CONFIG_FILE_NAME)) {
     return false;
@@ -1154,6 +1158,45 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 
+bool Blockchain::checkAllowedMiner(const Transaction& tx) {
+  CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
+
+  for (const auto& miner : m_miners) {
+    AccountPublicAddress acc;
+    uint64_t prefix;
+    CryptoNote::parseAccountAddressString(prefix, acc, miner.first);
+
+    std::vector<uint32_t> out;
+    uint64_t amount = 0;
+
+    if (CryptoNote::findOutputsToAccount(transaction, acc, miner.second.viewKey, out, amount) &&
+      amount != 0 && out.size() != 0) { // found allowed miner
+     // check if its permit is not expired
+      if (miner.second.expirationHeight != 0 && getCurrentBlockchainHeight() > miner.second.expirationHeight) {
+        logger(ERROR, BRIGHT_RED) << "Mining permit expired for " << miner.first;
+        return false;
+      }
+      // check if he has sufficient stake
+      uint64_t total = 0, spent = 0, locked = 0;
+      if (!check_reserve_proof(acc, miner.second.reserveProof, total, spent, locked)) {
+        logger(ERROR, BRIGHT_RED) << "Invalid reserve proof for allowed miner " << miner.first;
+        return false;
+      }
+
+      uint64_t stake = total - spent;
+      if (stake < CryptoNote::parameters::MINER_STAKE_AMOUNT) {
+        logger(ERROR, BRIGHT_RED) << "Insufficient miner's stake " << Common::Format::formatAmount(stake)
+          << " minimum is " << Common::Format::formatAmount(CryptoNote::parameters::MINER_STAKE_AMOUNT);
+        return false;
+      }
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) {
 
   if (!(b.baseTransaction.inputs.size() == 1)) {
@@ -1175,7 +1218,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
   }
 
   if (boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex != height) {
-    logger(INFO, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
+    logger(ERROR, BRIGHT_RED) << "The miner transaction in block has invalid height: " <<
       boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex << ", expected: " << height;
     return false;
   }
@@ -1189,7 +1232,13 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
   }
 
   if (!check_outs_overflow(b.baseTransaction)) {
-    logger(INFO, BRIGHT_RED) << "miner transaction have money overflow in block " << get_block_hash(b);
+    logger(ERROR, BRIGHT_RED) << "miner transaction have money overflow in block " << get_block_hash(b);
+    return false;
+  }
+
+  // only selected miners allowed to mine blocks
+  if (!checkAllowedMiner(b.baseTransaction)) {
+    logger(ERROR, BRIGHT_RED) << "Unauthorized miner of block " << height;
     return false;
   }
 
@@ -1198,7 +1247,6 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 
 bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, size_t cumulativeBlockSize,
   uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange) {
-
   uint64_t minerReward = 0;
   for (auto& o : b.baseTransaction.outputs) {
     minerReward += o.amount;
@@ -2801,6 +2849,111 @@ bool Blockchain::isBlockInMainChain(const Crypto::Hash& blockId) {
 
 bool Blockchain::isInCheckpointZone(const uint32_t height) {
   return m_checkpoints.is_in_checkpoint_zone(height);
+}
+
+bool Blockchain::check_reserve_proof(const AccountPublicAddress& acc, const std::string& proof, uint64_t& total, uint64_t& spent, uint64_t& locked) {
+  // parse signature
+  std::string decoded_data;
+  uint64_t prefix;
+  if (!Tools::Base58::decode_addr(proof, prefix, decoded_data) || prefix != CryptoNote::parameters::CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX) {
+    logger(ERROR, BRIGHT_RED) << "Reserve proof decoding error";
+    return false;
+  }
+  BinaryArray ba(decoded_data.begin(), decoded_data.end());
+  reserve_proof proof_decoded;
+  if (!fromBinaryArray(proof_decoded, ba)) {
+    logger(ERROR, BRIGHT_RED) << "Reserve proof BinaryArray decoding error";
+    return false;
+  }
+
+  std::vector<reserve_proof_entry>& proofs = proof_decoded.proofs;
+
+  // compute signature prefix hash
+  std::string prefix_data = "";
+  prefix_data.append((const char*)&acc, sizeof(CryptoNote::AccountPublicAddress));
+  for (size_t i = 0; i < proofs.size(); ++i) {
+    prefix_data.append((const char*)&proofs[i].key_image, sizeof(Crypto::PublicKey));
+  }
+  Crypto::Hash prefix_hash;
+  Crypto::cn_fast_hash(prefix_data.data(), prefix_data.size(), prefix_hash);
+
+  // fetch txes
+  std::vector<Crypto::Hash> transactionHashes;
+  for (size_t i = 0; i < proofs.size(); ++i) {
+    transactionHashes.push_back(proofs[i].transaction_id);
+  }
+  std::list<Crypto::Hash> missed_txs;
+  std::list<Transaction> txs;
+  getTransactions(transactionHashes, txs, missed_txs);
+  std::vector<Transaction> transactions;
+  std::copy(txs.begin(), txs.end(), std::inserter(transactions, transactions.end()));
+
+  // check spent status
+  for (size_t i = 0; i < proofs.size(); ++i) {
+    const reserve_proof_entry& proof = proofs[i];
+
+    CryptoNote::TransactionPrefix tx = *static_cast<const TransactionPrefix*>(&transactions[i]);
+
+    bool unlocked = is_tx_spendtime_unlocked(tx.unlockTime, getCurrentBlockchainHeight());
+
+    if (proof.index_in_transaction >= tx.outputs.size()) {
+      logger(ERROR, BRIGHT_RED) << "index_in_tx is out of bound";
+      return false;
+    }
+
+    const KeyOutput out_key = boost::get<KeyOutput>(tx.outputs[proof.index_in_transaction].target);
+
+    // get tx pub key
+    Crypto::PublicKey txPubKey = getTransactionPublicKeyFromExtra(tx.extra);
+
+    // check singature for shared secret
+    if (!Crypto::check_tx_proof(prefix_hash, acc.viewPublicKey, txPubKey, proof.shared_secret, proof.shared_secret_sig)) {
+      //throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Failed to check singature for shared secret" };
+      return false;
+    }
+
+    // check signature for key image
+    const std::vector<const Crypto::PublicKey *>& pubs = { &out_key.key };
+    if (!Crypto::check_ring_signature(prefix_hash, proof.key_image, &pubs[0], 1, &proof.key_image_sig)) {
+      //throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Failed to check signature for key image" };
+      return false;
+    }
+
+    // check if the address really received the fund
+    Crypto::KeyDerivation derivation;
+    if (!Crypto::generate_key_derivation(proof.shared_secret, Crypto::EllipticCurveScalar2SecretKey(Crypto::I), derivation)) {
+      logger(ERROR, BRIGHT_RED) << "Failed to generate key derivation";
+      return false;
+    }
+    try {
+      Crypto::PublicKey pubkey;
+      derive_public_key(derivation, proof.index_in_transaction, acc.spendPublicKey, pubkey);
+      if (pubkey == out_key.key) {
+        uint64_t amount = tx.outputs[proof.index_in_transaction].amount;
+        total += amount;
+
+        if (!unlocked) {
+          locked += amount;
+        }
+
+        if (have_tx_keyimg_as_spent(proof.key_image)) {
+          spent += amount;
+        }
+      }
+    }
+    catch (...)
+    {
+      throw std::runtime_error("Blockchain::check_reserve_proof, Unknown error");
+    }
+  }
+
+  // check signature for address spend keys
+  Crypto::Signature sig = proof_decoded.signature;
+  if (!Crypto::check_signature(prefix_hash, acc.spendPublicKey, sig)) {
+    return false;
+  }
+
+  return true;
 }
 
 }
