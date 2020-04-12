@@ -7,7 +7,7 @@
 
 #pragma once
 #include <string.h>
-#include <fenv.h>
+#include <cfenv>
 
 #include "keccak.h"
 #include "hash.h"
