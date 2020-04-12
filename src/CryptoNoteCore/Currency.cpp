@@ -107,8 +107,8 @@ namespace CryptoNote {
 
 		m_genesisBlock.majorVersion = BLOCK_MAJOR_VERSION_1;
 		m_genesisBlock.minorVersion = BLOCK_MINOR_VERSION_0;
-		m_genesisBlock.timestamp = 1586476800;
-		m_genesisBlock.nonce = 77;
+		m_genesisBlock.timestamp = GENESIS_TIMESTAMP;
+		m_genesisBlock.nonce = GENESIS_NONCE;
 		if (m_testnet) {
 			++m_genesisBlock.nonce;
 		}
@@ -144,14 +144,14 @@ namespace CryptoNote {
 		}
 	}
 
-	bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
+	bool Currency::getBlockReward(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
 		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
 		
 		// Initial emission
     // the 1000000 coins in first 1000 blocks
     // only fees later
-    uint64_t baseReward = blockMajorVersion == 1 ? CryptoNote::parameters::START_BLOCK_REWARD : 0;
-
+    // zero in genesis
+    uint64_t baseReward = height == 0 ? 0 : (blockMajorVersion == 1 ? CryptoNote::parameters::START_BLOCK_REWARD : 0/*here can define other variants*/);
 
 		size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
 		medianSize = std::max(medianSize, blockGrantedFullRewardZone);
@@ -200,7 +200,7 @@ namespace CryptoNote {
 
 		uint64_t blockReward;
 		int64_t emissionChange;
-		if (!getBlockReward(blockMajorVersion, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
+		if (!getBlockReward(blockMajorVersion, height, medianSize, currentBlockSize, alreadyGeneratedCoins, fee, blockReward, emissionChange)) {
 			logger(INFO) << "Block is too big";
 			return false;
 		}
@@ -578,7 +578,7 @@ namespace CryptoNote {
 	Transaction CurrencyBuilder::generateGenesisTransaction() {
 		CryptoNote::Transaction tx;
 		CryptoNote::AccountPublicAddress ac = boost::value_initialized<CryptoNote::AccountPublicAddress>();
-		m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx, BinaryArray(), 100); // zero fee in genesis
+		m_currency.constructMinerTx(1, 0, 0, 0, 0, 0, ac, tx, BinaryArray(), 1); // zero fee in genesis
 		return tx;
 	}
 	CurrencyBuilder& CurrencyBuilder::emissionSpeedFactor(unsigned int val) {

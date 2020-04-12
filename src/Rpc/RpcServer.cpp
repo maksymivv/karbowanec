@@ -662,7 +662,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   uint64_t sizeMedian = Common::medianValue(blocksSizes);
   uint64_t nextReward = 0;
   int64_t emissionChange = 0;
-  if (!m_core.getBlockReward(res.block_major_version, sizeMedian, 0, alreadyGeneratedCoins, 0, nextReward, emissionChange)) {
+  if (!m_core.getBlockReward(res.block_major_version, res.height, sizeMedian, 0, alreadyGeneratedCoins, 0, nextReward, emissionChange)) {
     throw JsonRpc::JsonRpcError{
       CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get already generated coins for prev. block." };
   }

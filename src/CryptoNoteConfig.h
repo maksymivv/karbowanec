@@ -114,11 +114,13 @@ const char     CRYPTONOTE_POOLDATA_FILENAME[]                = "poolstate.bin";
 const char     P2P_NET_DATA_FILENAME[]                       = "p2pstate.bin";
 const char     CRYPTONOTE_BLOCKCHAIN_INDICES_FILENAME[]      = "blockchainindices.dat";
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
+const char     MINERS_CONFIG_FILE_NAME[]                     = "miners.conf";
 } // parameters
 
 const char     CRYPTONOTE_NAME[]                             = "krbcoin";
-//const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
-const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff000802029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd08807146022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa7091684070252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d6f02e02b8ed916c56b3a99c9cdf22c7be7ec4e85587e5d40bc46bf6995313c288ad841ec0b802021b452b4ac6c6419e06181f8c9f0734bd5bb132d8b75b44bbcd07dd8f553acba6a08d0602b10ba13e303cbe9abf7d5d44f1d417727abcc14903a74e071abd652ce1bf76dd80a4e8030205e440069d10646f1bbfaeee88a2db218017941c5fa7280849126d2372fc64348087a70e029cad2882bba92fb7ecc8136475dae03169839eee05ff3ee3232d0136712f08b7210127b752f1d921131ed1acd1e09565794cb4c6f3e9f0def391483c6a99ef9c3ff3";
+const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff000021012ad1a8abc49610aaa73095336f0e97746413bbbbf9ee3811e932f295776bc55c";
+const uint32_t GENESIS_NONCE                                 = 69;
+const uint64_t GENESIS_TIMESTAMP                             = 1586476800;
 const char     DNS_CHECKPOINTS_HOST[]                        = "127.0.0.1";
 
 const uint8_t  CURRENT_TRANSACTION_VERSION                   =  1;
