@@ -220,13 +220,13 @@ int main(int argc, char* argv[])
     }
 
     std::cout << ColouredMsg("\n"
-"  _|    _|    _|_|    _|_|_|    _|_|_|      _|_|    \n"
-"  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
-"  _|_|      _|_|_|_|  _|_|_|    _|_|_|    _|    _|  \n",Common::Console::Color::BrightCyan);
-    std::cout << ColouredMsg(
-"  _|  _|    _|    _|  _|    _|  _|    _|  _|    _|  \n"
-"  _|    _|  _|    _|  _|    _|  _|    _|  _|    _|  \n"
-"  _|    _|  _|    _|  _|    _|  _|_|_|      _|_|    \n\n", Common::Console::Color::BrightYellow);
+"O~~~~~                   O~~              O~~                         \n"
+"O~~   O~~                O~~           O~~   O~~           O~         \n"
+"O~~    O~~   O~~         O~~   O~~    O~~          O~~        O~~ O~~ \n"
+"O~~    O~~ O~~  O~~  O~~ O~~ O~~  O~~ O~~        O~~  O~~ O~~ O~~  O~~\n"
+"O~~    O~~O~~   O~~ O~   O~~O~~    O~~O~~       O~~    O~~O~~ O~~  O~~\n"
+"O~~   O~~ O~~   O~~ O~   O~~ O~~  O~~  O~~   O~~ O~~  O~~ O~~ O~~  O~~\n"
+"O~~~~~      O~~ O~~~ O~~ O~~   O~~       O~~~~     O~~    O~~ O~~  O~~\n\n", Common::Console::Color::BrightYellow);
 
     logger(INFO) << "Module folder: " << argv[0];
 
