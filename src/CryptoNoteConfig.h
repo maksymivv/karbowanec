@@ -68,6 +68,7 @@ const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(1);
 const uint64_t MAX_TX_MIXIN_SIZE                             = 3;
 const uint64_t MIN_TX_MIXIN_SIZE                             = 1;
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
+const uint64_t MAX_EXTRA_SIZE                                = 1024;
 
 const uint64_t DEPOSIT_MIN_AMOUNT                            = 150 * COIN;
 const uint32_t DEPOSIT_MIN_TERM                              = 11000; // ~ 1 month

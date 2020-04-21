@@ -32,7 +32,6 @@ namespace NodeErrors
 }
 
 #include <Common/ColouredMsg.h>
-#include <GreenWallet/Fusion.h>
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/WalletConfig.h>
 
@@ -565,11 +564,6 @@ void doTransfer(std::string address, uint64_t amount, uint64_t fee,
         {
             if (walletInfo->wallet.txIsTooLarge(p))
             {
-                if (!fusionTX(walletInfo->wallet, p))
-                {
-                    return;
-                }
-
                 if (walletInfo->wallet.txIsTooLarge(p))
                 {
                     splitTx(walletInfo->wallet, p);

@@ -322,26 +322,21 @@ bool Core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
     return false;
   }
 
-  Crypto::Hash h = NULL_HASH;
-  getObjectHash(tx, h, blobSize);
-  const uint64_t fee = inputs_amount - outputs_amount;
   // will use this for deposits
   //bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
   //if (!isFusionTransaction) {
-    uint64_t min = m_currency.minimumFee();
+  uint64_t min = m_currency.minimumFee();
     
-    if (height > CryptoNote::parameters::FEE_PER_BYTE_HEIGHT) {
-      uint64_t feePerByte = m_currency.getFeePerByte(extraSize, min);
-      min += feePerByte;
-    }
+  uint64_t feePerByte = m_currency.getFeePerByte(extraSize, min);
+  min += feePerByte;
 
-    if (fee < min) {
-      logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(min);
+  if (fee < min) {
+    logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(min);
 
-      tvc.m_verification_failed = true;
-      tvc.m_tx_fee_too_small = true;
-      return false;
-    }
+    tvc.m_verification_failed = true;
+    tvc.m_tx_fee_too_small = true;
+    return false;
+  }
   //}
 
   return true;

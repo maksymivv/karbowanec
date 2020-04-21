@@ -142,7 +142,9 @@ namespace CryptoNote {
     }
 
     const uint64_t fee = inputs_amount - outputs_amount;
-    bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, m_core.getCurrentBlockchainHeight());
+    // condition will be used as an example for messages and/or deposits
+    //bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, m_core.getCurrentBlockchainHeight());
+    bool isFusionTransaction = false;
 
     //check key images for transaction if it is not kept by block
     if (!keptByBlock) {

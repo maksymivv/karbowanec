@@ -25,7 +25,6 @@
 #include <GreenWallet/AddressBook.h>
 #include <Common/ColouredMsg.h>
 #include <GreenWallet/Commands.h>
-#include <GreenWallet/Fusion.h>
 #include <GreenWallet/Menu.h>
 #include <GreenWallet/Open.h>
 #include <GreenWallet/Sync.h>

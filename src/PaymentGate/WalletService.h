@@ -38,10 +38,6 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 
-namespace CryptoNote {
-class IFusionManager;
-}
-
 namespace PaymentService {
 
 struct WalletConfiguration {
@@ -60,7 +56,7 @@ struct TransactionsInBlockInfoFilter;
 class WalletService {
 public:
   WalletService(const CryptoNote::Currency& currency, System::Dispatcher& sys, CryptoNote::INode& node, CryptoNote::IWallet& wallet,
-    CryptoNote::IFusionManager& fusionManager, const WalletConfiguration& conf, Logging::ILogger& logger);
+    const WalletConfiguration& conf, Logging::ILogger& logger);
   virtual ~WalletService();
 
   void init();
@@ -106,9 +102,6 @@ public:
   std::error_code sendDelayedTransaction(const std::string& transactionHash);
   std::error_code getUnconfirmedTransactionHashes(const std::vector<std::string>& addresses, std::vector<std::string>& transactionHashes);
   std::error_code getStatus(uint32_t& blockCount, uint32_t& knownBlockCount, uint32_t& localDaemonBlockCount, std::string& lastBlockHash, uint32_t& peerCount, uint64_t& minimalFee);
-  std::error_code sendFusionTransaction(uint64_t threshold, uint32_t anonymity, const std::vector<std::string>& addresses,
-    const std::string& destinationAddress, std::string& transactionHash);
-  std::error_code estimateFusion(uint64_t threshold, const std::vector<std::string>& addresses, uint32_t& fusionReadyCount, uint32_t& totalOutputCount);
   std::error_code validateAddress(const std::string& address, bool& isvalid, std::string& _address, std::string& spendPublicKey, std::string& viewPublicKey);
   std::error_code getReserveProof(std::string& reserveProof, const std::string& address, const std::string& message, const uint64_t& amount = 0);
 
@@ -133,7 +126,6 @@ private:
 
   const CryptoNote::Currency& currency;
   CryptoNote::IWallet& wallet;
-  CryptoNote::IFusionManager& fusionManager;
   CryptoNote::INode& node;
   const WalletConfiguration& config;
   bool inited;

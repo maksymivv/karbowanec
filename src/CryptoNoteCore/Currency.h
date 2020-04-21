@@ -117,10 +117,6 @@ public:
   uint64_t mempoolTxFromAltBlockLiveTime() const { return m_mempoolTxFromAltBlockLiveTime; }
   uint64_t numberOfPeriodsToForgetTxDeletedFromPool() const { return m_numberOfPeriodsToForgetTxDeletedFromPool; }
 
-  size_t fusionTxMaxSize() const { return m_fusionTxMaxSize; }
-  size_t fusionTxMinInputCount() const { return m_fusionTxMinInputCount; }
-  size_t fusionTxMinInOutCountRatio() const { return m_fusionTxMinInOutCountRatio; }
-
   uint32_t upgradeHeight(uint8_t majorVersion) const;
   unsigned int upgradeVotingThreshold() const { return m_upgradeVotingThreshold; }
   uint32_t upgradeVotingWindow() const { return m_upgradeVotingWindow; }
@@ -152,13 +148,7 @@ public:
   size_t maxBlockCumulativeSize(uint64_t height) const;
 
   bool constructMinerTx(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize,
-    uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, const BinaryArray& extraNonce = BinaryArray(), size_t maxOuts = 1) const;
-
-  bool isFusionTransaction(const Transaction& transaction, uint32_t height) const;
-  bool isFusionTransaction(const Transaction& transaction, size_t size, uint32_t height) const;
-  bool isFusionTransaction(const std::vector<uint64_t>& inputsAmounts, const std::vector<uint64_t>& outputsAmounts, size_t size, uint32_t height) const;
-  bool isAmountApplicableInFusionTransactionInput(uint64_t amount, uint64_t threshold, uint32_t height) const;
-  bool isAmountApplicableInFusionTransactionInput(uint64_t amount, uint64_t threshold, uint8_t& amountPowerOfTen, uint32_t height) const;
+    uint64_t fee, const AccountPublicAddress& minerAddress, Transaction& tx, const BinaryArray& extraNonce = BinaryArray(), size_t maxOuts = 1) const; 
 
   std::string accountAddressAsString(const AccountBase& account) const;
   std::string accountAddressAsString(const AccountPublicAddress& accountPublicAddress) const;
@@ -242,10 +232,6 @@ private:
   uint64_t m_mempoolTxLiveTime;
   uint64_t m_mempoolTxFromAltBlockLiveTime;
   uint64_t m_numberOfPeriodsToForgetTxDeletedFromPool;
-
-  size_t m_fusionTxMaxSize;
-  size_t m_fusionTxMinInputCount;
-  size_t m_fusionTxMinInOutCountRatio;
 
   uint32_t m_upgradeHeightV2;
   uint32_t m_upgradeHeightV3;
@@ -335,10 +321,6 @@ public:
   CurrencyBuilder& mempoolTxLiveTime(uint64_t val) { m_currency.m_mempoolTxLiveTime = val; return *this; }
   CurrencyBuilder& mempoolTxFromAltBlockLiveTime(uint64_t val) { m_currency.m_mempoolTxFromAltBlockLiveTime = val; return *this; }
   CurrencyBuilder& numberOfPeriodsToForgetTxDeletedFromPool(uint64_t val) { m_currency.m_numberOfPeriodsToForgetTxDeletedFromPool = val; return *this; }
-
-  CurrencyBuilder& fusionTxMaxSize(size_t val) { m_currency.m_fusionTxMaxSize = val; return *this; }
-  CurrencyBuilder& fusionTxMinInputCount(size_t val) { m_currency.m_fusionTxMinInputCount = val; return *this; }
-  CurrencyBuilder& fusionTxMinInOutCountRatio(size_t val) { m_currency.m_fusionTxMinInOutCountRatio = val; return *this; }
 
   CurrencyBuilder& upgradeHeightV2(uint64_t val) { m_currency.m_upgradeHeightV2 = static_cast<uint32_t>(val); return *this; }
   CurrencyBuilder& upgradeHeightV3(uint64_t val) { m_currency.m_upgradeHeightV3 = static_cast<uint32_t>(val); return *this; }
