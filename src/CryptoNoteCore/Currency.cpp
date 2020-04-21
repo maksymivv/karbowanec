@@ -179,25 +179,45 @@ namespace CryptoNote {
 
   uint64_t Currency::calculateInterest(uint64_t amount, uint32_t term) const {
     assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
-    assert(static_cast<uint64_t>(term)* m_depositMaxTotalRate > m_depositMinTotalRateFactor);
+    assert(term % m_depositMinTerm == 0); // allowed terms with 1 month step only
 
-    uint64_t a = static_cast<uint64_t>(term) * m_depositMaxTotalRate - m_depositMinTotalRateFactor;
-    uint64_t bHi;
-    uint64_t bLo = mul128(amount, a, &bHi);
+    double interest_min = 1.0, interest_step = 0.2, tier = 0;
+    uint64_t coins = amount / CryptoNote::parameters::COIN;
+    if (coins > 10 && coins < 100)
+      tier = 1;
+    else if (coins >= 100 && coins < 200)
+      tier = 2;
+    else if (coins >= 200 && coins < 500)
+      tier = 3;
+    else if (coins >= 500 && coins < 1000)
+      tier = 4;
+    else if (coins >= 1000 && coins < 2000)
+      tier = 5;
+    else if (coins >= 2000 && coins < 5000)
+      tier = 6;
+    else if (coins >= 5000 && coins < 10000)
+      tier = 7;
+    else if (coins >= 10000 && coins < 20000)
+      tier = 8;
+    else if (coins >= 20000 && coins < 40000)
+      tier = 9;
+    else if (coins >= 40000 && coins < 80000)
+      tier = 10;
+    else if (coins >= 80000 && coins < 150000)
+      tier = 11;
+    else if (coins >= 150000)
+      tier = 12;
+    double rate = 2 * interest_min + interest_step * (double(term) + tier - 2);
 
-    uint64_t interestHi;
-    uint64_t interestLo;
-    assert(std::numeric_limits<uint32_t>::max() / 100 > m_depositMaxTerm);
-    div128_32(bHi, bLo, static_cast<uint32_t>(100 * m_depositMaxTerm), &interestHi, &interestLo);
-    assert(interestHi == 0);
+    double interest = amount * rate;
 
-    return interestLo;
+    return static_cast<uint64_t>(interest);
   }
 
   std::vector<std::pair<uint32_t, uint64_t>> Currency::disburseInterest(uint64_t amount, uint32_t term) const {
     assert(m_depositMinAmount <= amount);
     assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
-    const size_t n = CryptoNote::parameters::DEPOSIT_DISBURSEMENT_PARTS; // always disburse interest in 12 parts
+    const size_t n = term / m_depositMinTerm;
 
     std::vector<std::pair<uint32_t, uint64_t>> chunks;
     std::vector<uint32_t> terms;
