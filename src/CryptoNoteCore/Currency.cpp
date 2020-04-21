@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2018  zawy12
-// Copyright (c) 2016-2018, The Karbowanec developers
+// Copyright (c) 2014-2017, XDN-project developers
+// Copyright (c) 2016-2018, zawy12
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -144,33 +145,215 @@ namespace CryptoNote {
 		}
 	}
 
-	bool Currency::getBlockReward(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
-		uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
-		
-		// Initial emission
+  uint64_t Currency::calculateReward(uint8_t blockMajorVersion, uint32_t height, uint64_t alreadyGeneratedCoins) const {
+    // Initial emission
     // the 1000000 coins in first 1000 blocks
     // only fees later
     // zero in genesis
-    uint64_t baseReward = height == 0 ? 0 : (blockMajorVersion == 1 ? CryptoNote::parameters::START_BLOCK_REWARD : 0/*here can define other variants*/);
+    return height == 0 ? 0 : (blockMajorVersion == 1 ? CryptoNote::parameters::START_BLOCK_REWARD : 0/*here can define other variants*/);
+  }
 
-		size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
-		medianSize = std::max(medianSize, blockGrantedFullRewardZone);
-		if (currentBlockSize > UINT64_C(2) * medianSize) {
-			logger(DEBUGGING) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
-			return false;
-		}
+  bool Currency::getBlockReward(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins,
+    uint64_t fee, uint64_t& reward, int64_t& emissionChange) const {
 
-		uint64_t penalizedBaseReward = getPenalizedAmount(baseReward, medianSize, currentBlockSize);
-		uint64_t penalizedFee = blockMajorVersion >= BLOCK_MAJOR_VERSION_2 ? getPenalizedAmount(fee, medianSize, currentBlockSize) : fee;
-		if (cryptonoteCoinVersion() == 1) {
-			penalizedFee = getPenalizedAmount(fee, medianSize, currentBlockSize);
-		}
+    uint64_t baseReward = calculateReward(blockMajorVersion, height, alreadyGeneratedCoins);
 
-		emissionChange = penalizedBaseReward - (fee - penalizedFee);
-		reward = penalizedBaseReward + penalizedFee;
+    size_t blockGrantedFullRewardZone = blockGrantedFullRewardZoneByBlockVersion(blockMajorVersion);
+    medianSize = std::max(medianSize, blockGrantedFullRewardZone);
+    if (currentBlockSize > UINT64_C(2) * medianSize) {
+      logger(DEBUGGING) << "Block cumulative size is too big: " << currentBlockSize << ", expected less than " << 2 * medianSize;
+      return false;
+    }
 
-		return true;
-	}
+    uint64_t penalizedBaseReward = getPenalizedAmount(baseReward, medianSize, currentBlockSize);
+    uint64_t penalizedFee = blockMajorVersion >= BLOCK_MAJOR_VERSION_2 ? getPenalizedAmount(fee, medianSize, currentBlockSize) : fee;
+    if (cryptonoteCoinVersion() == 1) {
+      penalizedFee = getPenalizedAmount(fee, medianSize, currentBlockSize);
+    }
+
+    emissionChange = penalizedBaseReward - (fee - penalizedFee);
+    reward = penalizedBaseReward + penalizedFee;
+
+    return true;
+  }
+
+  uint64_t Currency::calculateInterest(uint64_t amount, uint32_t term) const {
+    assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
+    assert(static_cast<uint64_t>(term)* m_depositMaxTotalRate > m_depositMinTotalRateFactor);
+
+    uint64_t a = static_cast<uint64_t>(term) * m_depositMaxTotalRate - m_depositMinTotalRateFactor;
+    uint64_t bHi;
+    uint64_t bLo = mul128(amount, a, &bHi);
+
+    uint64_t interestHi;
+    uint64_t interestLo;
+    assert(std::numeric_limits<uint32_t>::max() / 100 > m_depositMaxTerm);
+    div128_32(bHi, bLo, static_cast<uint32_t>(100 * m_depositMaxTerm), &interestHi, &interestLo);
+    assert(interestHi == 0);
+
+    return interestLo;
+  }
+
+  std::vector<std::pair<uint32_t, uint64_t>> Currency::disburseInterest(uint64_t amount, uint32_t term) const {
+    assert(m_depositMinAmount <= amount);
+    assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
+    const size_t n = CryptoNote::parameters::DEPOSIT_DISBURSEMENT_PARTS; // always disburse interest in 12 parts
+
+    std::vector<std::pair<uint32_t, uint64_t>> chunks;
+    std::vector<uint32_t> terms;
+    std::vector<uint64_t> amounts;
+
+    if (amount % n == 0) {
+      for (size_t i = 0; i < n; i++) {
+        amounts.push_back(amount / n);
+      }
+    } else {
+      uint64_t zp = n - (amount % n);
+      uint64_t pp = amount / n;
+      for (size_t i = 0; i < n; i++) {
+        if (i >= zp) {
+          amounts.push_back(pp + 1);
+        } else {
+          amounts.push_back(pp);
+        }
+      }
+    }
+    if (term % n == 0) {
+      for (size_t i = 0; i < n; i++) {
+        terms.push_back(term / n);
+      }
+    } else {
+      uint32_t zp = n - (term % n);
+      uint32_t pp = term / n;
+      for (size_t i = 0; i < n; i++) {
+        if (i >= zp) {
+          terms.push_back(pp + 1);
+        } else {
+          terms.push_back(pp);
+        }
+      }
+    }
+    for (size_t i = 0; i < n; i++) {
+      chunks.push_back(std::make_pair(terms[i], amounts[i]));
+    }
+
+    return chunks;
+  }
+
+  // unlockTime must be the same as largest of outputUnlockTimes
+  bool Currency::getDepositTerm(const Transaction& tx, uint32_t& term) const {
+    std::vector<uint64_t> unlocktimes = tx.outputUnlockTimes;
+    sort(unlocktimes.begin(), unlocktimes.end());
+    std::reverse(unlocktimes.begin(), unlocktimes.end());
+    if (unlocktimes.front() < depositMinTerm() && tx.unlockTime != unlocktimes.front()) {
+      logger(ERROR) << "Invalid deposit term";
+      return false;
+    }
+
+    term = (uint32_t)tx.unlockTime;
+    return true;
+  }
+
+  bool Currency::getTransactionDepositInfo(const Transaction& tx, uint64_t& deposit, uint64_t& interest, uint64_t& fee, uint32_t& term) const {
+    uint64_t inputsAmount = getInputAmount(tx);
+    uint64_t outputsAmount = 0, calculatedInterest = 0, actualInterest = 0, change = 0;
+    std::vector<std::pair<uint32_t, uint64_t>> unlockTimesAndAmounts; // term, amount
+    std::vector<std::pair<uint32_t, uint64_t>> actualInterestPayouts;
+
+    for (uint64_t i = 0; i < tx.outputs.size(); ++i) {
+      TransactionOutput o = tx.outputs[i];
+      outputsAmount += o.amount;
+      unlockTimesAndAmounts.push_back(std::make_pair(tx.outputUnlockTimes[i], o.amount));
+    }
+
+    if (!(outputsAmount > inputsAmount)) {
+      logger(DEBUGGING) << "Not a deposit";
+      return false;
+    }
+
+    // deposit term is the largest unlock time
+    sort(unlockTimesAndAmounts.begin(), unlockTimesAndAmounts.end());
+    std::reverse(unlockTimesAndAmounts.begin(), unlockTimesAndAmounts.end());
+
+    // unlockTime must be the same as the largest of outputUnlockTimes
+    if (unlockTimesAndAmounts.front().first < depositMinTerm() || (uint32_t)tx.unlockTime != unlockTimesAndAmounts.front().first) {
+      logger(DEBUGGING) << "Invalid deposit term";
+      return false;
+    }
+    term = unlockTimesAndAmounts.front().first;
+
+    for (uint64_t i = 0; i < unlockTimesAndAmounts.size(); ++i) {
+      if (unlockTimesAndAmounts[i].first == (uint32_t)tx.unlockTime) {
+        deposit += unlockTimesAndAmounts[i].second;
+      }
+      else if (unlockTimesAndAmounts[i].first != 0) {
+        actualInterest += unlockTimesAndAmounts[i].second;
+        actualInterestPayouts.push_back(unlockTimesAndAmounts[i]);
+      }
+      else {
+        change += unlockTimesAndAmounts[i].second;
+      }
+    }
+
+    if (deposit < depositMinAmount()) {
+      logger(DEBUGGING) << "Insufficient deposit amount: " << formatAmount(deposit) << " whereas minimum is " << formatAmount(depositMinAmount());
+      return false;
+    }
+
+    calculatedInterest = calculateInterest(deposit, term);
+
+    // compare calculated with actual
+    if (actualInterest > calculatedInterest) {
+      logger(DEBUGGING) << "Invalid deposit: interest amount " << formatAmount(actualInterest) << " is bigger than expected " << formatAmount(calculatedInterest);
+      return false;
+    }
+    else if (actualInterest < calculatedInterest) {
+      logger(DEBUGGING) << "Invalid deposit: underpaid interest " << formatAmount(actualInterest) << " of expected " << formatAmount(calculatedInterest);
+      return false;
+    }
+        
+    // the fee can NOT be in outputs, it's just burned and resurrected in miner's tx
+    if (inputsAmount <= deposit + change) {
+      logger(DEBUGGING) << "Invalid deposit due to wrong fee";
+      return false;
+    }
+    fee = inputsAmount - (deposit + change);
+
+    //check gradual interest disbursement
+    std::vector<std::pair<uint32_t, uint64_t>> calculatedInterestPayouts = disburseInterest(deposit, term);
+    if (actualInterestPayouts != calculatedInterestPayouts) {
+      logger(DEBUGGING) << "Invalid deposit interest disbursement";
+      return false;
+    }
+
+    return true;
+  }
+
+  bool Currency::getTransactionFee(const Transaction& tx, uint64_t & fee) const {
+    uint64_t amount_in = getInputAmount(tx);
+    uint64_t amount_out = getOutputAmount(tx);
+    uint64_t deposit_amount = 0, deposit_interest = 0, deposit_fee = 0;
+    uint32_t deposit_term = 0;
+    if (amount_out > amount_in) {
+      if (!getTransactionDepositInfo(tx, deposit_amount, deposit_interest, deposit_fee, deposit_term)) {
+        logger(ERROR) << "Invalid deposit...";
+        return false;
+      }
+      fee = deposit_fee;
+    } else {
+      fee = amount_in - amount_out;
+    }
+
+    return true;
+  }
+
+  uint64_t Currency::getTransactionFee(const Transaction& tx) const {
+    uint64_t r = 0;
+    if (!getTransactionFee(tx, r)) {
+      r = 0;
+    }
+    return r;
+  }
 
 	size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
 		assert(height <= std::numeric_limits<uint64_t>::max() / m_maxBlockSizeGrowthSpeedNumerator);
@@ -374,6 +557,25 @@ namespace CryptoNote {
 		return Common::Format::parseAmount(str, amount);
 	}
 
+  // All that exceeds 100 bytes is charged per byte,
+  // the cost of one byte is 1/100 of minimal fee
+  uint64_t Currency::getFeePerByte(const uint64_t txExtraSize, const uint64_t minFee) const {
+    return txExtraSize > 100 ? minFee / 100 * (txExtraSize - 100) : 0;
+  }
+
+	uint64_t Currency::roundUpMinFee(uint64_t minimalFee, int digits) const {
+		uint64_t ret(0);
+		std::string minFeeString = formatAmount(minimalFee);
+		double minFee = boost::lexical_cast<double>(minFeeString);
+		double scale = pow(10., floor(log10(fabs(minFee))) + (1 - digits));
+		double roundedFee = ceil(minFee / scale) * scale;
+		std::stringstream ss;
+		ss << std::fixed << std::setprecision(12) << roundedFee;
+		std::string roundedFeeString = ss.str();
+		parseAmount(roundedFeeString, ret);
+		return ret;
+	}
+
 	difficulty_type Currency::nextDifficulty(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps,
 		std::vector<difficulty_type> cumulativeDifficulties) const {
 		if (blockMajorVersion >= BLOCK_MAJOR_VERSION_2) {
@@ -536,6 +738,13 @@ namespace CryptoNote {
 		numberOfDecimalPlaces(parameters::CRYPTONOTE_DISPLAY_DECIMAL_POINT);
 
 		minimumFee(parameters::MINIMUM_FEE);
+
+    depositMinAmount(parameters::DEPOSIT_MIN_AMOUNT);
+    depositMinTerm(parameters::DEPOSIT_MIN_TERM);
+    depositMaxTerm(parameters::DEPOSIT_MAX_TERM);
+    depositMinTotalRateFactor(parameters::DEPOSIT_MIN_TOTAL_RATE_FACTOR);
+    depositMaxTotalRate(parameters::DEPOSIT_MAX_TOTAL_RATE);
+
 		defaultDustThreshold(parameters::DEFAULT_DUST_THRESHOLD);
 
 		difficultyTarget(parameters::DIFFICULTY_TARGET);

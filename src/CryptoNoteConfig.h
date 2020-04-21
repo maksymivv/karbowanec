@@ -59,6 +59,7 @@ const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 100000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE     = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1; //size of block (bytes) after which reward for block calculated using block size
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
+
 const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 2;
 
 const uint64_t MINIMUM_FEE                                   = UINT64_C(1);
@@ -67,6 +68,16 @@ const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(1);
 const uint64_t MAX_TX_MIXIN_SIZE                             = 3;
 const uint64_t MIN_TX_MIXIN_SIZE                             = 1;
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
+
+const uint64_t DEPOSIT_MIN_AMOUNT                            = 150 * COIN;
+const uint32_t DEPOSIT_MIN_TERM                              = 11000; // ~ 1 month
+const uint32_t DEPOSIT_MAX_TERM                              = 12 * 11000;
+const uint64_t DEPOSIT_MIN_TOTAL_RATE_FACTOR                 = 77000;
+const uint64_t DEPOSIT_MAX_TOTAL_RATE                        = 11;
+const size_t   DEPOSIT_DISBURSEMENT_PARTS                    = 12;
+static_assert(DEPOSIT_MIN_TERM > 0, "Bad DEPOSIT_MIN_TERM");
+static_assert(DEPOSIT_MIN_TERM <= DEPOSIT_MAX_TERM, "Bad DEPOSIT_MAX_TERM");
+static_assert(DEPOSIT_MIN_TERM * DEPOSIT_MAX_TOTAL_RATE > DEPOSIT_MIN_TOTAL_RATE_FACTOR, "Bad DEPOSIT_MIN_TOTAL_RATE_FACTOR or DEPOSIT_MAX_TOTAL_RATE");
 
 const size_t   DANDELION_EPOCH                               = 600;
 const size_t   DANDELION_STEMS                               = 2;
@@ -124,7 +135,11 @@ const uint32_t GENESIS_NONCE                                 = 69;
 const uint64_t GENESIS_TIMESTAMP                             = 1586476800;
 const char     DNS_CHECKPOINTS_HOST[]                        = "127.0.0.1";
 
-const uint8_t  CURRENT_TRANSACTION_VERSION                   =  1;
+const uint8_t  TRANSACTION_VERSION_1                         =  1;
+const uint8_t  TRANSACTION_VERSION_2                         =  2;
+const uint8_t  DEPOSIT_TRANSACTION_VERSION                   =  TRANSACTION_VERSION_2;
+const uint8_t  CURRENT_TRANSACTION_VERSION                   =  TRANSACTION_VERSION_1;
+
 const uint8_t  BLOCK_MAJOR_VERSION_1                         =  1;
 const uint8_t  BLOCK_MAJOR_VERSION_2                         =  2;
 const uint8_t  BLOCK_MAJOR_VERSION_3                         =  3;

@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2014-2017, XDN-project developers
 // Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
@@ -80,6 +81,14 @@ public:
   uint64_t coin() const { return m_coin; }
 
   uint64_t minimumFee() const { return m_minimumFee; }
+  uint64_t getFeePerByte(const uint64_t txExtraSize, const uint64_t minFee) const;
+
+  uint64_t depositMinAmount() const { return m_depositMinAmount; }
+  uint32_t depositMinTerm() const { return m_depositMinTerm; }
+  uint32_t depositMaxTerm() const { return m_depositMaxTerm; }
+  uint64_t depositMinTotalRateFactor() const { return m_depositMinTotalRateFactor; }
+  uint64_t depositMaxTotalRate() const { return m_depositMaxTotalRate; }
+
   uint64_t defaultDustThreshold() const { return m_defaultDustThreshold; }
 
   uint64_t difficultyTarget() const { return m_difficultyTarget; }
@@ -131,8 +140,15 @@ public:
   const Block& genesisBlock() const { return m_genesisBlock; }
   const Crypto::Hash& genesisBlockHash() const { return m_genesisBlockHash; }
 
-  bool getBlockReward(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins, uint64_t fee,
-    uint64_t& reward, int64_t& emissionChange) const;
+  bool getBlockReward(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins, uint64_t fee, uint64_t& reward, int64_t& emissionChange) const;
+  uint64_t calculateReward(uint8_t blockMajorVersion, uint32_t height, uint64_t alreadyGeneratedCoins) const;
+  uint64_t calculateInterest(uint64_t amount, uint32_t term) const;
+  std::vector<std::pair<uint32_t, uint64_t>> disburseInterest(uint64_t amount, uint32_t term) const;
+  bool getTransactionDepositInfo(const Transaction& tx, uint64_t& deposit, uint64_t& interest, uint64_t& fee, uint32_t& term) const;
+  bool getDepositTerm(const Transaction& tx, uint32_t& term) const;
+  bool getTransactionFee(const Transaction& tx, uint64_t & fee) const;
+  uint64_t getTransactionFee(const Transaction& tx) const;
+
   size_t maxBlockCumulativeSize(uint64_t height) const;
 
   bool constructMinerTx(uint8_t blockMajorVersion, uint32_t height, size_t medianSize, uint64_t alreadyGeneratedCoins, size_t currentBlockSize,
@@ -202,6 +218,12 @@ private:
 
   size_t m_minMixin;
   size_t m_maxMixin;
+
+  uint64_t m_depositMinAmount;
+  uint32_t m_depositMinTerm;
+  uint32_t m_depositMaxTerm;
+  uint64_t m_depositMinTotalRateFactor;
+  uint64_t m_depositMaxTotalRate;
 
   uint64_t m_defaultDustThreshold;
 
@@ -289,6 +311,13 @@ public:
   CurrencyBuilder& numberOfDecimalPlaces(size_t val);
 
   CurrencyBuilder& minimumFee(uint64_t val) { m_currency.m_minimumFee = val; return *this; }
+
+  CurrencyBuilder& depositMinAmount(uint64_t val) { m_currency.m_depositMinAmount = val; return *this; }
+  CurrencyBuilder& depositMinTerm(uint32_t val) { m_currency.m_depositMinTerm = val; return *this; }
+  CurrencyBuilder& depositMaxTerm(uint32_t val) { m_currency.m_depositMaxTerm = val; return *this; }
+  CurrencyBuilder& depositMinTotalRateFactor(uint64_t val) { m_currency.m_depositMinTotalRateFactor = val; return *this; }
+  CurrencyBuilder& depositMaxTotalRate(uint64_t val) { m_currency.m_depositMaxTotalRate = val; return *this; }
+
   CurrencyBuilder& defaultDustThreshold(uint64_t val) { m_currency.m_defaultDustThreshold = val; return *this; }
 
   CurrencyBuilder& difficultyTarget(uint64_t val) { m_currency.m_difficultyTarget = val; return *this; }

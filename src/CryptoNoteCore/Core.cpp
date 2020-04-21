@@ -304,7 +304,18 @@ bool Core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
 
   uint64_t outputs_amount = get_outs_money_amount(tx);
 
-  if (outputs_amount > inputs_amount) {
+  // tx extra size in bytes, uint8_t is a one byte
+  uint64_t extraSize = (uint64_t)tx.extra.size();
+
+  // To prevent blockchain bloat it's possible to just limit max tx extra size
+  // or charge fee per byte for the size exceeding free limit, 100 bytes is
+  // enough to contain data of the ordinary tx (public key, payment id, etc.)
+
+  Crypto::Hash h = NULL_HASH;
+  getObjectHash(tx, h, blobSize);
+
+  uint64_t fee = 0;
+  if (!m_currency.getTransactionFee(tx, fee)) {
     logger(DEBUGGING) << "transaction use more money then it has: use " << m_currency.formatAmount(outputs_amount) <<
       ", have " << m_currency.formatAmount(inputs_amount);
     tvc.m_verification_failed = true;
@@ -318,8 +329,15 @@ bool Core::check_tx_fee(const Transaction& tx, size_t blobSize, tx_verification_
   //bool isFusionTransaction = fee == 0 && m_currency.isFusionTransaction(tx, blobSize, height);
   //if (!isFusionTransaction) {
     uint64_t min = m_currency.minimumFee();
+    
+    if (height > CryptoNote::parameters::FEE_PER_BYTE_HEIGHT) {
+      uint64_t feePerByte = m_currency.getFeePerByte(extraSize, min);
+      min += feePerByte;
+    }
+
     if (fee < min) {
       logger(INFO) << "[Core] Transaction fee is not enough: " << m_currency.formatAmount(fee) << ", minimum fee: " << m_currency.formatAmount(min);
+
       tvc.m_verification_failed = true;
       tvc.m_tx_fee_too_small = true;
       return false;
@@ -1307,6 +1325,10 @@ bool Core::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
 
 bool Core::isInCheckpointZone(uint32_t height) const {
   return m_checkpoints.is_in_checkpoint_zone(height);
+}
+
+bool Core::isOutputUnlocked(uint64_t unlock_time, uint32_t height) {
+  return m_blockchain.is_output_unlocked(unlock_time, height);
 }
 
 bool Core::addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) {

@@ -141,7 +141,8 @@ bool constructTransaction(
   Transaction& tx,
   uint64_t unlock_time,
   Crypto::SecretKey &tx_key,
-  Logging::ILogger& log) {
+  Logging::ILogger& log,
+  uint8_t version) {
   LoggerRef logger(log, "construct_tx");
 
   tx.inputs.clear();
@@ -249,6 +250,10 @@ bool constructTransaction(
     tx.outputs.push_back(out);
     output_index++;
     summary_outs_money += dst_entr.amount;
+
+    if (version >= 2) {
+      tx.outputUnlockTimes.push_back(dst_entr.unlockTime);
+    }
   }
 
   //check money

@@ -1226,14 +1226,24 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 
   if (!(b.baseTransaction.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
     logger(ERROR, BRIGHT_RED)
-      << "Coinbase transaction transaction have wrong unlock time="
+      << "Coinbase transaction has wrong unlock time="
       << b.baseTransaction.unlockTime << ", expected "
       << height + m_currency.minedMoneyUnlockWindow();
     return false;
   }
 
   if (!check_outs_overflow(b.baseTransaction)) {
-    logger(ERROR, BRIGHT_RED) << "The miner transaction have money overflow in block " << get_block_hash(b);
+    logger(ERROR, BRIGHT_RED) << "The miner transaction has money overflow in block " << get_block_hash(b);
+    return false;
+  }
+
+  uint64_t extraSize = (uint64_t)b.baseTransaction.extra.size();
+  if (height > CryptoNote::parameters::FEE_PER_BYTE_HEIGHT && extraSize > CryptoNote::parameters::MAX_EXTRA_SIZE) {
+    logger(ERROR, BRIGHT_RED)
+      << "The miner transaction extra is too large in block "
+      << get_block_hash(b) << ". Allowed: "
+      << CryptoNote::parameters::MAX_EXTRA_SIZE
+      << ", actual: " << extraSize << ".";
     return false;
   }
 
@@ -1593,9 +1603,15 @@ bool Blockchain::add_out_to_get_random_outs(std::vector<std::pair<TransactionInd
   if (!(tx.outputs[amount_outs[i].second].target.type() == typeid(KeyOutput))) { logger(ERROR, BRIGHT_RED) << "unknown tx out type"; return false; }
 
   //check if transaction is unlocked
-  if (!is_tx_spendtime_unlocked(tx.unlockTime))
-    return false;
-
+  if (tx.version >= 2) {
+    if (!is_output_unlocked(tx.outputUnlockTimes[amount_outs[i].second], getCurrentBlockchainHeight()))
+      return false;
+  }
+  else {
+    if (!is_tx_spendtime_unlocked(tx.unlockTime, getCurrentBlockchainHeight()))
+      return false;
+  }
+  
   COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry& oen = *result_outs.outs.insert(result_outs.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry());
   oen.global_amount_index = static_cast<uint32_t>(i);
   oen.out_key = boost::get<KeyOutput>(tx.outputs[amount_outs[i].second].target).key;
@@ -1935,8 +1951,12 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height)
     if (height - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
       return true;
   }
-  
+
   return false;
+}
+
+bool Blockchain::is_output_unlocked(uint64_t unlock_time, uint32_t height) {
+  return is_tx_spendtime_unlocked(unlock_time, height);
 }
 
 bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height) {
@@ -1951,9 +1971,9 @@ bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_pre
 
     bool handle_output(const Transaction& tx, const TransactionOutput& out, size_t transactionOutputIndex) {
       //check tx unlock time
-      if (!m_bch.is_tx_spendtime_unlocked(tx.unlockTime)) {
+      if (tx.version == 1 ? !m_bch.is_tx_spendtime_unlocked(tx.unlockTime, m_bch.getCurrentBlockchainHeight()) : !m_bch.is_output_unlocked(tx.outputUnlockTimes[transactionOutputIndex], m_bch.getCurrentBlockchainHeight())) {
         logger(INFO, BRIGHT_WHITE) <<
-          "One of outputs for one of inputs have wrong tx.unlockTime = " << tx.unlockTime;
+          "One of outputs for one of inputs has wrong tx.unlockTime = " << (tx.version == 1 ? tx.unlockTime : tx.outputUnlockTimes[transactionOutputIndex]);
         return false;
       }
 
