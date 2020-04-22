@@ -146,8 +146,6 @@ void serialize(TransactionDetails& transaction, ISerializer& serializer) {
   serializer(transaction.fee, "fee");
   serializer(transaction.totalInputsAmount, "totalInputsAmount");
   serializer(transaction.totalOutputsAmount, "totalOutputsAmount");
-  serializer(transaction.mixin, "mixin");
-  serializer(transaction.unlockTime, "unlockTime");
   serializer(transaction.timestamp, "timestamp");
   serializer(transaction.version, "version");
   serializePod(transaction.paymentId, "paymentId", serializer);

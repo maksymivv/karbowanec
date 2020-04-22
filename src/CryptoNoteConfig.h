@@ -48,7 +48,7 @@ const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V1          = 11;
 const uint64_t MONEY_SUPPLY                                  = UINT64_C(100000000000); // one billion
 const uint64_t START_BLOCK_REWARD                            = UINT64_C(100000000);
 const uint64_t MINER_STAKE_AMOUNT                            = UINT64_C(100000);
-const uint64_t COIN                                          = UINT64_C(10);
+const uint64_t COIN                                          = UINT64_C(100);
 const size_t CRYPTONOTE_COIN_VERSION                         = 1;
 const unsigned EMISSION_SPEED_FACTOR                         = 18;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
@@ -70,7 +70,7 @@ const uint64_t MIN_TX_MIXIN_SIZE                             = 1;
 const uint64_t MAX_TRANSACTION_SIZE_LIMIT                    = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 const uint64_t MAX_EXTRA_SIZE                                = 1024;
 
-const uint64_t DEPOSIT_MIN_AMOUNT                            = 150 * COIN;
+const uint64_t DEPOSIT_MIN_AMOUNT                            = 10 * COIN;
 const uint32_t DEPOSIT_MIN_TERM                              = 11000; // ~ 1 month
 const uint32_t DEPOSIT_MAX_TERM                              = 12 * 11000;
 const uint64_t DEPOSIT_MIN_TOTAL_RATE_FACTOR                 = 77000;
@@ -131,7 +131,7 @@ const char     BLESSED_MINERS_CONFIG_FILE_NAME[]             = "consensus.conf";
 } // parameters
 
 const char     CRYPTONOTE_NAME[]                             = "krbcoin";
-const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff000021012ad1a8abc49610aaa73095336f0e97746413bbbbf9ee3811e932f295776bc55c";
+const char     GENESIS_COINBASE_TX_HEX[]                     = "0101ff000021012fa9a0c0381ec57a5bd3877632d546613120fcb6cde355bb921d24d7385b423b";
 const uint32_t GENESIS_NONCE                                 = 69;
 const uint64_t GENESIS_TIMESTAMP                             = 1586476800;
 const char     DNS_CHECKPOINTS_HOST[]                        = "127.0.0.1";

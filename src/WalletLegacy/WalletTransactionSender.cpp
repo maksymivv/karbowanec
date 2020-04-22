@@ -57,13 +57,13 @@ void createChangeDestinations(const AccountPublicAddress& address, uint64_t need
 }
 
 void constructTx(const AccountKeys keys, const std::vector<TransactionSourceEntry>& sources, const std::vector<TransactionDestinationEntry>& splittedDests,
-    const std::string& extra, uint64_t unlockTimestamp, uint64_t sizeLimit, Transaction& tx, Crypto::SecretKey& tx_key) {
+    const std::string& extra, uint64_t sizeLimit, Transaction& tx, Crypto::SecretKey& tx_key) {
   std::vector<uint8_t> extraVec;
   extraVec.reserve(extra.size());
   std::for_each(extra.begin(), extra.end(), [&extraVec] (const char el) { extraVec.push_back(el);});
 
   Logging::LoggerGroup nullLog;
-  bool r = constructTransaction(keys, sources, splittedDests, extraVec, tx, unlockTimestamp, tx_key, nullLog);
+  bool r = constructTransaction(keys, sources, splittedDests, extraVec, tx, tx_key, nullLog);
 
   throwIf(!r, error::INTERNAL_WALLET_ERROR);
   throwIf(getObjectBinarySize(tx) >= sizeLimit, error::TRANSACTION_SIZE_TOO_BIG);
@@ -105,7 +105,7 @@ void WalletTransactionSender::validateTransfersAddresses(const std::vector<Walle
 }
 
 std::shared_ptr<WalletRequest> WalletTransactionSender::makeSendRequest(TransactionId& transactionId, std::deque<std::shared_ptr<WalletLegacyEvent>>& events,
-    const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+    const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t unlockTimestamp) {
 
   using namespace CryptoNote;
 
@@ -115,56 +115,13 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::makeSendRequest(Transact
 
   std::shared_ptr<SendTransactionContext> context = std::make_shared<SendTransactionContext>();
 
-  context->foundMoney = selectTransfersToSend(neededMoney, 0 == mixIn, context->dustPolicy.dustThreshold, context->selectedTransfers);
+  context->foundMoney = selectTransfersToSend(neededMoney, context->selectedTransfers);
   throwIf(context->foundMoney < neededMoney, error::WRONG_AMOUNT);
 
   transactionId = m_transactionsCache.addNewTransaction(neededMoney, fee, extra, transfers, unlockTimestamp);
   context->transactionId = transactionId;
-  context->mixIn = mixIn;
-
-  if(context->mixIn) {
-    std::shared_ptr<WalletRequest> request = makeGetRandomOutsRequest(context);
-    return request;
-  }
 
   return doSendTransaction(context, events);
-}
-
-std::shared_ptr<WalletRequest> WalletTransactionSender::makeGetRandomOutsRequest(std::shared_ptr<SendTransactionContext> context) {
-  uint64_t outsCount = context->mixIn + 1;// add one to make possible (if need) to skip real output key
-  std::vector<uint64_t> amounts;
-
-  for (const auto& td : context->selectedTransfers) {
-    amounts.push_back(td.amount);
-  }
-
-  return std::make_shared<WalletGetRandomOutsByAmountsRequest>(amounts, outsCount, context, std::bind(&WalletTransactionSender::sendTransactionRandomOutsByAmount,
-      this, context, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-}
-
-void WalletTransactionSender::sendTransactionRandomOutsByAmount(std::shared_ptr<SendTransactionContext> context, std::deque<std::shared_ptr<WalletLegacyEvent>>& events,
-    boost::optional<std::shared_ptr<WalletRequest> >& nextRequest, std::error_code ec) {
-  
-  if (m_isStoping) {
-    ec = make_error_code(error::TX_CANCELLED);
-  }
-
-  if (ec) {
-    events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, ec));
-    return;
-  }
-
-  auto scanty_it = std::find_if(context->outs.begin(), context->outs.end(), 
-    [&] (COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::outs_for_amount& out) {return out.outs.size() < context->mixIn;});
-
-  if (scanty_it != context->outs.end()) {
-    events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, make_error_code(error::MIXIN_COUNT_TOO_BIG)));
-    return;
-  }
-
-  std::shared_ptr<WalletRequest> req = doSendTransaction(context, events);
-  if (req)
-    nextRequest = req;
 }
 
 std::shared_ptr<WalletRequest> WalletTransactionSender::doSendTransaction(std::shared_ptr<SendTransactionContext> context, std::deque<std::shared_ptr<WalletLegacyEvent>>& events) {
@@ -178,7 +135,7 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::doSendTransaction(std::s
     WalletLegacyTransaction& transaction = m_transactionsCache.getTransaction(context->transactionId);
 
     std::vector<TransactionSourceEntry> sources;
-    prepareInputs(context->selectedTransfers, context->outs, sources, context->mixIn);
+    prepareInputs(context->selectedTransfers, context->outs, sources, 0);
 
     TransactionDestinationEntry changeDts;
     changeDts.amount = 0;
@@ -189,7 +146,7 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::doSendTransaction(std::s
     splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, transaction.unlockTime, splittedDests);
 
     Transaction tx;
-    constructTx(m_keys, sources, splittedDests, transaction.extra, transaction.unlockTime, m_upperTransactionSizeLimit, tx, context->tx_key);
+    constructTx(m_keys, sources, splittedDests, transaction.extra, m_upperTransactionSizeLimit, tx, context->tx_key);
 
     getObjectHash(tx, transaction.hash);
 
@@ -246,16 +203,8 @@ void WalletTransactionSender::digitSplitStrategy(TransferId firstTransferId, siz
     if (!m_currency.parseAccountAddressString(de.address, addr)) {
       throw std::system_error(make_error_code(error::BAD_ADDRESS));
     }
-
-    //decompose_amount_into_digits(de.amount, dust_threshold,
-    //  [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, addr)); },
-    //  [&](uint64_t a_dust) { splitted_dsts.push_back(TransactionDestinationEntry(a_dust, addr)); });
     splitted_dsts.push_back(TransactionDestinationEntry(de.amount, unlockTime, addr));
   }
-
-  //decompose_amount_into_digits(change_dst.amount, dust_threshold,
-  //  [&](uint64_t chunk) { splitted_dsts.push_back(TransactionDestinationEntry(chunk, change_dst.addr)); },
-  //  [&](uint64_t a_dust) { dust = a_dust; } );
   splitted_dsts.push_back(TransactionDestinationEntry(change_dst.amount, 0, change_dst.addr));
 }
 
@@ -341,11 +290,9 @@ T popRandomValue(URNG& randomGenerator, std::vector<T>& vec) {
 }
 
 
-uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, bool addUnmixable, uint64_t dust, std::list<TransactionOutputInformation>& selectedTransfers) {
+uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, std::list<TransactionOutputInformation>& selectedTransfers) {
 
   std::vector<size_t> unusedTransfers;
-  std::vector<size_t> unusedDust;
-  std::vector<size_t> unusedUnmixable;
   
   std::vector<TransactionOutputInformation> outputs;
   m_transferDetails.getOutputs(outputs, ITransfersContainer::IncludeKeyUnlocked);
@@ -353,28 +300,17 @@ uint64_t WalletTransactionSender::selectTransfersToSend(uint64_t neededMoney, bo
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto& out = outputs[i];
     if (!m_transactionsCache.isUsed(out)) {
-      if (is_valid_decomposed_amount(out.amount)) {
-        if (dust < out.amount) {
-          unusedTransfers.push_back(i);
-        } else {
-          unusedDust.push_back(i);
-        }
-      } else {
-        unusedUnmixable.push_back(i);
-      }
+      unusedTransfers.push_back(i);
     }
   }
 
   uint64_t foundMoney = 0;
 
-  while (foundMoney < neededMoney && (!unusedTransfers.empty() || !unusedDust.empty() || (addUnmixable && !unusedUnmixable.empty()))) {
+  while (foundMoney < neededMoney && !unusedTransfers.empty()) {
     size_t idx;
     std::mt19937 urng = Random::generator();
-    if (addUnmixable && !unusedUnmixable.empty()) {
-      idx = popRandomValue(urng, unusedUnmixable);
-    } else {
-      idx = !unusedTransfers.empty() ? popRandomValue(urng, unusedTransfers) : popRandomValue(urng, unusedDust);
-    }
+    idx = popRandomValue(urng, unusedTransfers);
+
     selectedTransfers.push_back(outputs[idx]);
     foundMoney += outputs[idx].amount;
   }

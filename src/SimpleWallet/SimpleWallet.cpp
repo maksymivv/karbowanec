@@ -201,7 +201,6 @@ private:
 struct TransferCommand {
   const CryptoNote::Currency& m_currency;
   const CryptoNote::NodeRpcProxy& m_node;
-  size_t fake_outs_count;
   std::vector<CryptoNote::WalletLegacyTransfer> dsts;
   std::vector<uint8_t> extra;
   uint64_t fee;
@@ -210,7 +209,7 @@ struct TransferCommand {
 #endif
 
   TransferCommand(const CryptoNote::Currency& currency, const CryptoNote::NodeRpcProxy& node) :
-    m_currency(currency), m_node(node), fake_outs_count(0),
+    m_currency(currency), m_node(node),
     fee(m_currency.minimumFee()) {
   }
 
@@ -219,24 +218,6 @@ struct TransferCommand {
     ArgumentReader<std::vector<std::string>::const_iterator> ar(args.begin(), args.end());
 
     try {
-
-      auto mixin_str = ar.next();
-
-      if (!Common::fromString(mixin_str, fake_outs_count)) {
-        logger(ERROR, BRIGHT_RED) << "mixin_count should be non-negative integer, got " << mixin_str;
-        return false;
-      }
-
-      if (fake_outs_count < m_currency.minMixin() && fake_outs_count != 0) {
-        logger(ERROR, BRIGHT_RED) << "mixIn should be equal to or bigger than " << m_currency.minMixin();
-        return false;
-      }
-
-      if (fake_outs_count > m_currency.maxMixin()) {
-        logger(ERROR, BRIGHT_RED) << "mixIn should be equal to or less than " << m_currency.maxMixin();
-        return false;
-      }
-
       while (!ar.eof()) {
 
         auto arg = ar.next();
@@ -668,9 +649,8 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_consoleHandler.setHandler("outputs", boost::bind(&simple_wallet::show_unlocked_outputs_count, this, _1), "Show the number of unlocked outputs available for a transaction");
   m_consoleHandler.setHandler("bc_height", boost::bind(&simple_wallet::show_blockchain_height, this, _1), "Show blockchain height");
   m_consoleHandler.setHandler("transfer", boost::bind(&simple_wallet::transfer, this, _1),
-    "transfer <mixin_count> <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee]"
-    " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. "
-    "<mixin_count> is the number of transactions yours is indistinguishable from (from 0 to maximum available)");
+    "transfer <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee]"
+    " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. ");
   m_consoleHandler.setHandler("set_log", boost::bind(&simple_wallet::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
   m_consoleHandler.setHandler("address", boost::bind(&simple_wallet::print_address, this, _1), "Show current wallet public address");
   m_consoleHandler.setHandler("save", boost::bind(&simple_wallet::save, this, _1), "Save wallet synchronized data");
@@ -2037,19 +2017,6 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
     return true;
   }
 
-  uint64_t unmixable_balance = m_wallet->unmixableBalance();
-  uint64_t mixIn = 0;
-  std::string mixin_str = args[0];
-  if (!Common::fromString(args[0], mixIn)) {
-    logger(ERROR, BRIGHT_RED) << "mixin_count should be non-negative integer, got " << mixin_str;
-    return false;
-  }
-
-  if (mixIn != 0 && unmixable_balance != 0) {
-    logger(WARNING, BRIGHT_YELLOW) << "You have unmixable coins " << m_currency.formatAmount(unmixable_balance) << " in your wallet. "
-                                   << "If you encounter problems with sending, sweep them by making transaction with zero <mixin_count>.";
-  }
-
   try {
     TransferCommand cmd(m_currency, *m_node);
 
@@ -2098,7 +2065,7 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
 
     WalletHelper::IWalletRemoveObserverGuard removeGuard(*m_wallet, sent);
 
-    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, cmd.fee, extraString, cmd.fake_outs_count, 0);
+    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, cmd.fee, extraString, 0);
     if (tx == WALLET_LEGACY_INVALID_TRANSACTION_ID) {
       fail_msg_writer() << "Can't send money";
       return true;

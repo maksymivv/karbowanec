@@ -1224,12 +1224,14 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
     return false;
   }
 
-  if (!(b.baseTransaction.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
-    logger(ERROR, BRIGHT_RED)
-      << "Coinbase transaction has wrong unlock time="
-      << b.baseTransaction.unlockTime << ", expected "
-      << height + m_currency.minedMoneyUnlockWindow();
-    return false;
+  for (const auto& o : b.baseTransaction.outputs) {
+    if (!(o.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
+      logger(ERROR, BRIGHT_RED)
+        << "One of coinbase transaction's outputs has wrong unlock time = "
+        << o.unlockTime << ", expected "
+        << height + m_currency.minedMoneyUnlockWindow();
+      return false;
+    }
   }
 
   if (!check_outs_overflow(b.baseTransaction)) {
@@ -1249,7 +1251,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 
   // only selected miners allowed to mine blocks
   // skip this check under checkpoints
-  if (!isInCheckpointZone(getCurrentBlockchainHeight()) && !checkAllowedMiner(b.baseTransaction)) {
+  if (height != 0 && !isInCheckpointZone(getCurrentBlockchainHeight()) && !checkAllowedMiner(b.baseTransaction)) {
     logger(ERROR, BRIGHT_RED) << "Unauthorized miner of block " << height;
     return false;
   }
@@ -1603,15 +1605,9 @@ bool Blockchain::add_out_to_get_random_outs(std::vector<std::pair<TransactionInd
   if (!(tx.outputs[amount_outs[i].second].target.type() == typeid(KeyOutput))) { logger(ERROR, BRIGHT_RED) << "unknown tx out type"; return false; }
 
   //check if transaction is unlocked
-  if (tx.version >= 2) {
-    if (!is_output_unlocked(tx.outputUnlockTimes[amount_outs[i].second], getCurrentBlockchainHeight()))
-      return false;
-  }
-  else {
-    if (!is_tx_spendtime_unlocked(tx.unlockTime, getCurrentBlockchainHeight()))
-      return false;
-  }
-  
+  if (!is_output_unlocked(tx.outputs[amount_outs[i].second].unlockTime, getCurrentBlockchainHeight()))
+    return false;
+
   COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry& oen = *result_outs.outs.insert(result_outs.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry());
   oen.global_amount_index = static_cast<uint32_t>(i);
   oen.out_key = boost::get<KeyOutput>(tx.outputs[amount_outs[i].second].target).key;
@@ -1971,9 +1967,9 @@ bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_pre
 
     bool handle_output(const Transaction& tx, const TransactionOutput& out, size_t transactionOutputIndex) {
       //check tx unlock time
-      if (tx.version == 1 ? !m_bch.is_tx_spendtime_unlocked(tx.unlockTime, m_bch.getCurrentBlockchainHeight()) : !m_bch.is_output_unlocked(tx.outputUnlockTimes[transactionOutputIndex], m_bch.getCurrentBlockchainHeight())) {
+      if (!m_bch.is_output_unlocked(out.unlockTime, m_bch.getCurrentBlockchainHeight())) {
         logger(INFO, BRIGHT_WHITE) <<
-          "One of outputs for one of inputs has wrong tx.unlockTime = " << (tx.version == 1 ? tx.unlockTime : tx.outputUnlockTimes[transactionOutputIndex]);
+          "One of outputs for one of inputs has wrong unlockTime = " << out.unlockTime;
         return false;
       }
 
@@ -2571,15 +2567,17 @@ bool Blockchain::validateInput(const MultisignatureInput& input, const Crypto::H
   }
 
   const Transaction& outputTransaction = m_blocks[outputIndex.transactionIndex.block].transactions[outputIndex.transactionIndex.transaction].tx;
-  if (!is_tx_spendtime_unlocked(outputTransaction.unlockTime)) {
+ 
+  if (!is_tx_spendtime_unlocked(outputTransaction.outputs[outputIndex.outputIndex].unlockTime)) {
     logger(DEBUGGING) <<
-      "Transaction << " << transactionHash << " contains multisignature input which points to a locked transaction.";
+      "Transaction << " << transactionHash << " contains multisignature input which points to a locked output.";
     return false;
   }
 
   assert(outputTransaction.outputs[outputIndex.outputIndex].amount == input.amount);
   assert(outputTransaction.outputs[outputIndex.outputIndex].target.type() == typeid(MultisignatureOutput));
   const MultisignatureOutput& output = ::boost::get<MultisignatureOutput>(outputTransaction.outputs[outputIndex.outputIndex].target);
+  
   if (input.signatureCount != output.requiredSignatureCount) {
     logger(DEBUGGING) <<
       "Transaction << " << transactionHash << " contains multisignature input with invalid signature count.";
@@ -2916,7 +2914,7 @@ bool Blockchain::check_reserve_proof(const AccountPublicAddress& acc, const std:
 
     CryptoNote::TransactionPrefix tx = *static_cast<const TransactionPrefix*>(&transactions[i]);
 
-    bool unlocked = is_tx_spendtime_unlocked(tx.unlockTime, getCurrentBlockchainHeight());
+    bool unlocked = is_tx_spendtime_unlocked(tx.outputs[proof.index_in_transaction].unlockTime, getCurrentBlockchainHeight());
 
     if (proof.index_in_transaction >= tx.outputs.size()) {
       logger(ERROR, BRIGHT_RED) << "index_in_tx is out of bound";

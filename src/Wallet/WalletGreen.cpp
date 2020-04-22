@@ -1602,14 +1602,20 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
   preparedTransaction.changeAmount = foundMoney - preparedTransaction.neededMoney - donationAmount;
 
   std::vector<ReceiverAmounts> decomposedOutputs = splitDestinations(preparedTransaction.destinations, 0, m_currency);
+  
+  // add per output unlocktimes
+  for (auto & o : decomposedOutputs) {
+    o.unlockTime = unlockTimestamp;
+  }
+
   if (preparedTransaction.changeAmount != 0) {
     WalletTransfer changeTransfer;
     changeTransfer.type = WalletTransferType::CHANGE;
     changeTransfer.address = m_currency.accountAddressAsString(changeDestination);
     changeTransfer.amount = static_cast<int64_t>(preparedTransaction.changeAmount);
     preparedTransaction.destinations.emplace_back(std::move(changeTransfer));
-
     auto splittedChange = splitAmount(preparedTransaction.changeAmount, changeDestination, 0);
+    splittedChange.unlockTime = 0; // change is not locked
     decomposedOutputs.emplace_back(std::move(splittedChange));
   }
 
@@ -2288,24 +2294,24 @@ std::unique_ptr<CryptoNote::ITransaction> WalletGreen::makeTransaction(const std
 
   std::unique_ptr<ITransaction> tx = createTransaction();
 
-  typedef std::pair<const AccountPublicAddress*, uint64_t> AmountToAddress;
+  typedef std::pair<const AccountPublicAddress*, std::pair<uint64_t, uint64_t>> AmountToAddress;
   std::vector<AmountToAddress> amountsToAddresses;
   for (const auto& output: decomposedOutputs) {
     for (auto amount: output.amounts) {
-      amountsToAddresses.emplace_back(AmountToAddress{&output.receiver, amount});
+      amountsToAddresses.emplace_back(AmountToAddress{&output.receiver, {amount, output.unlockTime}});
     }
   }
 
   std::shuffle(amountsToAddresses.begin(), amountsToAddresses.end(), Random::generator());
   std::sort(amountsToAddresses.begin(), amountsToAddresses.end(), [] (const AmountToAddress& left, const AmountToAddress& right) {
-    return left.second < right.second;
+    return left.second.first < right.second.first;
   });
 
   for (const auto& amountToAddress: amountsToAddresses) {
-    tx->addOutput(amountToAddress.second, *amountToAddress.first);
+    tx->addOutput(amountToAddress.second.first, *amountToAddress.first, amountToAddress.second.second);
   }
 
-  tx->setUnlockTime(unlockTimestamp);
+  //tx->setUnlockTime(unlockTimestamp);
   tx->appendExtra(Common::asBinaryArray(extra));
 
   for (auto& input: keysInfo) {
@@ -3060,6 +3066,8 @@ void WalletGreen::transactionUpdated(const TransactionInformation& transactionIn
   // Update cached balance
   for (auto containerAmounts : containerAmountsList) {
     updateBalance(containerAmounts.container);
+
+    // TODO make sure it unlocks individual outputs, doesn't lock entire tx including unlocked outputs
 
     if (transactionInfo.blockHeight != CryptoNote::WALLET_UNCONFIRMED_TRANSACTION_HEIGHT) {
       uint32_t unlockHeight = std::max(transactionInfo.blockHeight + m_transactionSoftLockTime, static_cast<uint32_t>(transactionInfo.unlockTime));

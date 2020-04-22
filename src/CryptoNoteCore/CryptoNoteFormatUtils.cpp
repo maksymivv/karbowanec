@@ -139,7 +139,6 @@ bool constructTransaction(
   const std::vector<TransactionDestinationEntry>& destinations,
   std::vector<uint8_t> extra,
   Transaction& tx,
-  uint64_t unlock_time,
   Crypto::SecretKey &tx_key,
   Logging::ILogger& log,
   uint8_t version) {
@@ -150,8 +149,6 @@ bool constructTransaction(
   tx.signatures.clear();
 
   tx.version = CURRENT_TRANSACTION_VERSION;
-  tx.unlockTime = unlock_time;
-
   tx.extra = extra;
 
   struct input_generation_context_data {
@@ -207,7 +204,6 @@ bool constructTransaction(
 
   tx_key = txkey.secretKey;
 
-
   // "Shuffle" outs
   std::vector<TransactionDestinationEntry> shuffled_dsts(destinations);
   std::sort(shuffled_dsts.begin(), shuffled_dsts.end(), [](const TransactionDestinationEntry& de1, const TransactionDestinationEntry& de2) { return de1.amount < de2.amount; });
@@ -250,10 +246,7 @@ bool constructTransaction(
     tx.outputs.push_back(out);
     output_index++;
     summary_outs_money += dst_entr.amount;
-
-    if (version >= 2) {
-      tx.outputUnlockTimes.push_back(dst_entr.unlockTime);
-    }
+    out.unlockTime = dst_entr.unlockTime;
   }
 
   //check money

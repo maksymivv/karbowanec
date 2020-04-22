@@ -62,7 +62,8 @@ bool constructTransaction(
   const AccountKeys& senderAccountKeys,
   const std::vector<TransactionSourceEntry>& sources,
   const std::vector<TransactionDestinationEntry>& destinations,
-  std::vector<uint8_t> extra, Transaction& transaction, uint64_t unlock_time, Crypto::SecretKey &tx_key, Logging::ILogger& log,
+  std::vector<uint8_t> extra, Transaction& transaction,
+  Crypto::SecretKey &tx_key, Logging::ILogger& log,
   uint8_t version = CryptoNote::CURRENT_TRANSACTION_VERSION);
 
 

@@ -167,6 +167,7 @@ protected:
   struct ReceiverAmounts {
     CryptoNote::AccountPublicAddress receiver;
     std::vector<uint64_t> amounts;
+    uint64_t unlockTime;
   };
 
   struct WalletOuts {

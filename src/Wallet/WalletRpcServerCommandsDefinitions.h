@@ -69,17 +69,15 @@ using CryptoNote::ISerializer;
 		{
 			std::list<transfer_destination> destinations;
 			uint64_t fee = CryptoNote::parameters::MINIMUM_FEE;
-			uint64_t mixin = 0;
-			uint64_t unlock_time = 0;
 			std::string payment_id;
+      uint64_t unlock_time = 0; // common for all destinations for now (change unlocked)
 
 			void serialize(ISerializer& s)
 			{
 				KV_MEMBER(destinations)
 				KV_MEMBER(fee)
-				KV_MEMBER(mixin)
-				KV_MEMBER(unlock_time)
 				KV_MEMBER(payment_id)
+				KV_MEMBER(unlock_time)
 			}
 		};
 		struct response

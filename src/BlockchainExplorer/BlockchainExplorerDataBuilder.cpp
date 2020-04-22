@@ -34,20 +34,6 @@ m_core(core),
 protocol(protocol) {
 }
 
-bool BlockchainExplorerDataBuilder::getMixin(const Transaction& transaction, uint64_t& mixin) {
-  mixin = 0;
-  for (const TransactionInput& txin : transaction.inputs) {
-    if (txin.type() != typeid(KeyInput)) {
-      continue;
-    }
-    uint64_t currentMixin = boost::get<KeyInput>(txin).outputIndexes.size();
-    if (currentMixin > mixin) {
-      mixin = currentMixin;
-    }
-  }
-  return true;
-}
-
 bool BlockchainExplorerDataBuilder::getPaymentId(const Transaction& transaction, Crypto::Hash& paymentId) {
   std::vector<TransactionExtraField> txExtraFields;
   parseTransactionExtra(transaction.extra, txExtraFields);
@@ -235,7 +221,6 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
     }
   }
   transactionDetails.size = getObjectBinarySize(transaction);
-  transactionDetails.unlockTime = transaction.unlockTime;
   transactionDetails.totalOutputsAmount = get_outs_money_amount(transaction);
   uint64_t inputsAmount;
   if (!get_inputs_money_amount(transaction, inputsAmount)) {
@@ -246,18 +231,12 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
   if (transaction.inputs.size() > 0 && transaction.inputs.front().type() == typeid(BaseInput)) {
     //It's gen transaction
     transactionDetails.fee = 0;
-    transactionDetails.mixin = 0;
   } else {
     uint64_t fee = 0;
     if (!get_tx_fee(transaction, fee)) {
       return false;
     }
     transactionDetails.fee = fee;
-    uint64_t mixin;
-    if (!m_core.getMixin(transaction, mixin)) {
-      return false;
-    }
-    transactionDetails.mixin = mixin;
   }
   Crypto::Hash paymentId;
   if (getPaymentId(transaction, paymentId)) {
@@ -334,8 +313,9 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
   for (const outputWithIndex& txOutput : range) {
     transactionOutputDetails2 txOutDetails;
     txOutDetails.globalIndex = txOutput.get<1>();
-	txOutDetails.output.amount = txOutput.get<0>().amount;
-	txOutDetails.output.target = txOutput.get<0>().target;
+    txOutDetails.output.amount = txOutput.get<0>().amount;
+    txOutDetails.output.target = txOutput.get<0>().target;
+    txOutDetails.output.unlockTime = txOutput.get<0>().unlockTime;
     transactionDetails.outputs.push_back(std::move(txOutDetails));
   }
 

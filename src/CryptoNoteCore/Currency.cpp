@@ -41,109 +41,109 @@ using namespace Common;
 
 namespace CryptoNote {
 
-	const std::vector<uint64_t> Currency::PRETTY_AMOUNTS = {
-		1, 2, 3, 4, 5, 6, 7, 8, 9,
-		10, 20, 30, 40, 50, 60, 70, 80, 90,
-		100, 200, 300, 400, 500, 600, 700, 800, 900,
-		1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
-		10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000,
-		100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000,
-		1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000,
-		10000000, 20000000, 30000000, 40000000, 50000000, 60000000, 70000000, 80000000, 90000000,
-		100000000, 200000000, 300000000, 400000000, 500000000, 600000000, 700000000, 800000000, 900000000,
-		1000000000, 2000000000, 3000000000, 4000000000, 5000000000, 6000000000, 7000000000, 8000000000, 9000000000,
-		10000000000, 20000000000, 30000000000, 40000000000, 50000000000, 60000000000, 70000000000, 80000000000, 90000000000,
-		100000000000, 200000000000, 300000000000, 400000000000, 500000000000, 600000000000, 700000000000, 800000000000, 900000000000,
-		1000000000000, 2000000000000, 3000000000000, 4000000000000, 5000000000000, 6000000000000, 7000000000000, 8000000000000, 9000000000000,
-		10000000000000, 20000000000000, 30000000000000, 40000000000000, 50000000000000, 60000000000000, 70000000000000, 80000000000000, 90000000000000,
-		100000000000000, 200000000000000, 300000000000000, 400000000000000, 500000000000000, 600000000000000, 700000000000000, 800000000000000, 900000000000000,
-		1000000000000000, 2000000000000000, 3000000000000000, 4000000000000000, 5000000000000000, 6000000000000000, 7000000000000000, 8000000000000000, 9000000000000000,
-		10000000000000000, 20000000000000000, 30000000000000000, 40000000000000000, 50000000000000000, 60000000000000000, 70000000000000000, 80000000000000000, 90000000000000000,
-		100000000000000000, 200000000000000000, 300000000000000000, 400000000000000000, 500000000000000000, 600000000000000000, 700000000000000000, 800000000000000000, 900000000000000000,
-		1000000000000000000, 2000000000000000000, 3000000000000000000, 4000000000000000000, 5000000000000000000, 6000000000000000000, 7000000000000000000, 8000000000000000000, 9000000000000000000,
-		10000000000000000000ull
-	};
+  const std::vector<uint64_t> Currency::PRETTY_AMOUNTS = {
+    1, 2, 3, 4, 5, 6, 7, 8, 9,
+    10, 20, 30, 40, 50, 60, 70, 80, 90,
+    100, 200, 300, 400, 500, 600, 700, 800, 900,
+    1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000,
+    10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000,
+    100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000,
+    1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000, 9000000,
+    10000000, 20000000, 30000000, 40000000, 50000000, 60000000, 70000000, 80000000, 90000000,
+    100000000, 200000000, 300000000, 400000000, 500000000, 600000000, 700000000, 800000000, 900000000,
+    1000000000, 2000000000, 3000000000, 4000000000, 5000000000, 6000000000, 7000000000, 8000000000, 9000000000,
+    10000000000, 20000000000, 30000000000, 40000000000, 50000000000, 60000000000, 70000000000, 80000000000, 90000000000,
+    100000000000, 200000000000, 300000000000, 400000000000, 500000000000, 600000000000, 700000000000, 800000000000, 900000000000,
+    1000000000000, 2000000000000, 3000000000000, 4000000000000, 5000000000000, 6000000000000, 7000000000000, 8000000000000, 9000000000000,
+    10000000000000, 20000000000000, 30000000000000, 40000000000000, 50000000000000, 60000000000000, 70000000000000, 80000000000000, 90000000000000,
+    100000000000000, 200000000000000, 300000000000000, 400000000000000, 500000000000000, 600000000000000, 700000000000000, 800000000000000, 900000000000000,
+    1000000000000000, 2000000000000000, 3000000000000000, 4000000000000000, 5000000000000000, 6000000000000000, 7000000000000000, 8000000000000000, 9000000000000000,
+    10000000000000000, 20000000000000000, 30000000000000000, 40000000000000000, 50000000000000000, 60000000000000000, 70000000000000000, 80000000000000000, 90000000000000000,
+    100000000000000000, 200000000000000000, 300000000000000000, 400000000000000000, 500000000000000000, 600000000000000000, 700000000000000000, 800000000000000000, 900000000000000000,
+    1000000000000000000, 2000000000000000000, 3000000000000000000, 4000000000000000000, 5000000000000000000, 6000000000000000000, 7000000000000000000, 8000000000000000000, 9000000000000000000,
+    10000000000000000000ull
+  };
 
-	bool Currency::init() {
-		if (!generateGenesisBlock()) {
-			logger(ERROR, BRIGHT_RED) << "Failed to generate genesis block";
-			return false;
-		}
+  bool Currency::init() {
+    if (!generateGenesisBlock()) {
+      logger(ERROR, BRIGHT_RED) << "Failed to generate genesis block";
+      return false;
+    }
 
-		if (!get_block_hash(m_genesisBlock, m_genesisBlockHash)) {
-			logger(ERROR, BRIGHT_RED) << "Failed to get genesis block hash";
-			return false;
-		}
+    if (!get_block_hash(m_genesisBlock, m_genesisBlockHash)) {
+      logger(ERROR, BRIGHT_RED) << "Failed to get genesis block hash";
+      return false;
+    }
 
-		if (isTestnet()) {
-			m_upgradeHeightV2 = 10;
-			m_upgradeHeightV3 = 60;
-			m_upgradeHeightV4 = 70;
-			m_upgradeHeightV5 = 80;
-			m_blocksFileName = "testnet_" + m_blocksFileName;
-			m_blocksCacheFileName = "testnet_" + m_blocksCacheFileName;
-			m_blockIndexesFileName = "testnet_" + m_blockIndexesFileName;
-			m_txPoolFileName = "testnet_" + m_txPoolFileName;
-			m_blockchainIndicesFileName = "testnet_" + m_blockchainIndicesFileName;
-		}
+    if (isTestnet()) {
+      m_upgradeHeightV2 = 10;
+      m_upgradeHeightV3 = 60;
+      m_upgradeHeightV4 = 70;
+      m_upgradeHeightV5 = 80;
+      m_blocksFileName = "testnet_" + m_blocksFileName;
+      m_blocksCacheFileName = "testnet_" + m_blocksCacheFileName;
+      m_blockIndexesFileName = "testnet_" + m_blockIndexesFileName;
+      m_txPoolFileName = "testnet_" + m_txPoolFileName;
+      m_blockchainIndicesFileName = "testnet_" + m_blockchainIndicesFileName;
+    }
 
-		return true;
-	}
+    return true;
+  }
 
-	bool Currency::generateGenesisBlock() {
-		m_genesisBlock = boost::value_initialized<Block>();
+  bool Currency::generateGenesisBlock() {
+    m_genesisBlock = boost::value_initialized<Block>();
 
-		// Hard code coinbase tx in genesis block, because "tru" generating tx use random, but genesis should be always the same
-		std::string genesisCoinbaseTxHex = GENESIS_COINBASE_TX_HEX;
-		BinaryArray minerTxBlob;
+    // Hard code coinbase tx in genesis block, because "tru" generating tx use random, but genesis should be always the same
+    std::string genesisCoinbaseTxHex = GENESIS_COINBASE_TX_HEX;
+    BinaryArray minerTxBlob;
 
-		bool r =
-			fromHex(genesisCoinbaseTxHex, minerTxBlob) &&
-			fromBinaryArray(m_genesisBlock.baseTransaction, minerTxBlob);
+    bool r =
+      fromHex(genesisCoinbaseTxHex, minerTxBlob) &&
+      fromBinaryArray(m_genesisBlock.baseTransaction, minerTxBlob);
 
-		if (!r) {
-			logger(ERROR, BRIGHT_RED) << "failed to parse coinbase tx from hard coded blob";
-			return false;
-		}
+    if (!r) {
+      logger(ERROR, BRIGHT_RED) << "failed to parse coinbase tx from hard coded blob";
+      return false;
+    }
 
-		m_genesisBlock.majorVersion = BLOCK_MAJOR_VERSION_1;
-		m_genesisBlock.minorVersion = BLOCK_MINOR_VERSION_0;
-		m_genesisBlock.timestamp = GENESIS_TIMESTAMP;
-		m_genesisBlock.nonce = GENESIS_NONCE;
-		if (m_testnet) {
-			++m_genesisBlock.nonce;
-		}
-		//miner::find_nonce_for_given_block(bl, 1, 0);
+    m_genesisBlock.majorVersion = BLOCK_MAJOR_VERSION_1;
+    m_genesisBlock.minorVersion = BLOCK_MINOR_VERSION_0;
+    m_genesisBlock.timestamp = GENESIS_TIMESTAMP;
+    m_genesisBlock.nonce = GENESIS_NONCE;
+    if (m_testnet) {
+      ++m_genesisBlock.nonce;
+    }
+    //miner::find_nonce_for_given_block(bl, 1, 0);
 
-		return true;
-	}
+    return true;
+  }
 
-	size_t Currency::blockGrantedFullRewardZoneByBlockVersion(uint8_t blockMajorVersion) const {
-		if (blockMajorVersion >= BLOCK_MAJOR_VERSION_3) {
+  size_t Currency::blockGrantedFullRewardZoneByBlockVersion(uint8_t blockMajorVersion) const {
+    if (blockMajorVersion >= BLOCK_MAJOR_VERSION_3) {
       return CryptoNote::parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2;
-		}
-		else {
-			return m_blockGrantedFullRewardZone;
-		}
-	}
+    }
+    else {
+      return m_blockGrantedFullRewardZone;
+    }
+  }
 
-	uint32_t Currency::upgradeHeight(uint8_t majorVersion) const {
-		if (majorVersion == BLOCK_MAJOR_VERSION_5) {
-			return m_upgradeHeightV5;
-		}
-		else if (majorVersion == BLOCK_MAJOR_VERSION_4) {
-			return m_upgradeHeightV4;
-		}
-		else if (majorVersion == BLOCK_MAJOR_VERSION_2) {
-			return m_upgradeHeightV2;
-		}
-		else if (majorVersion == BLOCK_MAJOR_VERSION_3) {
-			return m_upgradeHeightV3;
-		}
-		else {
-			return static_cast<uint32_t>(-1);
-		}
-	}
+  uint32_t Currency::upgradeHeight(uint8_t majorVersion) const {
+    if (majorVersion == BLOCK_MAJOR_VERSION_5) {
+      return m_upgradeHeightV5;
+    }
+    else if (majorVersion == BLOCK_MAJOR_VERSION_4) {
+      return m_upgradeHeightV4;
+    }
+    else if (majorVersion == BLOCK_MAJOR_VERSION_2) {
+      return m_upgradeHeightV2;
+    }
+    else if (majorVersion == BLOCK_MAJOR_VERSION_3) {
+      return m_upgradeHeightV3;
+    }
+    else {
+      return static_cast<uint32_t>(-1);
+    }
+  }
 
   uint64_t Currency::calculateReward(uint8_t blockMajorVersion, uint32_t height, uint64_t alreadyGeneratedCoins) const {
     // Initial emission
@@ -178,12 +178,13 @@ namespace CryptoNote {
   }
 
   uint64_t Currency::calculateInterest(uint64_t amount, uint32_t term) const {
+    assert(m_depositMinAmount <= amount);
     assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
     assert(term % m_depositMinTerm == 0); // allowed terms with 1 month step only
 
     double interest_min = 1.0, interest_step = 0.2, tier = 0;
     uint64_t coins = amount / CryptoNote::parameters::COIN;
-    if (coins > 10 && coins < 100)
+    if (coins >= 10 && coins < 100)
       tier = 1;
     else if (coins >= 100 && coins < 200)
       tier = 2;
@@ -217,6 +218,8 @@ namespace CryptoNote {
   std::vector<std::pair<uint32_t, uint64_t>> Currency::disburseInterest(uint64_t amount, uint32_t term) const {
     assert(m_depositMinAmount <= amount);
     assert(m_depositMinTerm <= term && term <= m_depositMaxTerm);
+    assert(term % m_depositMinTerm == 0);
+
     const size_t n = term / m_depositMinTerm;
 
     std::vector<std::pair<uint32_t, uint64_t>> chunks;
@@ -227,13 +230,15 @@ namespace CryptoNote {
       for (size_t i = 0; i < n; i++) {
         amounts.push_back(amount / n);
       }
-    } else {
+    }
+    else {
       uint64_t zp = n - (amount % n);
       uint64_t pp = amount / n;
       for (size_t i = 0; i < n; i++) {
         if (i >= zp) {
           amounts.push_back(pp + 1);
-        } else {
+        }
+        else {
           amounts.push_back(pp);
         }
       }
@@ -242,17 +247,21 @@ namespace CryptoNote {
       for (size_t i = 0; i < n; i++) {
         terms.push_back(term / n);
       }
-    } else {
+    }
+    else {
       uint32_t zp = n - (term % n);
       uint32_t pp = term / n;
       for (size_t i = 0; i < n; i++) {
         if (i >= zp) {
           terms.push_back(pp + 1);
-        } else {
+        }
+        else {
           terms.push_back(pp);
         }
       }
     }
+    assert(amounts.size() == terms.size(), "Amounts and terms mismatch in disbursement");
+
     for (size_t i = 0; i < n; i++) {
       chunks.push_back(std::make_pair(terms[i], amounts[i]));
     }
@@ -260,17 +269,19 @@ namespace CryptoNote {
     return chunks;
   }
 
-  // unlockTime must be the same as largest of outputUnlockTimes
   bool Currency::getDepositTerm(const Transaction& tx, uint32_t& term) const {
-    std::vector<uint64_t> unlocktimes = tx.outputUnlockTimes;
+    std::vector<uint64_t> unlocktimes;
+    for (const auto& o : tx.outputs) {
+      unlocktimes.push_back(o.unlockTime);
+    }
     sort(unlocktimes.begin(), unlocktimes.end());
     std::reverse(unlocktimes.begin(), unlocktimes.end());
-    if (unlocktimes.front() < depositMinTerm() && tx.unlockTime != unlocktimes.front()) {
+    if (unlocktimes.front() < depositMinTerm() || unlocktimes.front() > depositMaxTerm()) {
       logger(ERROR) << "Invalid deposit term";
       return false;
     }
 
-    term = (uint32_t)tx.unlockTime;
+    term = (uint32_t)unlocktimes.front();
     return true;
   }
 
@@ -283,7 +294,7 @@ namespace CryptoNote {
     for (uint64_t i = 0; i < tx.outputs.size(); ++i) {
       TransactionOutput o = tx.outputs[i];
       outputsAmount += o.amount;
-      unlockTimesAndAmounts.push_back(std::make_pair(tx.outputUnlockTimes[i], o.amount));
+      unlockTimesAndAmounts.push_back(std::make_pair(o.unlockTime, o.amount));
     }
 
     if (!(outputsAmount > inputsAmount)) {
@@ -295,15 +306,15 @@ namespace CryptoNote {
     sort(unlockTimesAndAmounts.begin(), unlockTimesAndAmounts.end());
     std::reverse(unlockTimesAndAmounts.begin(), unlockTimesAndAmounts.end());
 
-    // unlockTime must be the same as the largest of outputUnlockTimes
-    if (unlockTimesAndAmounts.front().first < depositMinTerm() || (uint32_t)tx.unlockTime != unlockTimesAndAmounts.front().first) {
+    if (unlockTimesAndAmounts.front().first < depositMinTerm() || unlockTimesAndAmounts.front().first > depositMaxTerm()) {
       logger(DEBUGGING) << "Invalid deposit term";
       return false;
     }
+
     term = unlockTimesAndAmounts.front().first;
 
     for (uint64_t i = 0; i < unlockTimesAndAmounts.size(); ++i) {
-      if (unlockTimesAndAmounts[i].first == (uint32_t)tx.unlockTime) {
+      if (unlockTimesAndAmounts[i].first == term) {
         deposit += unlockTimesAndAmounts[i].second;
       }
       else if (unlockTimesAndAmounts[i].first != 0) {
@@ -315,7 +326,7 @@ namespace CryptoNote {
       }
     }
 
-    if (deposit < depositMinAmount()) {
+    if (deposit < m_depositMinAmount) {
       logger(DEBUGGING) << "Insufficient deposit amount: " << formatAmount(deposit) << " whereas minimum is " << formatAmount(depositMinAmount());
       return false;
     }
@@ -331,7 +342,7 @@ namespace CryptoNote {
       logger(DEBUGGING) << "Invalid deposit: underpaid interest " << formatAmount(actualInterest) << " of expected " << formatAmount(calculatedInterest);
       return false;
     }
-        
+
     // the fee can NOT be in outputs, it's just burned and resurrected in miner's tx
     if (inputsAmount <= deposit + change) {
       logger(DEBUGGING) << "Invalid deposit due to wrong fee";
@@ -349,6 +360,12 @@ namespace CryptoNote {
     return true;
   }
 
+  bool Currency::isDeposit(const Transaction& tx) const {
+    uint64_t deposit, interest, fee;
+    uint32_t term;
+    return getTransactionDepositInfo(tx, deposit, interest, fee, term);
+  }
+
   bool Currency::getTransactionFee(const Transaction& tx, uint64_t & fee) const {
     uint64_t amount_in = getInputAmount(tx);
     uint64_t amount_out = getOutputAmount(tx);
@@ -360,7 +377,8 @@ namespace CryptoNote {
         return false;
       }
       fee = deposit_fee;
-    } else {
+    }
+    else {
       fee = amount_in - amount_out;
     }
 
@@ -373,6 +391,21 @@ namespace CryptoNote {
       r = 0;
     }
     return r;
+  }
+
+  uint64_t Currency::getUnlockTime(const TransactionPrefix& tx) const {
+    std::vector<uint64_t> unlocktimes;
+    for (const auto& o : tx.outputs) {
+      unlocktimes.push_back(o.unlockTime);
+    }
+    sort(unlocktimes.begin(), unlocktimes.end());
+    std::reverse(unlocktimes.begin(), unlocktimes.end());
+    return unlocktimes.front();
+  }
+
+  uint64_t Currency::getUnlockTime(const Transaction& tx) const {
+    CryptoNote::TransactionPrefix p = *static_cast<const TransactionPrefix*>(&tx);
+    return getUnlockTime(p);
   }
 
 	size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
@@ -449,6 +482,7 @@ namespace CryptoNote {
 			TransactionOutput out;
 			summaryAmounts += out.amount = outAmounts[no];
 			out.target = tk;
+      out.unlockTime = height + minedMoneyUnlockWindow(); //lock
 			tx.outputs.push_back(out);
 		}
 
@@ -458,8 +492,7 @@ namespace CryptoNote {
 		}
 
 		tx.version = CURRENT_TRANSACTION_VERSION;
-		//lock
-		tx.unlockTime = height + minedMoneyUnlockWindow();
+
 		tx.inputs.push_back(in);
 		return true;
 	}

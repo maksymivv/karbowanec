@@ -141,9 +141,13 @@ public:
   uint64_t calculateInterest(uint64_t amount, uint32_t term) const;
   std::vector<std::pair<uint32_t, uint64_t>> disburseInterest(uint64_t amount, uint32_t term) const;
   bool getTransactionDepositInfo(const Transaction& tx, uint64_t& deposit, uint64_t& interest, uint64_t& fee, uint32_t& term) const;
+  bool isDeposit(const Transaction& tx) const;
   bool getDepositTerm(const Transaction& tx, uint32_t& term) const;
   bool getTransactionFee(const Transaction& tx, uint64_t & fee) const;
   uint64_t getTransactionFee(const Transaction& tx) const;
+
+  uint64_t getUnlockTime(const Transaction& tx) const;
+  uint64_t getUnlockTime(const TransactionPrefix& tx) const;
 
   size_t maxBlockCumulativeSize(uint64_t height) const;
 
