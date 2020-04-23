@@ -197,7 +197,8 @@ bool wallet_rpc_server::on_transfer(const wallet_rpc::COMMAND_RPC_TRANSFER::requ
 	{
 		CryptoNote::WalletLegacyTransfer transfer;
 		transfer.address = it->address;
-		transfer.amount  = it->amount;
+		transfer.amount = it->amount;
+    transfer.unlockTimestamp = it->unlock_time;
 		transfers.push_back(transfer);
 	}
 
@@ -228,7 +229,7 @@ bool wallet_rpc_server::on_transfer(const wallet_rpc::COMMAND_RPC_TRANSFER::requ
 		CryptoNote::WalletHelper::SendCompleteResultObserver sent;
 		WalletHelper::IWalletRemoveObserverGuard removeGuard(m_wallet, sent);
 
-		CryptoNote::TransactionId tx = m_wallet.sendTransaction(transfers, req.fee == 0 ? m_currency.minimumFee() : req.fee, extraString, req.unlock_time);
+		CryptoNote::TransactionId tx = m_wallet.sendTransaction(transfers, req.fee == 0 ? m_currency.minimumFee() : req.fee, extraString);
 		if (tx == WALLET_LEGACY_INVALID_TRANSACTION_ID)
 			throw std::runtime_error("Couldn't send transaction");
 

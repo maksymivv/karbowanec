@@ -459,7 +459,7 @@ uint32_t Blockchain::getCurrentBlockchainHeight() {
 bool Blockchain::loadMinersFromFile(const std::string& fileName) {
   std::ifstream file(fileName);
   if (!file) {
-    logger(Logging::ERROR, BRIGHT_RED) << "Could not load " << fileName;
+    logger(Logging::ERROR, BRIGHT_RED) << "Could not find " << fileName;
     return false;
   }
   if (file.peek() == std::ifstream::traits_type::eof()) {
@@ -648,10 +648,9 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   
   logger(INFO) << "Loaded hardcoded anointed miner(s)...";
 
-  if (!loadMinersFromFile(CryptoNote::parameters::BLESSED_MINERS_CONFIG_FILE_NAME)) {
-    return false;
-  }
-
+  //if (!loadMinersFromFile(CryptoNote::parameters::BLESSED_MINERS_CONFIG_FILE_NAME)) {
+  //  return false;
+  //}
 
   return true;
 }
@@ -1251,7 +1250,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
 
   // only selected miners allowed to mine blocks
   // skip this check under checkpoints
-  if (height != 0 && !isInCheckpointZone(getCurrentBlockchainHeight()) && !checkAllowedMiner(b.baseTransaction)) {
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V2 && !isInCheckpointZone(getCurrentBlockchainHeight()) && !checkAllowedMiner(b.baseTransaction)) {
     logger(ERROR, BRIGHT_RED) << "Unauthorized miner of block " << height;
     return false;
   }

@@ -203,7 +203,9 @@ struct TransferCommand {
   const CryptoNote::NodeRpcProxy& m_node;
   std::vector<CryptoNote::WalletLegacyTransfer> dsts;
   std::vector<uint8_t> extra;
-  uint64_t fee;
+  uint64_t fee = 0;
+  uint64_t sum = 0;
+  uint64_t unlock_time = 0;
 #ifndef __ANDROID__
   std::map<std::string, std::vector<WalletLegacyTransfer>> aliases;
 #endif
@@ -243,6 +245,8 @@ struct TransferCommand {
                 << (m_currency.minimumFee());
               return false;
             }
+          } else if (arg == "-u") {
+            // TODO can add unlock time common for all destinations
           }
         } else {
           WalletLegacyTransfer destination;
@@ -283,20 +287,14 @@ struct TransferCommand {
 #endif
             destination.address = arg;
             destination.amount = de.amount;
+            destination.unlockTimestamp = unlock_time;
             dsts.push_back(destination);
 #ifndef __ANDROID__
           } else {
             aliases[aliasUrl].emplace_back(WalletLegacyTransfer{ "", static_cast<int64_t>(de.amount) });
           }
 #endif
-          if (!m_remote_node_fee_address.empty()) {
-            destination.address = m_remote_node_fee_address;
-            int64_t remote_node_fee = m_remote_node_fee_amount == 0 ? static_cast<int64_t>(de.amount * 0.0025) : m_remote_node_fee_amount;
-            if (remote_node_fee > (int64_t)CryptoNote::parameters::COIN)
-              remote_node_fee = (int64_t)CryptoNote::parameters::COIN;
-            destination.amount = remote_node_fee;
-            dsts.push_back(destination);
-          }
+          sum += de.amount;
         }
       }
 
@@ -307,6 +305,17 @@ struct TransferCommand {
         ) {
         logger(ERROR, BRIGHT_RED) << "At least one destination address is required";
         return false;
+      }
+
+      if (!m_remote_node_fee_address.empty()) {
+        WalletLegacyTransfer destination;
+        destination.address = m_remote_node_fee_address;
+        int64_t remote_node_fee = m_remote_node_fee_amount == 0 ? static_cast<int64_t>(sum * 0.0025) : m_remote_node_fee_amount;
+        if (remote_node_fee > (int64_t)CryptoNote::parameters::COIN)
+          remote_node_fee = (int64_t)CryptoNote::parameters::COIN;
+        destination.amount = remote_node_fee;
+        destination.unlockTimestamp = 0;
+        dsts.push_back(destination);
       }
     }
     catch (const std::exception& e) {
@@ -2065,7 +2074,7 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
 
     WalletHelper::IWalletRemoveObserverGuard removeGuard(*m_wallet, sent);
 
-    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, cmd.fee, extraString, 0);
+    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, cmd.fee, extraString);
     if (tx == WALLET_LEGACY_INVALID_TRANSACTION_ID) {
       fail_msg_writer() << "Can't send money";
       return true;

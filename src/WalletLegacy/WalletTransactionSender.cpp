@@ -105,7 +105,7 @@ void WalletTransactionSender::validateTransfersAddresses(const std::vector<Walle
 }
 
 std::shared_ptr<WalletRequest> WalletTransactionSender::makeSendRequest(TransactionId& transactionId, std::deque<std::shared_ptr<WalletLegacyEvent>>& events,
-    const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t unlockTimestamp) {
+    const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra) {
 
   using namespace CryptoNote;
 
@@ -118,7 +118,7 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::makeSendRequest(Transact
   context->foundMoney = selectTransfersToSend(neededMoney, context->selectedTransfers);
   throwIf(context->foundMoney < neededMoney, error::WRONG_AMOUNT);
 
-  transactionId = m_transactionsCache.addNewTransaction(neededMoney, fee, extra, transfers, unlockTimestamp);
+  transactionId = m_transactionsCache.addNewTransaction(neededMoney, fee, extra, transfers);
   context->transactionId = transactionId;
 
   return doSendTransaction(context, events);
@@ -143,7 +143,7 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::doSendTransaction(std::s
     createChangeDestinations(m_keys.address, totalAmount, context->foundMoney, changeDts);
 
     std::vector<TransactionDestinationEntry> splittedDests;
-    splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, transaction.unlockTime, splittedDests);
+    splitDestinations(transaction.firstTransferId, transaction.transferCount, changeDts, context->dustPolicy, splittedDests);
 
     Transaction tx;
     constructTx(m_keys, sources, splittedDests, transaction.extra, m_upperTransactionSizeLimit, tx, context->tx_key);
@@ -178,20 +178,20 @@ void WalletTransactionSender::relayTransactionCallback(std::shared_ptr<SendTrans
 
 
 void WalletTransactionSender::splitDestinations(TransferId firstTransferId, size_t transfersCount, const TransactionDestinationEntry& changeDts,
-  const TxDustPolicy& dustPolicy, uint64_t unlockTime, std::vector<TransactionDestinationEntry>& splittedDests) {
+  const TxDustPolicy& dustPolicy, std::vector<TransactionDestinationEntry>& splittedDests) {
   uint64_t dust = 0;
 
-  digitSplitStrategy(firstTransferId, transfersCount, changeDts, dustPolicy.dustThreshold, unlockTime, splittedDests, dust);
+  digitSplitStrategy(firstTransferId, transfersCount, changeDts, dustPolicy.dustThreshold, splittedDests, dust);
 
   throwIf(dustPolicy.dustThreshold < dust, error::INTERNAL_WALLET_ERROR);
   if (0 != dust && !dustPolicy.addToFee) {
-    splittedDests.push_back(TransactionDestinationEntry(dust, unlockTime, dustPolicy.addrForDust));
+    splittedDests.push_back(TransactionDestinationEntry(dust, 0, dustPolicy.addrForDust));
   }
 }
 
 
 void WalletTransactionSender::digitSplitStrategy(TransferId firstTransferId, size_t transfersCount,
-  const TransactionDestinationEntry& change_dst, uint64_t dust_threshold, uint64_t unlockTime,
+  const TransactionDestinationEntry& change_dst, uint64_t dust_threshold,
   std::vector<TransactionDestinationEntry>& splitted_dsts, uint64_t& dust) {
   splitted_dsts.clear();
   dust = 0;
@@ -203,7 +203,7 @@ void WalletTransactionSender::digitSplitStrategy(TransferId firstTransferId, siz
     if (!m_currency.parseAccountAddressString(de.address, addr)) {
       throw std::system_error(make_error_code(error::BAD_ADDRESS));
     }
-    splitted_dsts.push_back(TransactionDestinationEntry(de.amount, unlockTime, addr));
+    splitted_dsts.push_back(TransactionDestinationEntry(de.amount, de.unlockTimestamp, addr));
   }
   splitted_dsts.push_back(TransactionDestinationEntry(change_dst.amount, 0, change_dst.addr));
 }
