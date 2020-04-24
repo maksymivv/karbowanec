@@ -52,7 +52,7 @@ struct TransactionDestinationEntry {
   AccountPublicAddress addr;          //destination address
 
   TransactionDestinationEntry() : amount(0), unlockHeight(0), addr(boost::value_initialized<AccountPublicAddress>()) {}
-  TransactionDestinationEntry(uint64_t amount, uint64_t unlock_height, const AccountPublicAddress &addr) : amount(amount), unlockHeight(unlock_height), addr(addr) {}
+  TransactionDestinationEntry(uint64_t amount, uint32_t unlock_height, const AccountPublicAddress &addr) : amount(amount), unlockHeight(unlock_height), addr(addr) {}
 };
 
 bool generateDeterministicTransactionKeys(const Crypto::Hash& inputsHash, const Crypto::SecretKey& viewSecretKey, KeyPair& generatedKeys);

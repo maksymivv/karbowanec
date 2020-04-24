@@ -243,10 +243,12 @@ bool constructTransaction(
     KeyOutput tk;
     tk.key = out_eph_public_key;
     out.target = tk;
+    out.unlockHeight = dst_entr.unlockHeight;
+
     tx.outputs.push_back(out);
+
     output_index++;
     summary_outs_money += dst_entr.amount;
-    out.unlockHeight = dst_entr.unlockHeight;
   }
 
   //check money
