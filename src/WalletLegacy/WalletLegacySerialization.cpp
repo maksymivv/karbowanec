@@ -58,7 +58,7 @@ void serialize(WalletLegacyTransaction& txi, CryptoNote::ISerializer& serializer
   CryptoNote::serializeBlockHeight(serializer, txi.blockHeight, "block_height");
 
   serializer(txi.timestamp, "timestamp");
-  serializer(txi.unlockTime, "unlock_time");
+  serializer(txi.unlockHeight, "unlock_height");
   serializer(txi.extra, "extra");
 
   if (CryptoNote::WALLET_LEGACY_SERIALIZATION_VERSION >= 2) {

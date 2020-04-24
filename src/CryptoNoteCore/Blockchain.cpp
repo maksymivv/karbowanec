@@ -1224,10 +1224,10 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
   }
 
   for (const auto& o : b.baseTransaction.outputs) {
-    if (!(o.unlockTime == height + m_currency.minedMoneyUnlockWindow())) {
+    if (!(o.unlockHeight == height + m_currency.minedMoneyUnlockWindow())) {
       logger(ERROR, BRIGHT_RED)
         << "One of coinbase transaction's outputs has wrong unlock time = "
-        << o.unlockTime << ", expected "
+        << o.unlockHeight << ", expected "
         << height + m_currency.minedMoneyUnlockWindow();
       return false;
     }
@@ -1604,7 +1604,7 @@ bool Blockchain::add_out_to_get_random_outs(std::vector<std::pair<TransactionInd
   if (!(tx.outputs[amount_outs[i].second].target.type() == typeid(KeyOutput))) { logger(ERROR, BRIGHT_RED) << "unknown tx out type"; return false; }
 
   //check if transaction is unlocked
-  if (!is_output_unlocked(tx.outputs[amount_outs[i].second].unlockTime, getCurrentBlockchainHeight()))
+  if (!is_output_unlocked(tx.outputs[amount_outs[i].second].unlockHeight, getCurrentBlockchainHeight()))
     return false;
 
   COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry& oen = *result_outs.outs.insert(result_outs.outs.end(), COMMAND_RPC_GET_RANDOM_OUTPUTS_FOR_AMOUNTS::out_entry());
@@ -1919,10 +1919,10 @@ bool Blockchain::checkTransactionInputs(const Transaction& tx, const Crypto::Has
   return true;
 }
 
-bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
-  if (unlock_time < m_currency.maxBlockHeight()) {
+bool Blockchain::is_tx_spendtime_unlocked(uint32_t unlock_height) {
+  if (unlock_height < m_currency.maxBlockHeight()) {
     //interpret as block index
-    if (getCurrentBlockchainHeight() - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
+    if (getCurrentBlockchainHeight() - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_height)
       return true;
     else
       return false;
@@ -1931,7 +1931,7 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
 
     // compare with last block timestamp + delta seconds
     const uint64_t lastBlockTimestamp = getBlockTimestamp(getCurrentBlockchainHeight() - 1);
-    if (lastBlockTimestamp + m_currency.lockedTxAllowedDeltaSeconds() >= unlock_time)
+    if (lastBlockTimestamp + m_currency.lockedTxAllowedDeltaSeconds() >= unlock_height)
       return true;
     else
       return false;
@@ -1940,18 +1940,18 @@ bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time) {
   return false;
 }
 
-bool Blockchain::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
-  if (unlock_time < m_currency.maxBlockHeight()) {
+bool Blockchain::is_tx_spendtime_unlocked(uint32_t unlock_height, uint32_t height) {
+  if (unlock_height < m_currency.maxBlockHeight()) {
     //interpret as block index
-    if (height - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_time)
+    if (height - 1 + m_currency.lockedTxAllowedDeltaBlocks() >= unlock_height)
       return true;
   }
 
   return false;
 }
 
-bool Blockchain::is_output_unlocked(uint64_t unlock_time, uint32_t height) {
-  return is_tx_spendtime_unlocked(unlock_time, height);
+bool Blockchain::is_output_unlocked(uint32_t unlock_height, uint32_t height) {
+  return is_tx_spendtime_unlocked(unlock_height, height);
 }
 
 bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_prefix_hash, const std::vector<Crypto::Signature>& sig, uint32_t* pmax_related_block_height) {
@@ -1966,9 +1966,9 @@ bool Blockchain::check_tx_input(const KeyInput& txin, const Crypto::Hash& tx_pre
 
     bool handle_output(const Transaction& tx, const TransactionOutput& out, size_t transactionOutputIndex) {
       //check tx unlock time
-      if (!m_bch.is_output_unlocked(out.unlockTime, m_bch.getCurrentBlockchainHeight())) {
+      if (!m_bch.is_output_unlocked(out.unlockHeight, m_bch.getCurrentBlockchainHeight())) {
         logger(INFO, BRIGHT_WHITE) <<
-          "One of outputs for one of inputs has wrong unlockTime = " << out.unlockTime;
+          "One of outputs for one of inputs has wrong unlockHeight = " << out.unlockHeight;
         return false;
       }
 
@@ -2567,7 +2567,7 @@ bool Blockchain::validateInput(const MultisignatureInput& input, const Crypto::H
 
   const Transaction& outputTransaction = m_blocks[outputIndex.transactionIndex.block].transactions[outputIndex.transactionIndex.transaction].tx;
  
-  if (!is_tx_spendtime_unlocked(outputTransaction.outputs[outputIndex.outputIndex].unlockTime)) {
+  if (!is_tx_spendtime_unlocked(outputTransaction.outputs[outputIndex.outputIndex].unlockHeight)) {
     logger(DEBUGGING) <<
       "Transaction << " << transactionHash << " contains multisignature input which points to a locked output.";
     return false;
@@ -2913,7 +2913,7 @@ bool Blockchain::check_reserve_proof(const AccountPublicAddress& acc, const std:
 
     CryptoNote::TransactionPrefix tx = *static_cast<const TransactionPrefix*>(&transactions[i]);
 
-    bool unlocked = is_tx_spendtime_unlocked(tx.outputs[proof.index_in_transaction].unlockTime, getCurrentBlockchainHeight());
+    bool unlocked = is_tx_spendtime_unlocked(tx.outputs[proof.index_in_transaction].unlockHeight, getCurrentBlockchainHeight());
 
     if (proof.index_in_transaction >= tx.outputs.size()) {
       logger(ERROR, BRIGHT_RED) << "index_in_tx is out of bound";

@@ -1310,20 +1310,20 @@ bool Core::is_key_image_spent(const Crypto::KeyImage& key_im, uint32_t height) {
   return m_blockchain.checkIfSpent(key_im, height);
 }
 
-bool Core::is_tx_spendtime_unlocked(uint64_t unlock_time) {
-  return m_blockchain.is_tx_spendtime_unlocked(unlock_time);
+bool Core::is_tx_spendtime_unlocked(uint32_t unlock_height) {
+  return m_blockchain.is_tx_spendtime_unlocked(unlock_height);
 }
 
-bool Core::is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height) {
-  return m_blockchain.is_tx_spendtime_unlocked(unlock_time, height);
+bool Core::is_tx_spendtime_unlocked(uint32_t unlock_height, uint32_t height) {
+  return m_blockchain.is_tx_spendtime_unlocked(unlock_height, height);
 }
 
 bool Core::isInCheckpointZone(uint32_t height) const {
   return m_checkpoints.is_in_checkpoint_zone(height);
 }
 
-bool Core::isOutputUnlocked(uint64_t unlock_time, uint32_t height) {
-  return m_blockchain.is_output_unlocked(unlock_time, height);
+bool Core::isOutputUnlocked(uint32_t unlock_height, uint32_t height) {
+  return m_blockchain.is_output_unlocked(unlock_height, height);
 }
 
 bool Core::addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) {

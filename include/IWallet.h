@@ -84,7 +84,7 @@ struct WalletTransaction {
   int64_t totalAmount;
   uint64_t fee;
   uint64_t creationTime;
-  uint64_t unlockTime;
+  uint32_t unlockHeight;
   std::string extra;
   bool isBase;
 };
@@ -98,6 +98,7 @@ enum class WalletTransferType : uint8_t {
 struct WalletOrder {
   std::string address;
   uint64_t amount;
+  uint32_t unlockHeight = 0;
 };
 
 struct WalletTransfer {
@@ -117,7 +118,7 @@ struct TransactionParameters {
   uint64_t fee = 0;
   uint64_t mixIn = 0;
   std::string extra;
-  uint64_t unlockTimestamp = 0;
+  uint32_t unlockHeight = 0;
   DonationSettings donation;
   std::string changeDestination;
 };

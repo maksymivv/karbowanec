@@ -60,7 +60,7 @@ namespace CryptoNote {
     virtual Hash getTransactionPrefixHash() const override;
     virtual Hash getTransactionInputsHash() const override;
     virtual PublicKey getTransactionPublicKey() const override;
-    virtual uint64_t getUnlockTime() const override;
+    virtual uint32_t getUnlockTime() const override;
     virtual bool getPaymentId(Hash& hash) const override;
     virtual bool getExtraNonce(BinaryArray& nonce) const override;
     virtual BinaryArray getExtra() const override;
@@ -105,10 +105,10 @@ namespace CryptoNote {
     virtual size_t addInput(const MultisignatureInput& input) override;
     virtual size_t addInput(const AccountKeys& senderKeys, const TransactionTypes::InputKeyInfo& info, KeyPair& ephKeys) override;
 
-    virtual size_t addOutput(uint64_t amount, const AccountPublicAddress& to, uint64_t unlockTime) override;
-    virtual size_t addOutput(uint64_t amount, const std::vector<AccountPublicAddress>& to, uint32_t requiredSignatures, uint64_t unlockTime) override;
-    virtual size_t addOutput(uint64_t amount, const KeyOutput& out, uint64_t unlockTime) override;
-    virtual size_t addOutput(uint64_t amount, const MultisignatureOutput& out, uint64_t unlockTime) override;
+    virtual size_t addOutput(uint64_t amount, const AccountPublicAddress& to, uint32_t unlockHeight) override;
+    virtual size_t addOutput(uint64_t amount, const std::vector<AccountPublicAddress>& to, uint32_t requiredSignatures, uint32_t unlockHeight) override;
+    virtual size_t addOutput(uint64_t amount, const KeyOutput& out, uint32_t unlockHeight) override;
+    virtual size_t addOutput(uint64_t amount, const MultisignatureOutput& out, uint32_t unlockHeight) override;
 
     virtual void signInputKey(size_t input, const TransactionTypes::InputKeyInfo& info, const KeyPair& ephKeys) override;
     virtual void signInputMultisignature(size_t input, const PublicKey& sourceTransactionKey, size_t outputIndex, const AccountKeys& accountKeys) override;
@@ -215,10 +215,10 @@ namespace CryptoNote {
   }
 
   // return longest unlock time
-  uint64_t TransactionImpl::getUnlockTime() const {
-    std::vector<uint64_t> unlocktimes;
+  uint32_t TransactionImpl::getUnlockTime() const {
+    std::vector<uint32_t> unlocktimes;
     for (const auto& o : transaction.outputs) {
-      unlocktimes.push_back(o.unlockTime);
+      unlocktimes.push_back(o.unlockHeight);
     }
     sort(unlocktimes.begin(), unlocktimes.end());
     std::reverse(unlocktimes.begin(), unlocktimes.end());
@@ -289,19 +289,19 @@ namespace CryptoNote {
     return transaction.inputs.size() - 1;
   }
 
-  size_t TransactionImpl::addOutput(uint64_t amount, const AccountPublicAddress& to, uint64_t unlockTime) {
+  size_t TransactionImpl::addOutput(uint64_t amount, const AccountPublicAddress& to, uint32_t unlockHeight) {
     checkIfSigning();
 
     KeyOutput outKey;
     derivePublicKey(to, txSecretKey(), transaction.outputs.size(), outKey.key);
-    TransactionOutput out = { amount, outKey, unlockTime };
+    TransactionOutput out = { amount, outKey, unlockHeight };
     transaction.outputs.emplace_back(out);
     invalidateHash();
 
     return transaction.outputs.size() - 1;
   }
 
-  size_t TransactionImpl::addOutput(uint64_t amount, const std::vector<AccountPublicAddress>& to, uint32_t requiredSignatures, uint64_t unlockTime) {
+  size_t TransactionImpl::addOutput(uint64_t amount, const std::vector<AccountPublicAddress>& to, uint32_t requiredSignatures, uint32_t unlockHeight) {
     checkIfSigning();
 
     const auto& txKey = txSecretKey();
@@ -314,26 +314,26 @@ namespace CryptoNote {
       derivePublicKey(to[i], txKey, outputIndex, outMsig.keys[i]);
     }
 
-    TransactionOutput out = { amount, outMsig, unlockTime };
+    TransactionOutput out = { amount, outMsig, unlockHeight };
     transaction.outputs.emplace_back(out);
     invalidateHash();
 
     return outputIndex;
   }
 
-  size_t TransactionImpl::addOutput(uint64_t amount, const KeyOutput& out, uint64_t unlockTime) {
+  size_t TransactionImpl::addOutput(uint64_t amount, const KeyOutput& out, uint32_t unlockHeight) {
     checkIfSigning();
     size_t outputIndex = transaction.outputs.size();
-    TransactionOutput realOut = { amount, out, unlockTime };
+    TransactionOutput realOut = { amount, out, unlockHeight };
     transaction.outputs.emplace_back(realOut);
     invalidateHash();
     return outputIndex;
   }
 
-  size_t TransactionImpl::addOutput(uint64_t amount, const MultisignatureOutput& out, uint64_t unlockTime) {
+  size_t TransactionImpl::addOutput(uint64_t amount, const MultisignatureOutput& out, uint32_t unlockHeight) {
     checkIfSigning();
     size_t outputIndex = transaction.outputs.size();
-    TransactionOutput realOut = { amount, out, unlockTime };
+    TransactionOutput realOut = { amount, out, unlockHeight };
     transaction.outputs.emplace_back(realOut);
     invalidateHash();
     return outputIndex;

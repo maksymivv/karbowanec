@@ -246,7 +246,7 @@ bool constructTransaction(
     tx.outputs.push_back(out);
     output_index++;
     summary_outs_money += dst_entr.amount;
-    out.unlockTime = dst_entr.unlockTime;
+    out.unlockHeight = dst_entr.unlockHeight;
   }
 
   //check money

@@ -282,7 +282,7 @@ void serialize(TransactionInputs & inputs, ISerializer & serializer) {
 void serialize(TransactionOutput& output, ISerializer& serializer) {
   serializer(output.amount, "amount");
   serializer(output.target, "target");
-  serializer(output.unlockTime, "unlock_time");
+  serializer(output.unlockHeight, "unlock_height");
 }
 
 void serialize(TransactionOutputTarget& output, ISerializer& serializer) {

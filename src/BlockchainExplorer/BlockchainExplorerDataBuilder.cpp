@@ -315,7 +315,7 @@ bool BlockchainExplorerDataBuilder::fillTransactionDetails(const Transaction& tr
     txOutDetails.globalIndex = txOutput.get<1>();
     txOutDetails.output.amount = txOutput.get<0>().amount;
     txOutDetails.output.target = txOutput.get<0>().target;
-    txOutDetails.output.unlockTime = txOutput.get<0>().unlockTime;
+    txOutDetails.output.unlockHeight = txOutput.get<0>().unlockHeight;
     transactionDetails.outputs.push_back(std::move(txOutDetails));
   }
 

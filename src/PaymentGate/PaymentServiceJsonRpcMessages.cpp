@@ -225,7 +225,7 @@ void TransactionRpcInfo::serialize(CryptoNote::ISerializer& serializer) {
   serializer(confirmations, "confirmations");
   serializer(timestamp, "timestamp");
   serializer(isBase, "isBase");
-  serializer(unlockTime, "unlockTime");
+  serializer(unlockHeight, "unlockHeight");
   serializer(amount, "amount");
   serializer(fee, "fee");
   serializer(transfers, "transfers");
@@ -343,7 +343,7 @@ void SendTransaction::Request::serialize(CryptoNote::ISerializer& serializer) {
     throw RequestSerializationError();
   }
 
-  serializer(unlockTime, "unlockTime");
+  serializer(unlockHeight, "unlockHeight");
 }
 
 void SendTransaction::Response::serialize(CryptoNote::ISerializer& serializer) {
@@ -375,7 +375,7 @@ void CreateDelayedTransaction::Request::serialize(CryptoNote::ISerializer& seria
     throw RequestSerializationError();
   }
 
-  serializer(unlockTime, "unlockTime");
+  serializer(unlockHeight, "unlockHeight");
 }
 
 void CreateDelayedTransaction::Response::serialize(CryptoNote::ISerializer& serializer) {

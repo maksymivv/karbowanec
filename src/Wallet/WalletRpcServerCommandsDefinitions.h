@@ -165,7 +165,7 @@ using CryptoNote::ISerializer;
 		std::string paymentId;
 		std::string address;
 		uint64_t blockIndex;
-		uint64_t unlockTime;
+		uint64_t unlockHeight;
 		uint64_t confirmations;
 		std::string txKey;
 
@@ -179,7 +179,7 @@ using CryptoNote::ISerializer;
 			KV_MEMBER(paymentId)
 			KV_MEMBER(address)
 			KV_MEMBER(blockIndex)
-			KV_MEMBER(unlockTime)
+			KV_MEMBER(unlockHeight)
 			KV_MEMBER(confirmations)
 			KV_MEMBER(txKey)
 		}

@@ -35,7 +35,7 @@ struct TransactionInformation {
   Crypto::PublicKey publicKey;
   uint32_t blockHeight;
   uint64_t timestamp;
-  uint64_t unlockTime;
+  uint32_t unlockHeight;
   uint64_t totalAmountIn;
   uint64_t totalAmountOut;
   std::vector<uint8_t> extra;
@@ -49,7 +49,7 @@ struct TransactionOutputInformation {
   uint64_t amount;
   uint32_t globalOutputIndex;
   uint32_t outputInTransaction;
-  uint64_t unlockTime;
+  uint32_t unlockHeight;
 
   // transaction info
   Crypto::Hash transactionHash;

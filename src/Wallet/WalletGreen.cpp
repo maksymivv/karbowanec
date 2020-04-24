@@ -1540,7 +1540,7 @@ size_t WalletGreen::transfer(const TransactionParameters& transactionParameters,
     ", change address '" << transactionParameters.changeDestination << '\'' <<
     ", fee " << m_currency.formatAmount(transactionParameters.fee) <<
     ", mixin " << transactionParameters.mixIn <<
-    ", unlockTimestamp " << transactionParameters.unlockTimestamp;
+    ", unlockHeight " << transactionParameters.unlockHeight;
 
   id = doTransfer(transactionParameters, txSecretKey);
   return id;
@@ -1570,7 +1570,7 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
   uint64_t fee,
   uint64_t mixIn,
   const std::string& extra,
-  uint64_t unlockTimestamp,
+  uint32_t unlockHeight,
   const DonationSettings& donation,
   const CryptoNote::AccountPublicAddress& changeDestination,
   PreparedTransaction& preparedTransaction,
@@ -1605,7 +1605,7 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
   
   // add per output unlocktimes
   for (auto & o : decomposedOutputs) {
-    o.unlockTime = unlockTimestamp;
+    o.unlockHeight = unlockHeight;
   }
 
   if (preparedTransaction.changeAmount != 0) {
@@ -1615,11 +1615,11 @@ void WalletGreen::prepareTransaction(std::vector<WalletOuts>&& wallets,
     changeTransfer.amount = static_cast<int64_t>(preparedTransaction.changeAmount);
     preparedTransaction.destinations.emplace_back(std::move(changeTransfer));
     auto splittedChange = splitAmount(preparedTransaction.changeAmount, changeDestination, 0);
-    splittedChange.unlockTime = 0; // change is not locked
+    splittedChange.unlockHeight = 0; // change is not locked
     decomposedOutputs.emplace_back(std::move(splittedChange));
   }
 
-  preparedTransaction.transaction = makeTransaction(decomposedOutputs, keysInfo, extra, unlockTimestamp, txSecretKey);
+  preparedTransaction.transaction = makeTransaction(decomposedOutputs, keysInfo, extra, unlockHeight, txSecretKey);
 }
 
 void WalletGreen::validateSourceAddresses(const std::vector<std::string>& sourceAddresses) const {
@@ -1823,7 +1823,7 @@ size_t WalletGreen::doTransfer(const TransactionParameters& transactionParameter
     transactionParameters.fee,
     transactionParameters.mixIn,
     transactionParameters.extra,
-    transactionParameters.unlockTimestamp,
+    transactionParameters.unlockHeight,
     transactionParameters.donation,
     changeDestination,
     preparedTransaction,
@@ -1860,7 +1860,7 @@ size_t WalletGreen::makeTransaction(const TransactionParameters& sendingTransact
     ", change address '" << sendingTransaction.changeDestination << '\'' <<
     ", fee " << m_currency.formatAmount(sendingTransaction.fee) <<
     ", mixin " << sendingTransaction.mixIn <<
-    ", unlockTimestamp " << sendingTransaction.unlockTimestamp;
+    ", unlockHeight " << sendingTransaction.unlockHeight;
 
   validateTransactionParameters(sendingTransaction);
   CryptoNote::AccountPublicAddress changeDestination = getChangeDestination(sendingTransaction.changeDestination, sendingTransaction.sourceAddresses);
@@ -1881,7 +1881,7 @@ size_t WalletGreen::makeTransaction(const TransactionParameters& sendingTransact
     sendingTransaction.fee,
     sendingTransaction.mixIn,
     sendingTransaction.extra,
-    sendingTransaction.unlockTimestamp,
+    sendingTransaction.unlockHeight,
     sendingTransaction.donation,
     changeDestination,
     preparedTransaction,
@@ -1970,11 +1970,11 @@ void WalletGreen::pushBackOutgoingTransfers(size_t txId, const std::vector<Walle
   }
 }
 
-size_t WalletGreen::insertOutgoingTransactionAndPushEvent(const Hash& transactionHash, uint64_t fee, const BinaryArray& extra, uint64_t unlockTimestamp, Crypto::SecretKey& txSecretKey) {
+size_t WalletGreen::insertOutgoingTransactionAndPushEvent(const Hash& transactionHash, uint64_t fee, const BinaryArray& extra, uint32_t unlockHeight, Crypto::SecretKey& txSecretKey) {
   WalletTransaction insertTx;
   insertTx.state = WalletTransactionState::CREATED;
   insertTx.creationTime = static_cast<uint64_t>(time(nullptr));
-  insertTx.unlockTime = unlockTimestamp;
+  insertTx.unlockHeight = unlockHeight;
   insertTx.blockHeight = CryptoNote::WALLET_UNCONFIRMED_TRANSACTION_HEIGHT;
   insertTx.extra.assign(reinterpret_cast<const char*>(extra.data()), extra.size());
   insertTx.fee = fee;
@@ -2077,7 +2077,7 @@ size_t WalletGreen::insertBlockchainTransaction(const TransactionInformation& in
     tx.fee = info.totalAmountIn - info.totalAmountOut;
   }
 
-  tx.unlockTime = info.unlockTime;
+  tx.unlockHeight = info.unlockHeight;
   tx.extra.assign(reinterpret_cast<const char*>(info.extra.data()), info.extra.size());
   tx.totalAmount = txBalance;
   tx.creationTime = info.timestamp;
@@ -2290,7 +2290,7 @@ bool WalletGreen::eraseForeignTransfers(size_t transactionId, size_t firstTransf
 }
 
 std::unique_ptr<CryptoNote::ITransaction> WalletGreen::makeTransaction(const std::vector<ReceiverAmounts>& decomposedOutputs,
-  std::vector<InputInfo>& keysInfo, const std::string& extra, uint64_t unlockTimestamp, Crypto::SecretKey& txSecretKey) {
+  std::vector<InputInfo>& keysInfo, const std::string& extra, uint32_t unlockHeight, Crypto::SecretKey& txSecretKey) {
 
   std::unique_ptr<ITransaction> tx = createTransaction();
 
@@ -2298,7 +2298,7 @@ std::unique_ptr<CryptoNote::ITransaction> WalletGreen::makeTransaction(const std
   std::vector<AmountToAddress> amountsToAddresses;
   for (const auto& output: decomposedOutputs) {
     for (auto amount: output.amounts) {
-      amountsToAddresses.emplace_back(AmountToAddress{&output.receiver, {amount, output.unlockTime}});
+      amountsToAddresses.emplace_back(AmountToAddress{&output.receiver, {amount, output.unlockHeight}});
     }
   }
 
@@ -2311,7 +2311,7 @@ std::unique_ptr<CryptoNote::ITransaction> WalletGreen::makeTransaction(const std
     tx->addOutput(amountToAddress.second.first, *amountToAddress.first, amountToAddress.second.second);
   }
 
-  //tx->setUnlockTime(unlockTimestamp);
+  //tx->setUnlockTime(unlockHeight);
   tx->appendExtra(Common::asBinaryArray(extra));
 
   for (auto& input: keysInfo) {
@@ -3070,7 +3070,7 @@ void WalletGreen::transactionUpdated(const TransactionInformation& transactionIn
     // TODO make sure it unlocks individual outputs, doesn't lock entire tx including unlocked outputs
 
     if (transactionInfo.blockHeight != CryptoNote::WALLET_UNCONFIRMED_TRANSACTION_HEIGHT) {
-      uint32_t unlockHeight = std::max(transactionInfo.blockHeight + m_transactionSoftLockTime, static_cast<uint32_t>(transactionInfo.unlockTime));
+      uint32_t unlockHeight = std::max(transactionInfo.blockHeight + m_transactionSoftLockTime, static_cast<uint32_t>(transactionInfo.unlockHeight));
       insertUnlockTransactionJob(transactionInfo.transactionHash, unlockHeight, containerAmounts.container);
     }
   }
@@ -3571,7 +3571,7 @@ size_t WalletGreen::getTxSize(const TransactionParameters &sendingTransaction)
     sendingTransaction.fee,
     sendingTransaction.mixIn,
     sendingTransaction.extra,
-    sendingTransaction.unlockTimestamp,
+    sendingTransaction.unlockHeight,
     sendingTransaction.donation,
     changeDestination,
     preparedTransaction,

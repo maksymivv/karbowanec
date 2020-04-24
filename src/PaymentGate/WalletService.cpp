@@ -216,7 +216,7 @@ PaymentService::TransactionRpcInfo convertTransactionWithTransfersToTransactionR
   transactionInfo.blockIndex = transactionWithTransfers.transaction.blockHeight;
   transactionInfo.timestamp = transactionWithTransfers.transaction.timestamp;
   transactionInfo.isBase = transactionWithTransfers.transaction.isBase;
-  transactionInfo.unlockTime = transactionWithTransfers.transaction.unlockTime;
+  transactionInfo.unlockHeight = transactionWithTransfers.transaction.unlockHeight;
   transactionInfo.amount = transactionWithTransfers.transaction.totalAmount;
   transactionInfo.fee = transactionWithTransfers.transaction.fee;
   transactionInfo.extra = Common::toHex(transactionWithTransfers.transaction.extra.data(), transactionWithTransfers.transaction.extra.size());
@@ -1218,7 +1218,7 @@ std::error_code WalletService::sendTransaction(const SendTransaction::Request& r
     sendParams.destinations = convertWalletRpcOrdersToWalletOrders(request.transfers);
     sendParams.fee = request.fee;
     sendParams.mixIn = request.anonymity;
-    sendParams.unlockTimestamp = request.unlockTime;
+    sendParams.unlockHeight = request.unlockHeight;
     sendParams.changeDestination = request.changeAddress;
 
 	Crypto::SecretKey tx_key;
@@ -1259,7 +1259,7 @@ std::error_code WalletService::createDelayedTransaction(const CreateDelayedTrans
     sendParams.destinations = convertWalletRpcOrdersToWalletOrders(request.transfers);
     sendParams.fee = request.fee;
     sendParams.mixIn = request.anonymity;
-    sendParams.unlockTimestamp = request.unlockTime;
+    sendParams.unlockHeight = request.unlockHeight;
     sendParams.changeDestination = request.changeAddress;
 
     size_t transactionId = wallet.makeTransaction(sendParams);

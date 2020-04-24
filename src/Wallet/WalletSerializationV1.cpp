@@ -78,7 +78,7 @@ struct WalletTransactionDto {
     totalAmount = wallet.totalAmount;
     fee = wallet.fee;
     creationTime = wallet.creationTime;
-    unlockTime = wallet.unlockTime;
+    unlockHeight = wallet.unlockHeight;
     extra = wallet.extra;
     if (wallet.secretKey)
       secretKey = reinterpret_cast<const Crypto::SecretKey&>(wallet.secretKey.get());
@@ -91,7 +91,7 @@ struct WalletTransactionDto {
   int64_t totalAmount;
   uint64_t fee;
   uint64_t creationTime;
-  uint64_t unlockTime;
+  uint64_t unlockHeight;
   std::string extra;
   boost::optional<Crypto::SecretKey> secretKey = CryptoNote::NULL_SECRET_KEY;
 };
@@ -152,7 +152,7 @@ void serialize(WalletTransactionDto& value, CryptoNote::ISerializer& serializer)
   serializer(value.totalAmount, "total_amount");
   serializer(value.fee, "fee");
   serializer(value.creationTime, "creation_time");
-  serializer(value.unlockTime, "unlock_time");
+  serializer(value.unlockHeight, "unlock_time");
   serializer(value.extra, "extra");
 
   Crypto::SecretKey secretKey = reinterpret_cast<const Crypto::SecretKey&>(value.secretKey.get());
@@ -210,7 +210,7 @@ CryptoNote::WalletTransaction convert(const CryptoNote::WalletLegacyTransaction&
   mtx.totalAmount = tx.totalAmount;
   mtx.fee = tx.fee;
   mtx.creationTime = tx.sentTime;
-  mtx.unlockTime = tx.unlockTime;
+  mtx.unlockHeight = tx.unlockHeight;
   mtx.extra = tx.extra;
   mtx.isBase = tx.isCoinbase;
   if(tx.secretKey)
@@ -638,7 +638,7 @@ void WalletSerializerV1::loadTransactions(Common::IInputStream& source, CryptoCo
     tx.totalAmount = dto.totalAmount;
     tx.fee = dto.fee;
     tx.creationTime = dto.creationTime;
-    tx.unlockTime = dto.unlockTime;
+    tx.unlockHeight = dto.unlockHeight;
     tx.extra = dto.extra;
     tx.isBase = false;
     if (dto.secretKey)

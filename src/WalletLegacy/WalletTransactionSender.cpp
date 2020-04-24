@@ -52,7 +52,7 @@ void createChangeDestinations(const AccountPublicAddress& address, uint64_t need
   if (neededMoney < foundMoney) {
     changeDts.addr = address;
     changeDts.amount = foundMoney - neededMoney;
-    changeDts.unlockTime = 0; // change is not locked
+    changeDts.unlockHeight = 0; // change is not locked
   }
 }
 
@@ -203,7 +203,7 @@ void WalletTransactionSender::digitSplitStrategy(TransferId firstTransferId, siz
     if (!m_currency.parseAccountAddressString(de.address, addr)) {
       throw std::system_error(make_error_code(error::BAD_ADDRESS));
     }
-    splitted_dsts.push_back(TransactionDestinationEntry(de.amount, de.unlockTimestamp, addr));
+    splitted_dsts.push_back(TransactionDestinationEntry(de.amount, de.unlockHeight, addr));
   }
   splitted_dsts.push_back(TransactionDestinationEntry(change_dst.amount, 0, change_dst.addr));
 }

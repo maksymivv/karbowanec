@@ -198,7 +198,7 @@ bool wallet_rpc_server::on_transfer(const wallet_rpc::COMMAND_RPC_TRANSFER::requ
 		CryptoNote::WalletLegacyTransfer transfer;
 		transfer.address = it->address;
 		transfer.amount = it->amount;
-    transfer.unlockTimestamp = it->unlock_time;
+    transfer.unlockHeight = it->unlock_time;
 		transfers.push_back(transfer);
 	}
 
@@ -303,7 +303,7 @@ bool wallet_rpc_server::on_get_payments(const wallet_rpc::COMMAND_RPC_GET_PAYMEN
 			rpc_payment.tx_hash      = Common::podToHex(txInfo.hash);
 			rpc_payment.amount       = txInfo.totalAmount;
 			rpc_payment.block_height = txInfo.blockHeight;
-			rpc_payment.unlock_time  = txInfo.unlockTime;
+			rpc_payment.unlock_time  = txInfo.unlockHeight;
 			res.payments.push_back(rpc_payment);
 		}
 	}
@@ -347,7 +347,7 @@ bool wallet_rpc_server::on_get_transfers(const wallet_rpc::COMMAND_RPC_GET_TRANS
 		transfer.fee			 = txInfo.fee;
 		transfer.address		 = address;
 		transfer.blockIndex		 = txInfo.blockHeight;
-		transfer.unlockTime		 = txInfo.unlockTime;
+		transfer.unlockHeight		 = txInfo.unlockHeight;
 		transfer.paymentId		 = "";
 		transfer.confirmations	 = (txInfo.blockHeight != UNCONFIRMED_TRANSACTION_GLOBAL_OUTPUT_INDEX ? bc_height - txInfo.blockHeight : 0);
 
@@ -403,7 +403,7 @@ bool wallet_rpc_server::on_get_transaction(const wallet_rpc::COMMAND_RPC_GET_TRA
 			transfer.fee = txInfo.fee;
 			transfer.address = address;
 			transfer.blockIndex = txInfo.blockHeight;
-			transfer.unlockTime = txInfo.unlockTime;
+			transfer.unlockHeight = txInfo.unlockHeight;
 			transfer.paymentId = "";
 			transfer.confirmations = (txInfo.blockHeight != UNCONFIRMED_TRANSACTION_GLOBAL_OUTPUT_INDEX ? bc_height - txInfo.blockHeight : 0);
 			

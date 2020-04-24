@@ -205,7 +205,7 @@ struct TransferCommand {
   std::vector<uint8_t> extra;
   uint64_t fee = 0;
   uint64_t sum = 0;
-  uint64_t unlock_time = 0;
+  uint32_t unlock_height = 0;
 #ifndef __ANDROID__
   std::map<std::string, std::vector<WalletLegacyTransfer>> aliases;
 #endif
@@ -246,7 +246,7 @@ struct TransferCommand {
               return false;
             }
           } else if (arg == "-u") {
-            // TODO can add unlock time common for all destinations
+            // TODO can add unlock height common for all destinations
           }
         } else {
           WalletLegacyTransfer destination;
@@ -287,7 +287,7 @@ struct TransferCommand {
 #endif
             destination.address = arg;
             destination.amount = de.amount;
-            destination.unlockTimestamp = unlock_time;
+            destination.unlockHeight = unlock_height;
             dsts.push_back(destination);
 #ifndef __ANDROID__
           } else {
@@ -314,7 +314,7 @@ struct TransferCommand {
         if (remote_node_fee > (int64_t)CryptoNote::parameters::COIN)
           remote_node_fee = (int64_t)CryptoNote::parameters::COIN;
         destination.amount = remote_node_fee;
-        destination.unlockTimestamp = 0;
+        destination.unlockHeight = 0;
         dsts.push_back(destination);
       }
     }
@@ -469,7 +469,7 @@ void printListTransfersHeader(LoggerRef& logger) {
   header += makeCenteredString(TOTAL_AMOUNT_MAX_WIDTH, "total amount") + "  ";
   header += makeCenteredString(FEE_MAX_WIDTH, "fee") + "  ";
   header += makeCenteredString(BLOCK_MAX_WIDTH, "block") + "  ";
-  header += makeCenteredString(UNLOCK_TIME_MAX_WIDTH, "unlock time");
+  header += makeCenteredString(UNLOCK_TIME_MAX_WIDTH, "unlock height");
 
   logger(INFO) << header;
   logger(INFO) << std::string(header.size(), '-');
@@ -494,7 +494,7 @@ void printListTransfersItem(LoggerRef& logger, const WalletLegacyTransaction& tx
     << "  " << std::setw(TOTAL_AMOUNT_MAX_WIDTH) << currency.formatAmount(txInfo.totalAmount)
     << "  " << std::setw(FEE_MAX_WIDTH) << currency.formatAmount(txInfo.fee)
     << "  " << std::setw(BLOCK_MAX_WIDTH) << txInfo.blockHeight
-    << "  " << std::setw(UNLOCK_TIME_MAX_WIDTH) << txInfo.unlockTime;
+    << "  " << std::setw(UNLOCK_TIME_MAX_WIDTH) << txInfo.unlockHeight;
 
   if (!paymentIdStr.empty()) {
     logger(INFO, rowColor) << "payment ID: " << paymentIdStr;

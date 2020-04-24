@@ -167,7 +167,7 @@ protected:
   struct ReceiverAmounts {
     CryptoNote::AccountPublicAddress receiver;
     std::vector<uint64_t> amounts;
-    uint64_t unlockTime;
+    uint32_t unlockHeight;
   };
 
   struct WalletOuts {
@@ -254,7 +254,7 @@ protected:
     uint64_t fee,
     uint64_t mixIn,
     const std::string& extra,
-    uint64_t unlockTimestamp,
+    uint32_t unlockHeight,
     const DonationSettings& donation,
     const CryptoNote::AccountPublicAddress& changeDestinationAddress,
     PreparedTransaction& preparedTransaction,
@@ -293,13 +293,13 @@ protected:
   ReceiverAmounts splitAmount(uint64_t amount, const AccountPublicAddress& destination, uint64_t dustThreshold);
 
   std::unique_ptr<CryptoNote::ITransaction> makeTransaction(const std::vector<ReceiverAmounts>& decomposedOutputs,
-    std::vector<InputInfo>& keysInfo, const std::string& extra, uint64_t unlockTimestamp, Crypto::SecretKey& txSecretKey);
+    std::vector<InputInfo>& keysInfo, const std::string& extra, uint32_t unlockHeight, Crypto::SecretKey& txSecretKey);
 
   void sendTransaction(const CryptoNote::Transaction& cryptoNoteTransaction);
   size_t validateSaveAndSendTransaction(const ITransactionReader& transaction, const std::vector<WalletTransfer>& destinations, bool send);
 
   size_t insertBlockchainTransaction(const TransactionInformation& info, int64_t txBalance);
-  size_t insertOutgoingTransactionAndPushEvent(const Crypto::Hash& transactionHash, uint64_t fee, const BinaryArray& extra, uint64_t unlockTimestamp, Crypto::SecretKey& txSecretKey);
+  size_t insertOutgoingTransactionAndPushEvent(const Crypto::Hash& transactionHash, uint64_t fee, const BinaryArray& extra, uint32_t unlockTimestamp, Crypto::SecretKey& txSecretKey);
   void updateTransactionStateAndPushEvent(size_t transactionId, WalletTransactionState state);
   bool updateWalletTransactionInfo(size_t transactionId, const CryptoNote::TransactionInformation& info, int64_t totalAmount);
   bool updateTransactionTransfers(size_t transactionId, const std::vector<ContainerAmounts>& containerAmountsList,

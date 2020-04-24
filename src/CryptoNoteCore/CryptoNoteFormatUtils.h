@@ -48,11 +48,11 @@ struct TransactionSourceEntry {
 
 struct TransactionDestinationEntry {
   uint64_t amount;                    //money
-  uint64_t unlockTime;                //may be different for change
+  uint32_t unlockHeight;              //may be different for change
   AccountPublicAddress addr;          //destination address
 
-  TransactionDestinationEntry() : amount(0), unlockTime(0), addr(boost::value_initialized<AccountPublicAddress>()) {}
-  TransactionDestinationEntry(uint64_t amount, uint64_t unlock_time, const AccountPublicAddress &addr) : amount(amount), unlockTime(unlock_time), addr(addr) {}
+  TransactionDestinationEntry() : amount(0), unlockHeight(0), addr(boost::value_initialized<AccountPublicAddress>()) {}
+  TransactionDestinationEntry(uint64_t amount, uint64_t unlock_height, const AccountPublicAddress &addr) : amount(amount), unlockHeight(unlock_height), addr(addr) {}
 };
 
 bool generateDeterministicTransactionKeys(const Crypto::Hash& inputsHash, const Crypto::SecretKey& viewSecretKey, KeyPair& generatedKeys);

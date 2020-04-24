@@ -40,7 +40,7 @@ public:
   virtual Hash getTransactionPrefixHash() const override;
   virtual Hash getTransactionInputsHash() const override;
   virtual PublicKey getTransactionPublicKey() const override;
-  virtual uint64_t getUnlockTime() const override;
+  virtual uint32_t getUnlockTime() const override;
 
   // extra
   virtual bool getPaymentId(Hash& paymentId) const override;
@@ -113,10 +113,10 @@ PublicKey TransactionPrefixImpl::getTransactionPublicKey() const {
 }
 
 // return longest unlock time
-uint64_t TransactionPrefixImpl::getUnlockTime() const {
+uint32_t TransactionPrefixImpl::getUnlockTime() const {
   std::vector<uint64_t> unlocktimes;
   for (const auto& o : m_txPrefix.outputs) {
-    unlocktimes.push_back(o.unlockTime);
+    unlocktimes.push_back(o.unlockHeight);
   }
   sort(unlocktimes.begin(), unlocktimes.end());
   std::reverse(unlocktimes.begin(), unlocktimes.end());

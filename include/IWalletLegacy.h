@@ -42,7 +42,7 @@ typedef size_t TransferId;
 struct WalletLegacyTransfer {
   std::string address;
   int64_t amount;
-  uint64_t unlockTimestamp = 0;
+  uint32_t unlockHeight = 0;
 };
 
 const TransactionId WALLET_LEGACY_INVALID_TRANSACTION_ID    = std::numeric_limits<TransactionId>::max();
@@ -64,7 +64,7 @@ struct WalletLegacyTransaction {
   int64_t          totalAmount;
   uint64_t         fee;
   uint64_t         sentTime;
-  uint64_t         unlockTime;
+  uint32_t         unlockHeight;
   Crypto::Hash     hash;
   boost::optional<Crypto::SecretKey> secretKey = CryptoNote::NULL_SECRET_KEY;
   bool             isCoinbase;

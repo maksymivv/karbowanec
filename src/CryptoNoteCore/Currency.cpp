@@ -272,7 +272,7 @@ namespace CryptoNote {
   bool Currency::getDepositTerm(const Transaction& tx, uint32_t& term) const {
     std::vector<uint64_t> unlocktimes;
     for (const auto& o : tx.outputs) {
-      unlocktimes.push_back(o.unlockTime);
+      unlocktimes.push_back(o.unlockHeight);
     }
     sort(unlocktimes.begin(), unlocktimes.end());
     std::reverse(unlocktimes.begin(), unlocktimes.end());
@@ -294,7 +294,7 @@ namespace CryptoNote {
     for (uint64_t i = 0; i < tx.outputs.size(); ++i) {
       TransactionOutput o = tx.outputs[i];
       outputsAmount += o.amount;
-      unlockTimesAndAmounts.push_back(std::make_pair(o.unlockTime, o.amount));
+      unlockTimesAndAmounts.push_back(std::make_pair(o.unlockHeight, o.amount));
     }
 
     if (!(outputsAmount > inputsAmount)) {
@@ -396,7 +396,7 @@ namespace CryptoNote {
   uint64_t Currency::getUnlockTime(const TransactionPrefix& tx) const {
     std::vector<uint64_t> unlocktimes;
     for (const auto& o : tx.outputs) {
-      unlocktimes.push_back(o.unlockTime);
+      unlocktimes.push_back(o.unlockHeight);
     }
     sort(unlocktimes.begin(), unlocktimes.end());
     std::reverse(unlocktimes.begin(), unlocktimes.end());
@@ -482,7 +482,7 @@ namespace CryptoNote {
 			TransactionOutput out;
 			summaryAmounts += out.amount = outAmounts[no];
 			out.target = tk;
-      out.unlockTime = height + minedMoneyUnlockWindow(); //lock
+      out.unlockHeight = height + minedMoneyUnlockWindow(); //lock
 			tx.outputs.push_back(out);
 		}
 
