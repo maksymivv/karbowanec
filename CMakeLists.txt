@@ -104,6 +104,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake ${CMAKE_CURRENT_BIN
 project(Karbowanec)
 
 include_directories(include src external "${CMAKE_CURRENT_BINARY_DIR}/version")  
+include_directories(${CMAKE_SOURCE_DIR}/external/stxxl/include)
 
 # Check whether we're on a 32-bit or 64-bit system
 if(CMAKE_SIZEOF_VOID_P EQUAL "8")
@@ -502,7 +503,7 @@ if(STATIC)
   set(Boost_USE_STATIC_RUNTIME ON)
 endif()
 
-find_package(Boost REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
+find_package(Boost REQUIRED COMPONENTS iostreams system filesystem thread date_time chrono regex serialization program_options coroutine context atomic)
 message(STATUS "Boost Found: ${Boost_INCLUDE_DIRS}")
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 

@@ -32,6 +32,10 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <stxxl.h>
+
+#define SUB_BLOCK_SIZE 8192
+#define SUB_BLOCKS_PER_BLOCK 256
 
 namespace CryptoNote {
 
@@ -220,6 +224,11 @@ bool serialize(std::set<K, Cmp>& value, Common::StringView name, CryptoNote::ISe
 template<typename K, typename V, typename Hash>
 bool serialize(std::unordered_map<K, V, Hash>& value, Common::StringView name, CryptoNote::ISerializer& serializer) {
   return serializeMap(value, name, serializer, [&value](size_t size) { value.reserve(size); });
+}
+
+template<typename K, typename V, typename Hash, typename Compare>
+bool serialize(stxxl::unordered_map<K, V, Hash, Compare, SUB_BLOCK_SIZE, SUB_BLOCKS_PER_BLOCK>& value, Common::StringView name, CryptoNote::ISerializer& serializer) {
+  return serializeMap(value, name, serializer, [&value](size_t size) { });
 }
 
 template<typename K, typename V, typename Hash>

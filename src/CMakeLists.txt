@@ -2,6 +2,7 @@
 add_definitions(-DSTATICLIB)
 
 include_directories(${CMAKE_SOURCE_DIR}/external/linenoise)
+include_directories(${CMAKE_BINARY_DIR}}/external/stxxl/include)
 
 file(GLOB_RECURSE BlockchainExplorer BlockchainExplorer/*)
 file(GLOB_RECURSE Common Common/*)
@@ -83,13 +84,13 @@ else()
   add_executable(Miner ${Miner})
 endif()
 
-target_link_libraries(Daemon ${KarboCore} ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
-target_link_libraries(SimpleWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} ${Boost_LIBRARIES})
-target_link_libraries(GreenWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} ${Boost_LIBRARIES})
-target_link_libraries(Optimizer PaymentGate ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
+target_link_libraries(Daemon ${KarboCore} ${KarboLink} ${KarboCommon} upnpc-static stxxl ${Boost_LIBRARIES})
+target_link_libraries(SimpleWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} stxxl ${Boost_LIBRARIES})
+target_link_libraries(GreenWallet ${KarboWallet} ${KarboCore} Mnemonics ${KarboCommon} stxxl ${Boost_LIBRARIES})
+target_link_libraries(Optimizer PaymentGate ${KarboCore} ${KarboCommon} stxxl ${Boost_LIBRARIES})
 target_link_libraries(PaymentGateService ${KarboPaymentGate} ${KarboWallet} ${KarboCore}
-                      ${KarboLink} ${KarboCommon} upnpc-static ${Boost_LIBRARIES})
-target_link_libraries(Miner ${KarboCore} ${KarboCommon} ${Boost_LIBRARIES})
+                      ${KarboLink} ${KarboCommon} upnpc-static stxxl ${Boost_LIBRARIES})
+target_link_libraries(Miner ${KarboCore} ${KarboCommon} stxxl ${Boost_LIBRARIES})
 
 if (MSVC)
   target_link_libraries(System ws2_32)

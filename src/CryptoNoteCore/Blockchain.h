@@ -21,6 +21,7 @@
 #include <atomic>
 #include <unordered_map>
 
+#include <stxxl.h>
 #include "google/sparse_hash_set"
 #include "google/sparse_hash_map"
 
@@ -44,6 +45,9 @@
 #include <Logging/LoggerRef.h>
 
 #undef ERROR
+
+#define SUB_BLOCK_SIZE 8192
+#define SUB_BLOCKS_PER_BLOCK 256
 
 namespace CryptoNote {
 
@@ -254,7 +258,27 @@ namespace CryptoNote {
       }
     };
 
-    typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
+    struct HashFunctor
+    {
+      size_t operator () (Crypto::KeyImage key) const
+      {
+        return reinterpret_cast<const size_t &>(key);
+      }
+    };
+
+    struct CompareLess
+    {
+      bool operator () (const Crypto::KeyImage& a, const Crypto::KeyImage& b) const
+      {
+        return a < b;
+      }
+    };
+
+    //typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
+    typedef stxxl::unordered_map<
+      Crypto::KeyImage, uint32_t, HashFunctor, CompareLess, SUB_BLOCK_SIZE, SUB_BLOCKS_PER_BLOCK
+    > SpentKeyImagesContainer;
+
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
     typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
