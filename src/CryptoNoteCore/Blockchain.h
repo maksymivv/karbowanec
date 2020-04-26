@@ -258,7 +258,7 @@ namespace CryptoNote {
       }
     };
 
-    struct HashFunctor
+    struct KeyImageHashFunctor
     {
       size_t operator () (Crypto::KeyImage key) const
       {
@@ -266,17 +266,18 @@ namespace CryptoNote {
       }
     };
 
-    struct CompareLess
+    struct KeyImageCompare
     {
       bool operator () (const Crypto::KeyImage& a, const Crypto::KeyImage& b) const
       {
-        return a < b;
+        //return !(std::equal(std::begin(a.data), std::end(a.data), std::begin(b.data)));
+          return std::memcmp(&a, &b, sizeof(Crypto::KeyImage)) < 0;
       }
     };
 
     //typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
     typedef stxxl::unordered_map<
-      Crypto::KeyImage, uint32_t, HashFunctor, CompareLess, SUB_BLOCK_SIZE, SUB_BLOCKS_PER_BLOCK
+      Crypto::KeyImage, uint32_t, KeyImageHashFunctor, KeyImageCompare, SUB_BLOCK_SIZE, SUB_BLOCKS_PER_BLOCK
     > SpentKeyImagesContainer;
 
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
