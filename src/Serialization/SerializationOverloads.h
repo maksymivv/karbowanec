@@ -228,7 +228,7 @@ bool serialize(std::unordered_map<K, V, Hash>& value, Common::StringView name, C
 
 template<typename K, typename V, typename Hash, typename Compare>
 bool serialize(stxxl::unordered_map<K, V, Hash, Compare, SUB_BLOCK_SIZE, SUB_BLOCKS_PER_BLOCK>& value, Common::StringView name, CryptoNote::ISerializer& serializer) {
-  return serializeMap(value, name, serializer, [&value](size_t size) { });
+  return serializeMap(value, name, serializer, [&value](size_t size) {});
 }
 
 template<typename K, typename V, typename Hash>
