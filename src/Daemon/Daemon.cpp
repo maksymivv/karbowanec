@@ -25,6 +25,8 @@
 
 #include "DaemonCommandsHandler.h"
 
+#include <stxxl.h>
+
 #include "Common/FormatTools.h"
 #include "Common/SignalHandler.h"
 #include "Common/StringTools.h"
@@ -259,6 +261,28 @@ int main(int argc, char* argv[])
       return 1;
     }
 
+    if (!coreConfig.configFolderDefaulted) {
+      if (!Tools::directoryExists(coreConfig.configFolder)) {
+        throw std::runtime_error("Directory does not exist: " + coreConfig.configFolder);
+      }
+    }
+    else {
+      if (!Tools::create_directories_if_necessary(coreConfig.configFolder)) {
+        throw std::runtime_error("Can't create directory: " + coreConfig.configFolder);
+      }
+    }
+
+    // get uninitialized stxxl config singleton
+    stxxl::config * cfg = stxxl::config::get_instance();
+    // create a disk_config structure
+    stxxl::disk_config disk1(coreConfig.configFolder + "/" + "memswap.bin", 2000 * 1024 * 1024, "wincall");
+    //disk1.direct = stxxl::disk_config::DIRECT_OFF;
+    disk1.delete_on_exit = false;
+    disk1.device_id = -1;
+    disk1.autogrow = true;
+    // add disk to config
+    cfg->add_disk(disk1);
+
     //create objects and link them
     CryptoNote::CurrencyBuilder currencyBuilder(logManager);
     currencyBuilder.testnet(testnet_mode);
@@ -296,16 +320,6 @@ int main(int argc, char* argv[])
 
       if (!testnet_mode) {
         m_core.set_checkpoints(std::move(checkpoints));
-      }
-    }
-
-    if (!coreConfig.configFolderDefaulted) {
-      if (!Tools::directoryExists(coreConfig.configFolder)) {
-        throw std::runtime_error("Directory does not exist: " + coreConfig.configFolder);
-      }
-    } else {
-      if (!Tools::create_directories_if_necessary(coreConfig.configFolder)) {
-        throw std::runtime_error("Can't create directory: " + coreConfig.configFolder);
       }
     }
 
