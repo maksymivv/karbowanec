@@ -31,6 +31,7 @@
 #include "CryptoNoteCore/Currency.h"
 #include "CryptoNoteCore/IBlockchainStorageObserver.h"
 #include "CryptoNoteCore/ITransactionValidator.h"
+#include "CryptoNoteCore/SwappedMap.h"
 #include "CryptoNoteCore/SwappedVector.h"
 #include "CryptoNoteCore/UpgradeDetector.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
@@ -254,7 +255,7 @@ namespace CryptoNote {
       }
     };
 
-    typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
+    //typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
     typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
     typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
     typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
@@ -265,7 +266,9 @@ namespace CryptoNote {
     Crypto::cn_context m_cn_context;
     Tools::ObserverManager<IBlockchainStorageObserver> m_observerManager;
 
-    SpentKeyImagesContainer m_spent_key_images;
+    //SpentKeyImagesContainer m_spent_key_images;
+    typedef SwappedMap< Crypto::KeyImage, uint32_t> SpentKeyImages;
+    SpentKeyImages m_spent_key_images;
     size_t m_current_block_cumul_sz_limit;
     blocks_ext_by_hash m_alternative_chains; // Crypto::Hash -> block_extended_info
     outputs_container m_outputs;
