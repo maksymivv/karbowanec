@@ -273,6 +273,13 @@ struct COMMAND_RPC_START_MINING {
     }
   };
 };
+
+struct COMMAND_HTTP {
+  typedef EMPTY_STRUCT request;
+
+  typedef std::string response;
+};
+
 //-----------------------------------------------
 struct COMMAND_RPC_GET_INFO {
   typedef EMPTY_STRUCT request;
@@ -777,18 +784,6 @@ struct COMMAND_RPC_QUERY_BLOCKS_LITE {
   };
 };
 
-struct COMMAND_RPC_GEN_PAYMENT_ID {
-  typedef EMPTY_STRUCT request;
-  
-  struct response {
-	  std::string payment_id;
-
-	  void serialize(ISerializer &s) {
-		  KV_MEMBER(payment_id)
-	  }
-  };
-};
-
 //-----------------------------------------------
 struct COMMAND_RPC_CHECK_TRANSACTION_KEY {
 	struct request {
@@ -979,7 +974,7 @@ struct COMMAND_RPC_GET_BLOCKS_HASHES_BY_TIMESTAMPS {
   struct request {
     uint64_t timestampBegin;
     uint64_t timestampEnd;
-	uint32_t limit;
+    uint32_t limit;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(timestampBegin)
@@ -990,7 +985,7 @@ struct COMMAND_RPC_GET_BLOCKS_HASHES_BY_TIMESTAMPS {
 
   struct response {
     std::vector<Crypto::Hash> blockHashes;
-	uint32_t count;
+    uint32_t count;
     std::string status;
 
     void serialize(ISerializer &s) {
@@ -1003,7 +998,7 @@ struct COMMAND_RPC_GET_BLOCKS_HASHES_BY_TIMESTAMPS {
 
 struct COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID {
   struct request {
-    Crypto::Hash paymentId;
+    std::string paymentId;
 
     void serialize(ISerializer &s) {
       KV_MEMBER(paymentId)
@@ -1043,7 +1038,7 @@ struct COMMAND_RPC_GET_TRANSACTIONS_DETAILS_BY_HASHES {
 
 struct COMMAND_RPC_GET_TRANSACTION_DETAILS_BY_HASH {
 	struct request {
-		Crypto::Hash hash;
+		std::string hash;
 
 		void serialize(ISerializer &s) {
 			KV_MEMBER(hash);

@@ -33,6 +33,7 @@
 #include "Serialization/BinarySerializationTools.h"
 #include "CryptoNoteTools.h"
 #include "TransactionExtra.h"
+#include "parallel_hashmap/phmap_dump.h"
 
 #include "../crypto/hash.h"
 
@@ -199,10 +200,26 @@ public:
     s(m_bs.m_blockIndex, "block_index");
 
     logger(INFO) << operation << "transaction map...";
-    s(m_bs.m_transactionMap, "transactions");
+    //s(m_bs.m_transactionMap, "transactions");
+    if (s.type() == ISerializer::INPUT) {
+      phmap::BinaryInputArchive ar_in(appendPath(m_bs.m_config_folder, "transactionsmap.dat").c_str());
+      m_bs.m_transactionMap.load(ar_in);
+    }
+    else {
+      phmap::BinaryOutputArchive ar_out(appendPath(m_bs.m_config_folder, "transactionsmap.dat").c_str());
+      m_bs.m_transactionMap.dump(ar_out);
+    }
 
     logger(INFO) << operation << "spent keys...";
-    s(m_bs.m_spent_key_images, "spent_keys");
+    //s(m_bs.m_spent_key_images, "spent_keys");
+    if (s.type() == ISerializer::INPUT) {
+      phmap::BinaryInputArchive ar_in(appendPath(m_bs.m_config_folder, "spentkeys.dat").c_str());
+      m_bs.m_spent_key_images.load(ar_in);
+    }
+    else {
+      phmap::BinaryOutputArchive ar_out(appendPath(m_bs.m_config_folder, "spentkeys.dat").c_str());
+      m_bs.m_spent_key_images.dump(ar_out);
+    }
 
     logger(INFO) << operation << "outputs...";
     s(m_bs.m_outputs, "outputs");
@@ -210,7 +227,7 @@ public:
     logger(INFO) << operation << "multi-signature outputs...";
     s(m_bs.m_multisignatureOutputs, "multisig_outputs");
 
-    //logger(INFO) << operation << "locked stake amounts...";
+    logger(INFO) << operation << "stakes...";
     s(m_bs.m_locked_amounts, "locked_amounts");
     
     auto dur = std::chrono::steady_clock::now() - start;
@@ -339,7 +356,6 @@ m_timestampIndex(blockchainIndexesEnabled),
 m_generatedTransactionsIndex(blockchainIndexesEnabled),
 m_orphanBlocksIndex(blockchainIndexesEnabled),
 m_blockchainIndexesEnabled(blockchainIndexesEnabled) {
-  m_outputs.set_deleted_key(0);
 }
 
 bool Blockchain::addObserver(IBlockchainStorageObserver* observer) {
@@ -1175,7 +1191,7 @@ bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) 
   }
 
   uint64_t extraSize = (uint64_t)b.baseTransaction.extra.size();
-  if (height > CryptoNote::parameters::FEE_PER_BYTE_HEIGHT && extraSize > CryptoNote::parameters::MAX_EXTRA_SIZE) {
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V4_2 && extraSize > CryptoNote::parameters::MAX_EXTRA_SIZE) {
     logger(ERROR, BRIGHT_RED)
       << "The miner transaction extra is too large in block "
       << get_block_hash(b) << ". Allowed: "
