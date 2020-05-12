@@ -347,8 +347,8 @@ bool Core::check_tx_fee(const Transaction& tx, const Crypto::Hash& txHash, size_
   if (!isFusionTransaction && !m_checkpoints.is_in_checkpoint_zone(height)) {
     bool enough = true;
 
-    if (height <= CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && fee < CryptoNote::parameters::MINIMUM_FEE_V1 ||
-        height > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && height <= CryptoNote::parameters::UPGRADE_HEIGHT_V4 && fee < CryptoNote::parameters::MINIMUM_FEE_V2)
+    if ((height <= CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && fee < CryptoNote::parameters::MINIMUM_FEE_V1) ||
+        (height > CryptoNote::parameters::UPGRADE_HEIGHT_V3_1 && height <= CryptoNote::parameters::UPGRADE_HEIGHT_V4 && fee < CryptoNote::parameters::MINIMUM_FEE_V2))
     {
       enough = false;
     }
@@ -602,13 +602,13 @@ bool Core::requestStakeTransaction(uint64_t& baseStake,
     logger(ERROR) << "Exception in requestStakeTransaction(): " << e.what();
     return false;
   }
-
+  
   return true;
 }
 
 // used to get block template in wallet without coinbase stake tx, which is added separately there
-bool Core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce,
-  size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) {
+bool Core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, const BinaryArray& ex_nonce, const size_t& median_size,
+  difficulty_type& diffic, uint32_t& height, uint64_t& already_generated_coins, size_t& txs_size) {
   {
     LockedBlockchainStorage blockchainLock(m_blockchain);
     height = m_blockchain.getCurrentBlockchainHeight();
@@ -667,7 +667,6 @@ bool Core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddr
       }
     }
 
-    median_size = m_blockchain.getCurrentCumulativeBlocksizeLimit() / 2;
     already_generated_coins = m_blockchain.getCoinsInCirculation();
   }
 
@@ -678,12 +677,12 @@ bool Core::prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddr
   return true;
 }
 
-bool Core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher, uint64_t wantedStake) {
-  size_t median_size;
+bool Core::get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, const BinaryArray& ex_nonce, difficulty_type& diffic, uint32_t& height, bool local_dispatcher, uint64_t wantedStake) {
+  size_t median_size = m_blockchain.getCurrentCumulativeBlocksizeLimit() / 2;
   size_t txs_size;
   uint64_t already_generated_coins;
 
-  if (!prepareBlockTemplate(b, fee, adr, diffic, height, ex_nonce, median_size, txs_size, already_generated_coins)) {
+  if (!prepareBlockTemplate(b, fee, adr, ex_nonce, median_size, diffic, height, already_generated_coins, txs_size)) {
     logger(ERROR, BRIGHT_RED) << "Failed to prepare block template";
     return false;
   }
@@ -1500,6 +1499,10 @@ bool Core::getMixin(const Transaction& transaction, uint64_t& mixin) {
     }
   }
   return true;
+}
+
+uint64_t Core::getCurrentCumulativeBlocksizeLimit() {
+  return m_blockchain.getCurrentCumulativeBlocksizeLimit() / 2;
 }
 
 bool Core::is_key_image_spent(const Crypto::KeyImage& key_im) {

@@ -23,8 +23,8 @@
 namespace CryptoNote {
   struct IMinerHandler {
     virtual bool handle_block_found(Block& b) = 0;
-    virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher, uint64_t wantedStake) = 0;
-    virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
+    virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, const BinaryArray& ex_nonce, difficulty_type& diffic, uint32_t& height, bool local_dispatcher, uint64_t wantedStake) = 0;
+    virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, const BinaryArray& ex_nonce, const size_t& median_size, difficulty_type& diffic, uint32_t& height, uint64_t& already_generated_coins, size_t& txs_size) = 0;
     virtual bool requestStakeTransaction(uint64_t& baseStake, uint64_t& wantedStake, uint64_t& blockReward, uint32_t& height, const AccountPublicAddress& minerAddress, const CryptoNote::BinaryArray& extra_nonce, bool local_dispatcher, Transaction& transaction) = 0;
     virtual bool getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) = 0;
     virtual uint64_t getNextBlockDifficulty() = 0;

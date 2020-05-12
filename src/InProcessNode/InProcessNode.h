@@ -158,7 +158,7 @@ private:
   std::error_code doGetBlockTimestampAsync(uint32_t height, uint64_t& timestamp);
 
   void getBlockRewardAsync(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange, const Callback& callback);
-  std::error_code InProcessNode::doGetBlockRewardAsync(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange);
+  std::error_code doGetBlockRewardAsync(uint8_t blockMajorVersion, uint64_t fee, size_t& medianSize, size_t currentBlockSize, uint64_t& alreadyGeneratedCoins, uint64_t& blockReward, int64_t& emissionChange);
 
   void isSynchronizedAsync(bool& syncStatus, const Callback& callback);
 

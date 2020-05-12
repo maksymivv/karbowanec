@@ -1279,7 +1279,7 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     }
 
     // make sure all unlock times (that we take into account) are equal
-    if (std::adjacent_find(unlockTimes.begin(), unlockTimes.end(), std::not_equal_to<>()) != unlockTimes.end()) {
+    if (std::adjacent_find(unlockTimes.begin(), unlockTimes.end(), std::not_equal_to<uint64_t>()) != unlockTimes.end()) {
       logger(ERROR, BRIGHT_RED) << "Unlock times mismatch in coibase stake transaction";
       return false;
     }

@@ -58,8 +58,8 @@ namespace CryptoNote {
 
      //-------------------- IMinerHandler -----------------------
      virtual bool handle_block_found(Block& b) override;
-     virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, bool local_dispatcher, uint64_t wantedStake) override;
-     virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) override;
+     virtual bool get_block_template(Block& b, uint64_t& fee, const AccountPublicAddress& adr, const BinaryArray& ex_nonce, difficulty_type& diffic, uint32_t& height, bool local_dispatcher, uint64_t wantedStake) override;
+     virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, const BinaryArray& ex_nonce, const size_t& median_size, difficulty_type& diffic, uint32_t& height, uint64_t& already_generated_coins, size_t& txs_size) override;
      virtual bool requestStakeTransaction(uint64_t& baseStake, uint64_t& wantedStake, uint64_t& blockReward, uint32_t& height, const AccountPublicAddress& minerAddress, const CryptoNote::BinaryArray& extra_nonce, bool local_dispatcher, Transaction& transaction) override;
 
      bool addObserver(ICoreObserver* observer) override;
@@ -105,6 +105,7 @@ namespace CryptoNote {
      virtual std::error_code executeLocked(const std::function<std::error_code()>& func) override;
      virtual uint64_t getMinimalFeeForHeight(uint32_t height) override;
      virtual uint64_t getMinimalFee() override;
+     virtual uint64_t getCurrentCumulativeBlocksizeLimit() override;
 
      virtual bool addMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) override;
      virtual bool removeMessageQueue(MessageQueue<BlockchainMessage>& messageQueue) override;

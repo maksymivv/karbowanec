@@ -124,7 +124,7 @@ namespace CryptoNote
     }
 
     uint64_t fee;
-    if (!m_handler.get_block_template(bl, fee, m_mine_address, di, height, extra_nonce, local_dispatcher, m_stake_amount)) {
+    if (!m_handler.get_block_template(bl, fee, m_mine_address, extra_nonce, di, height, local_dispatcher, m_stake_amount)) {
       logger(ERROR) << "Failed to get_block_template(), stopping mining";
       return false;
     }

@@ -72,9 +72,7 @@ public:
   virtual bool handle_get_objects(NOTIFY_REQUEST_GET_OBJECTS_request& arg, NOTIFY_RESPONSE_GET_OBJECTS_request& rsp) = 0; //Deprecated. Should be removed with CryptoNoteProtocolHandler.
   virtual void on_synchronized() = 0;
   virtual size_t addChain(const std::vector<const IBlock*>& chain) = 0;
-
-  virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, difficulty_type& diffic, uint32_t& height, const BinaryArray& ex_nonce, size_t& median_size, size_t& txs_size, uint64_t& already_generated_coins) = 0;
-
+  virtual bool prepareBlockTemplate(Block& b, uint64_t& fee, const AccountPublicAddress& adr, const BinaryArray& ex_nonce, const size_t& median_size, difficulty_type& diffic, uint32_t& height, uint64_t& already_generated_coins, size_t& txs_size) = 0;
   virtual uint64_t getActualStake(uint32_t height) = 0;
   virtual uint64_t getBaseStake() = 0;
   virtual bool getBaseStake(const uint32_t height, uint64_t& stake) = 0;
@@ -138,6 +136,7 @@ public:
   virtual size_t getPoolTransactionsCount() = 0;
   virtual size_t getBlockchainTotalTransactions() = 0;
   virtual uint32_t getCurrentBlockchainHeight() = 0;
+  virtual uint64_t getCurrentCumulativeBlocksizeLimit() = 0;
   virtual uint8_t getBlockMajorVersionForHeight(uint32_t height) = 0;
   virtual uint8_t getCurrentBlockMajorVersion() = 0;
   virtual size_t getAlternativeBlocksCount() = 0;

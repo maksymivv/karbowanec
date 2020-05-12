@@ -1364,7 +1364,7 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
   uint64_t fee;
-  if (!m_core.get_block_template(b, fee, acc, res.difficulty, res.height, blob_reserve, false, req.stake)) {
+  if (!m_core.get_block_template(b, fee, acc, blob_reserve, res.difficulty, res.height, false, req.stake)) {
     logger(Logging::ERROR) << "Failed to create block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to create block template" };
   }
@@ -1419,10 +1419,14 @@ bool RpcServer::on_prepareblocktemplate(const COMMAND_RPC_PREPARE_BLOCKTEMPLATE:
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
   uint64_t fee;
-  if (!m_core.prepareBlockTemplate(b, fee, acc, res.difficulty, res.height, blob_reserve, res.median_size, res.txs_size, res.already_generated_coins)) {
+  size_t medianSize = m_core.getCurrentCumulativeBlocksizeLimit();
+  size_t txsSize = 0;
+  if (!m_core.prepareBlockTemplate(b, fee, acc, blob_reserve, medianSize, res.difficulty, res.height, res.already_generated_coins, txsSize)) {
     logger(Logging::ERROR) << "Failed to prepare block template";
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: failed to prepare block template" };
   }
+  res.txs_size = txsSize;
+  res.median_size = medianSize;
 
   BinaryArray block_blob = toBinaryArray(b);
   res.blocktemplate_blob = Common::toHex(block_blob);
