@@ -93,11 +93,9 @@ inline uint32_t sub_word(uint32_t key)
 		 saes_sbox[key & 0xff];
 }
 
-#if defined(__clang__) || defined(__arm__) || defined(__aarch64__)
-namespace {
-inline uint32_t _rotr(uint32_t value, uint32_t amount) {
+#if defined(__clang__) && !defined (__APPLE__) || defined(__arm__) || defined(__aarch64__)
+static inline uint32_t _rotr(uint32_t value, uint32_t amount) {
 	return (value >> amount) | (value << (-amount & 31));
-}
 }
 #endif
 
@@ -106,5 +104,5 @@ inline __m128i soft_aeskeygenassist(__m128i key)
 {
 	uint32_t X1 = sub_word(_mm_cvtsi128_si32(_mm_shuffle_epi32(key, 0x55)));
 	uint32_t X3 = sub_word(_mm_cvtsi128_si32(_mm_shuffle_epi32(key, 0xFF)));
-	return _mm_set_epi32(_rotr(X3, 8) ^ rcon, X3,_rotr(X1, 8) ^ rcon, X1);
+	return _mm_set_epi32(_rotr(X3, 8) ^ rcon, X3, _rotr(X1, 8) ^ rcon, X1);
 }
