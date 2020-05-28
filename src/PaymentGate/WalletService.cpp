@@ -1470,12 +1470,18 @@ std::error_code WalletService::getStatus(uint32_t& blockCount, uint32_t& knownBl
 
     knownBlockCount = node.getKnownBlockCount();
     peerCount = static_cast<uint32_t>(node.getPeerCount());
-    blockCount = wallet.getBlockCount();
-	localDaemonBlockCount = node.getLocalBlockCount();
-	minimalFee = node.getMinimalFee();
+    localDaemonBlockCount = node.getLocalBlockCount();
+    minimalFee = node.getMinimalFee();
 
-    auto lastHashes = wallet.getBlockHashes(blockCount - 1, 1);
-    lastBlockHash = Common::podToHex(lastHashes.back());
+    if (inited) {
+      blockCount = wallet.getBlockCount();
+      auto lastHashes = wallet.getBlockHashes(blockCount - 1, 1);
+      lastBlockHash = Common::podToHex(lastHashes.back());
+    }
+    else {
+      blockCount = 0;
+      lastBlockHash = "";
+    }
   } catch (std::system_error& x) {
     logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while getting status: " << x.what();
     return x.code();
