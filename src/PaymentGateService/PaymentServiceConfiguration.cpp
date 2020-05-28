@@ -173,9 +173,9 @@ void Configuration::init(const po::variables_map& options) {
 
   if (!registerService && !unregisterService) {
     if (containerFile.empty() && containerPassword.empty()) {
-      throw ConfigurationError("Both container-file and container-password parameters are required");
+      // throw ConfigurationError("Both container-file and container-password parameters are required");
     }
-	if (containerPassword.empty()) {
+	if (containerPassword.empty() && !containerFile.empty()) {
 		if (pwd_container.read_password()) {
 			containerPassword = pwd_container.password();
 		}

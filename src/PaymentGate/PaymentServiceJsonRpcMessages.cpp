@@ -46,6 +46,19 @@ void Export::Request::serialize(CryptoNote::ISerializer& serializer) {
 void Export::Response::serialize(CryptoNote::ISerializer& serializer) {
 }
 
+void Open::Request::serialize(CryptoNote::ISerializer& serializer) {
+  bool hasFileName = serializer(fileName, "fileName");
+  bool hasPassword = serializer(password, "password");
+
+  if (!hasFileName || !hasPassword) {
+    //TODO: replace it with error codes
+    throw RequestSerializationError();
+  }
+}
+
+void Open::Response::serialize(CryptoNote::ISerializer& serializer) {
+}
+
 void GetViewKey::Request::serialize(CryptoNote::ISerializer& serializer) {
 }
 

@@ -60,7 +60,7 @@ struct TransactionsInBlockInfoFilter;
 class WalletService {
 public:
   WalletService(const CryptoNote::Currency& currency, System::Dispatcher& sys, CryptoNote::INode& node, CryptoNote::IWallet& wallet,
-    CryptoNote::IFusionManager& fusionManager, const WalletConfiguration& conf, Logging::ILogger& logger);
+    CryptoNote::IFusionManager& fusionManager, WalletConfiguration& conf, Logging::ILogger& logger);
   virtual ~WalletService();
 
   void init();
@@ -70,6 +70,7 @@ public:
   std::error_code resetWallet();
   std::error_code resetWallet(const uint32_t scanHeight);
   std::error_code exportWallet(const std::string& fileName);
+  std::error_code openWallet(const std::string& fileName, const std::string& password);
   std::error_code replaceWithNewWallet(const std::string& viewSecretKey);
   std::error_code replaceWithNewWallet(const std::string& viewSecretKey, const uint32_t scanHeight);
   std::error_code createAddress(const std::string& spendSecretKeyText, bool reset, std::string& address);
@@ -117,7 +118,7 @@ public:
 private:
   void refresh();
   void reset();
-
+  void open();
   void loadWallet();
   void loadTransactionIdIndex();
 
@@ -137,7 +138,7 @@ private:
   CryptoNote::IWallet& wallet;
   CryptoNote::IFusionManager& fusionManager;
   CryptoNote::INode& node;
-  const WalletConfiguration& config;
+  WalletConfiguration& config;
   bool inited;
   Logging::LoggerRef logger;
   System::Dispatcher& dispatcher;

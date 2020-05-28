@@ -231,6 +231,7 @@ void PaymentGateService::runInProcess(Logging::LoggerRef& log) {
 
   p2pStarted.wait();
 
+  // wallet itself
   runWalletService(currency, *node);
 
   log(Logging::INFO) << "Stopping core rpc server...";
@@ -261,17 +262,21 @@ void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, 
     config.gateConfiguration.containerPassword
   };
 
+  // 1st create GreenWallet instance
   std::unique_ptr<CryptoNote::WalletGreen> wallet(new CryptoNote::WalletGreen(*dispatcher, currency, node, logger));
 
+  // 2nd create WalletSerive
   service = new PaymentService::WalletService(currency, *dispatcher, node, *wallet, *wallet, walletConfiguration, logger);
   std::unique_ptr<PaymentService::WalletService> serviceGuard(service);
   try {
-    service->init();
+    if (!walletConfiguration.walletFile.empty() && !walletConfiguration.walletPassword.empty())
+      service->init();
   } catch (std::exception& e) {
     Logging::LoggerRef(logger, "run")(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to init walletService reason: " << e.what();
     return;
   }
 
+  //3rd run RPC
   if (config.gateConfiguration.printAddresses) {
     // print addresses and exit
     std::vector<std::string> addresses;

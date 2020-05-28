@@ -116,7 +116,7 @@ bool ConfigurationManager::init(int argc, char** argv) {
   }
 
   if (gateConfiguration.containerFile.empty()) {
-    throw ConfigurationError("Сontainer file not set");
+    // throw ConfigurationError("Сontainer file not set");
   }
 
   return true;

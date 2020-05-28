@@ -410,7 +410,7 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
 }
 
 WalletService::WalletService(const CryptoNote::Currency& currency, System::Dispatcher& sys, CryptoNote::INode& node,
-  CryptoNote::IWallet& wallet, CryptoNote::IFusionManager& fusionManager, const WalletConfiguration& conf, Logging::ILogger& logger) :
+  CryptoNote::IWallet& wallet, CryptoNote::IFusionManager& fusionManager, WalletConfiguration& conf, Logging::ILogger& logger) :
     currency(currency),
     wallet(wallet),
     fusionManager(fusionManager),
@@ -433,7 +433,7 @@ WalletService::~WalletService() {
   }
 }
 
-void WalletService::init() {
+void WalletService::init() { 
   loadWallet();
   loadTransactionIdIndex();
 
@@ -553,6 +553,39 @@ std::error_code WalletService::exportWallet(const std::string& fileName) {
     return x.code();
   } catch (std::exception& x) {
     logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while exporting wallet: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
+
+  return std::error_code();
+}
+
+std::error_code WalletService::openWallet(const std::string& fileName, const std::string& password) {
+
+  logger(Logging::INFO) << "Open wallet: " << fileName << ", password " << password;
+
+  if (fileName.empty() || password.empty()) {
+    return make_error_code(CryptoNote::error::WRONG_PARAMETERS);
+  }
+
+  try {
+    System::EventLock lk(readyEvent);
+
+    if (!boost::filesystem::exists(fileName)) {
+      logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Container does not exist: " << fileName;
+      return make_error_code(CryptoNote::error::WALLET_NOT_FOUND);
+    }
+
+    config.walletFile = fileName;
+    config.walletPassword = password;
+
+    open();
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while replacing container: " << x.what();
+    return x.code();
+  }
+  catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while replacing container: " << x.what();
     return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
   }
 
@@ -1527,6 +1560,24 @@ void WalletService::refresh() {
   }
 }
 
+void WalletService::open() {
+  if (inited) {
+    wallet.stop();
+    wallet.shutdown();
+    inited = false;
+    refreshContext.wait();
+
+    transactionIdIndex.clear();
+
+    wallet.start();
+  }
+
+  loadWallet();
+  loadTransactionIdIndex();
+
+  inited = true;
+}
+
 void WalletService::reset() {
   wallet.save(CryptoNote::WalletSaveLevel::SAVE_KEYS_ONLY);
   wallet.stop();
@@ -1535,7 +1586,13 @@ void WalletService::reset() {
   refreshContext.wait();
 
   wallet.start();
-  init();
+  
+  loadWallet();
+  loadTransactionIdIndex();
+
+  refreshContext.spawn([this] { refresh(); });
+
+  inited = true;
 }
 
 void WalletService::replaceWithNewWallet(const Crypto::SecretKey& viewSecretKey, const uint32_t scanHeight) {
