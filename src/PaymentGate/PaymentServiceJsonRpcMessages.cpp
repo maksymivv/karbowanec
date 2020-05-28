@@ -59,6 +59,12 @@ void Open::Request::serialize(CryptoNote::ISerializer& serializer) {
 void Open::Response::serialize(CryptoNote::ISerializer& serializer) {
 }
 
+void Close::Request::serialize(CryptoNote::ISerializer& serializer) {
+}
+
+void Close::Response::serialize(CryptoNote::ISerializer& serializer) {
+}
+
 void GetViewKey::Request::serialize(CryptoNote::ISerializer& serializer) {
 }
 

@@ -269,8 +269,11 @@ void PaymentGateService::runWalletService(const CryptoNote::Currency& currency, 
   service = new PaymentService::WalletService(currency, *dispatcher, node, *wallet, *wallet, walletConfiguration, logger);
   std::unique_ptr<PaymentService::WalletService> serviceGuard(service);
   try {
-    if (!walletConfiguration.walletFile.empty() && !walletConfiguration.walletPassword.empty())
+    if (!walletConfiguration.walletFile.empty() && !walletConfiguration.walletPassword.empty()) {
       service->init();
+    } else {
+      Logging::LoggerRef(logger, "run")(Logging::INFO, Logging::BRIGHT_WHITE) << "No wallet file provided, starting without wallet...";
+    }
   } catch (std::exception& e) {
     Logging::LoggerRef(logger, "run")(Logging::ERROR, Logging::BRIGHT_RED) << "Failed to init walletService reason: " << e.what();
     return;

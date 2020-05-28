@@ -71,6 +71,7 @@ public:
   std::error_code resetWallet(const uint32_t scanHeight);
   std::error_code exportWallet(const std::string& fileName);
   std::error_code openWallet(const std::string& fileName, const std::string& password);
+  std::error_code closeWallet();
   std::error_code replaceWithNewWallet(const std::string& viewSecretKey);
   std::error_code replaceWithNewWallet(const std::string& viewSecretKey, const uint32_t scanHeight);
   std::error_code createAddress(const std::string& spendSecretKeyText, bool reset, std::string& address);
@@ -119,6 +120,7 @@ private:
   void refresh();
   void reset();
   void open();
+  void close();
   void loadWallet();
   void loadTransactionIdIndex();
 

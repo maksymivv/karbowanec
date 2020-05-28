@@ -560,9 +560,6 @@ std::error_code WalletService::exportWallet(const std::string& fileName) {
 }
 
 std::error_code WalletService::openWallet(const std::string& fileName, const std::string& password) {
-
-  logger(Logging::INFO) << "Open wallet: " << fileName << ", password " << password;
-
   if (fileName.empty() || password.empty()) {
     return make_error_code(CryptoNote::error::WRONG_PARAMETERS);
   }
@@ -575,17 +572,39 @@ std::error_code WalletService::openWallet(const std::string& fileName, const std
       return make_error_code(CryptoNote::error::WALLET_NOT_FOUND);
     }
 
+    if (inited) {
+      saveWalletNoThrow();
+    }
+    
     config.walletFile = fileName;
     config.walletPassword = password;
 
     open();
   }
   catch (std::system_error& x) {
-    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while replacing container: " << x.what();
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while opening container: " << x.what();
     return x.code();
   }
   catch (std::exception& x) {
-    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while replacing container: " << x.what();
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while opening container: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
+
+  return std::error_code();
+}
+
+std::error_code WalletService::closeWallet() {
+  try {
+    System::EventLock lk(readyEvent);
+
+    close();
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while closing container: " << x.what();
+    return x.code();
+  }
+  catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while closing container: " << x.what();
     return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
   }
 
@@ -1568,17 +1587,40 @@ void WalletService::open() {
     refreshContext.wait();
 
     transactionIdIndex.clear();
-
-    wallet.start();
   }
+
+  wallet.start();
 
   loadWallet();
   loadTransactionIdIndex();
 
+  refreshContext.spawn([this] { refresh(); });
+
   inited = true;
 }
 
+void WalletService::close() {
+  if (inited) {
+
+    saveWallet();
+
+    wallet.stop();
+    wallet.shutdown();
+    inited = false;
+    refreshContext.wait();
+
+    transactionIdIndex.clear();
+
+    config.walletFile = "";
+    config.walletPassword = "";
+  }
+}
+
 void WalletService::reset() {
+  if (!inited) {
+    return;
+  }
+
   wallet.save(CryptoNote::WalletSaveLevel::SAVE_KEYS_ONLY);
   wallet.stop();
   wallet.shutdown();
@@ -1596,6 +1638,10 @@ void WalletService::reset() {
 }
 
 void WalletService::replaceWithNewWallet(const Crypto::SecretKey& viewSecretKey, const uint32_t scanHeight) {
+  if (!inited) {
+    return;
+  }
+
   wallet.stop();
   wallet.shutdown();
   inited = false;
@@ -1624,6 +1670,10 @@ void WalletService::replaceWithNewWallet(const Crypto::SecretKey& viewSecretKey,
 }
 
 void WalletService::replaceWithNewWallet(const Crypto::SecretKey& viewSecretKey) {
+  if (!inited) {
+    return;
+  }
+
   wallet.stop();
   wallet.shutdown();
   inited = false;
