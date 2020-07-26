@@ -208,16 +208,16 @@ public:
       m_bs.m_transactionMap.dump(ar_out);
     }
 
-    logger(INFO) << operation << "spent keys...";
+//    logger(INFO) << operation << "spent keys...";
     //s(m_bs.m_spent_key_images, "spent_keys");
-    if (s.type() == ISerializer::INPUT) {
-      phmap::BinaryInputArchive ar_in(appendPath(m_bs.m_config_folder, "spentkeys.dat").c_str());
-      m_bs.m_spent_key_images.load(ar_in);
-    }
-    else {
-      phmap::BinaryOutputArchive ar_out(appendPath(m_bs.m_config_folder, "spentkeys.dat").c_str());
-      m_bs.m_spent_key_images.dump(ar_out);
-    }
+//    if (s.type() == ISerializer::INPUT) {
+//      phmap::BinaryInputArchive ar_in(appendPath(m_bs.m_config_folder, "spentkeys.dat").c_str());
+//      m_bs.m_spent_key_images.load(ar_in);
+//    }
+//    else {
+//      phmap::BinaryOutputArchive ar_out(appendPath(m_bs.m_config_folder, "spentkeys.dat").c_str());
+//      m_bs.m_spent_key_images.dump(ar_out);
+//    }
 
     logger(INFO) << operation << "outputs...";
     s(m_bs.m_outputs, "outputs");
@@ -468,6 +468,10 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     return false;
   }
 
+  if (!m_spent_key_images.open(appendPath(config_folder, "spentkeys.dat"), appendPath(config_folder, "spentkeysindexes.dat"), 1024)) {
+    return false;
+  }
+
   if (load_existing && !m_blocks.empty()) {
     logger(INFO, BRIGHT_WHITE) << "Loading blockchain...";
     BlockCacheSerializer loader(*this, get_block_hash(m_blocks.back().bl), logger.getLogger());
@@ -483,6 +487,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
     }
   } else {
     m_blocks.clear();
+    m_spent_key_images.clear();
   }
 
   if (m_blocks.empty()) {
@@ -2326,7 +2331,9 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         logger(ERROR, BRIGHT_RED) <<
           "Double spending transaction was pushed to blockchain.";
         for (size_t j = 0; j < i; ++j) {
-          m_spent_key_images.erase(::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage);
+          //m_spent_key_images.erase(::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage);
+          const auto it = m_spent_key_images.find(::boost::get<KeyInput>(transaction.tx.inputs[i - 1 - j]).keyImage);
+          m_spent_key_images.erase(it);
         }
         m_transactionMap.erase(transactionHash);
         return false;
@@ -2436,11 +2443,12 @@ void Blockchain::popTransaction(const Transaction& transaction, const Crypto::Ha
 
   for (auto& input : transaction.inputs) {
     if (input.type() == typeid(KeyInput)) {
-      size_t count = m_spent_key_images.erase(::boost::get<KeyInput>(input).keyImage);
-      if (count != 1) {
-        logger(ERROR, BRIGHT_RED) <<
-          "Blockchain consistency broken - cannot find spent key.";
-      }
+      const auto& it = m_spent_key_images.find(::boost::get<KeyInput>(input).keyImage);
+      m_spent_key_images.erase(it);
+      //if (count != 1) {
+      //  logger(ERROR, BRIGHT_RED) <<
+      //    "Blockchain consistency broken - cannot find spent key.";
+      //}
     } else if (input.type() == typeid(MultisignatureInput)) {
       const MultisignatureInput& in = ::boost::get<MultisignatureInput>(input);
       auto& amountOutputs = m_multisignatureOutputs[in.amount];

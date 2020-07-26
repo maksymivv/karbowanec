@@ -31,6 +31,7 @@
 #include "CryptoNoteCore/Currency.h"
 #include "CryptoNoteCore/IBlockchainStorageObserver.h"
 #include "CryptoNoteCore/ITransactionValidator.h"
+#include "CryptoNoteCore/SwappedMap.h"
 #include "CryptoNoteCore/SwappedVector.h"
 #include "CryptoNoteCore/UpgradeDetector.h"
 #include "CryptoNoteCore/CryptoNoteFormatUtils.h"
@@ -261,13 +262,19 @@ namespace CryptoNote {
     typedef parallel_flat_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
     typedef parallel_flat_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
 
+    typedef SwappedMap<Crypto::KeyImage, uint32_t> key_images_swapped_map_container;
+
+
+
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
     std::recursive_mutex m_blockchain_lock; // TODO: add here reader/writer lock
     Crypto::cn_context m_cn_context;
     Tools::ObserverManager<IBlockchainStorageObserver> m_observerManager;
 
-    key_images_container m_spent_key_images;
+    //key_images_container m_spent_key_images;
+    key_images_swapped_map_container m_spent_key_images;
+
     size_t m_current_block_cumul_sz_limit;
     blocks_ext_by_hash m_alternative_chains; // Crypto::Hash -> block_extended_info
     outputs_container m_outputs;
