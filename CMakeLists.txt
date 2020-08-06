@@ -221,7 +221,7 @@ if(STATIC OR IOS)
  endif()
 
 if(MSVC)
-  set (CMAKE_MSVC_FLAGS_BASE "/D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__")
+  set (CMAKE_MSVC_FLAGS_BASE "/D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /D_VARIADIC_MAX=8 /D__SSE4_1__ /D_NO_CRT_STDIO_INLINE")
   set (CMAKE_MSVC_FLAGS_EXT "/bigobj /MP /W3 /GS-")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_MSVC_FLAGS_BASE} ${CMAKE_MSVC_FLAGS_EXT}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_MSVC_FLAGS_BASE} ${CMAKE_MSVC_FLAGS_EXT}")
@@ -513,6 +513,44 @@ if(NOT Boost_FOUND)
 elseif(Boost_FOUND)
   message(STATUS "Found Boost Version: ${Boost_VERSION}")
 endif()
+
+# We have to look for Homebrew OpenSSL a bit differently
+# Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
+if (APPLE)
+    find_program(HOMEBREW_EXECUTABLE brew)
+    execute_process(COMMAND ${HOMEBREW_EXECUTABLE} --prefix openssl
+            OUTPUT_VARIABLE HOMEBREW_OPENSSL
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (DEFINED HOMEBREW_OPENSSL)
+        if (NOT DEFINED OPENSSL_ROOT_DIR)
+            message(STATUS "Setting OpenSSL root to ${HOMEBREW_OPENSSL}")
+            set(OPENSSL_ROOT_DIR "${HOMEBREW_OPENSSL}")
+        endif ()
+    endif ()
+endif ()
+
+find_package(OpenSSL)
+
+if (NOT OPENSSL_FOUND)
+    find_package(PkgConfig)
+
+    if (PKG_CONFIG_FOUND)
+        pkg_search_module(OPENSSL openssl)
+    endif()
+endif()
+
+if (OPENSSL_FOUND)
+    ## On non MSVC build systems, we need to link ldl with the static OpenSSL library
+    if (NOT MSVC)
+        set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
+    endif ()
+
+    include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+    message(STATUS "OpenSSL Found: ${OPENSSL_INCLUDE_DIR}")
+    message(STATUS "OpenSSL Libraries: ${OPENSSL_LIBRARIES}")
+else ()
+    message(STATUS "OpenSSL Found: No... Skipping...")
+endif ()
 
 if(MINGW)
   set(Boost_LIBRARIES "${Boost_LIBRARIES};ws2_32;mswsock;iphlpapi")

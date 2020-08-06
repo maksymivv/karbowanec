@@ -36,6 +36,7 @@ const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
 const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 111; // addresses start with "K"
 const uint64_t CRYPTONOTE_TX_PROOF_BASE58_PREFIX             = 3576968; // (0x369488), starts with "Proof..."
 const uint64_t CRYPTONOTE_RESERVE_PROOF_BASE58_PREFIX        = 44907175188; // (0xa74ad1d14), starts with "RsrvPrf..."
+const uint64_t CRYPTONOTE_KEYS_SIGNATURE_BASE58_PREFIX       = 176103705; // (0xa7f2119), starts with "SigV1..."
 const size_t   CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
 const size_t   CRYPTONOTE_TX_SPENDABLE_AGE                   = 1;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = DIFFICULTY_TARGET * 7;
@@ -158,6 +159,14 @@ const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
 const int      P2P_DEFAULT_PORT                              =  12347;
 const int      RPC_DEFAULT_PORT                              =  12348;
+const int      RPC_DEFAULT_SSL_PORT                          =  32448;
+const int      WALLET_RPC_DEFAULT_PORT                       =  15000;
+const int      WALLET_RPC_DEFAULT_SSL_PORT                   =  15100;
+const int      GATE_RPC_DEFAULT_PORT                         =  16000;
+const int      GATE_RPC_DEFAULT_SSL_PORT                     =  16100;
+const char     RPC_DEFAULT_CHAIN_FILE[]                      = "rpc_server.crt";
+const char     RPC_DEFAULT_KEY_FILE[]                        = "rpc_server.key";
+const char     RPC_DEFAULT_DH_FILE[]                         = "rpc_server.pem";
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;

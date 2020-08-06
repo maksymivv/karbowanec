@@ -862,7 +862,7 @@ std::error_code InProcessNode::doGetBlocks(const std::vector<uint32_t>& blockHei
         return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
       }
       BlockDetails blockDetails;
-      if (!blockchainExplorerDataBuilder.fillBlockDetails(block, blockDetails)) {
+      if (!blockchainExplorerDataBuilder.fillBlockDetails(block, blockDetails, false)) {
         return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
       }
       std::vector<BlockDetails> blocksOnSameHeight;
@@ -873,7 +873,7 @@ std::error_code InProcessNode::doGetBlocks(const std::vector<uint32_t>& blockHei
       core.getOrphanBlocksByHeight(height, orphanBlocks);
       for (const Block& orphanBlock : orphanBlocks) {
         BlockDetails orphanBlockDetails;
-        if (!blockchainExplorerDataBuilder.fillBlockDetails(orphanBlock, orphanBlockDetails)) {
+        if (!blockchainExplorerDataBuilder.fillBlockDetails(orphanBlock, orphanBlockDetails, false)) {
           return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
         }
         blocksOnSameHeight.push_back(std::move(orphanBlockDetails));
@@ -939,7 +939,7 @@ std::error_code InProcessNode::doGetBlocks(const std::vector<Crypto::Hash>& bloc
         return make_error_code(CryptoNote::error::REQUEST_ERROR);
       }
       BlockDetails blockDetails;
-      if (!blockchainExplorerDataBuilder.fillBlockDetails(block, blockDetails)) {
+      if (!blockchainExplorerDataBuilder.fillBlockDetails(block, blockDetails, false)) {
         return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
       }
       blocks.push_back(std::move(blockDetails));
@@ -1015,7 +1015,7 @@ std::error_code InProcessNode::doGetBlocks(uint64_t timestampBegin, uint64_t tim
     }
     for (const Block& rawBlock : rawBlocks) {
       BlockDetails block;
-      if (!blockchainExplorerDataBuilder.fillBlockDetails(rawBlock, block)) {
+      if (!blockchainExplorerDataBuilder.fillBlockDetails(rawBlock, block, false)) {
         return make_error_code(CryptoNote::error::INTERNAL_NODE_ERROR);
       }
       blocks.push_back(std::move(block));
@@ -1284,6 +1284,14 @@ void InProcessNode::isSynchronized(bool& syncStatus, const Callback& callback) {
       callback
     )
   );
+}
+
+void InProcessNode::setRootCert(const std::string &path) {
+  return;
+}
+
+void InProcessNode::disableVerify() {
+  return;
 }
 
 void InProcessNode::isSynchronizedAsync(bool& syncStatus, const Callback& callback) {

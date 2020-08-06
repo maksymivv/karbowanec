@@ -112,6 +112,8 @@ const command_line::arg_descriptor<std::string> arg_wallet_file = { "wallet-file
 const command_line::arg_descriptor<std::string> arg_generate_new_wallet = { "generate-new-wallet", "Generate new wallet and save it to <arg>", "" };
 const command_line::arg_descriptor<std::string> arg_daemon_address = { "daemon-address", "Use daemon instance at <host>:<port>", "" };
 const command_line::arg_descriptor<std::string> arg_daemon_host = { "daemon-host", "Use daemon instance at host <arg> instead of localhost", "" };
+const command_line::arg_descriptor<std::string> arg_daemon_cert = { "daemon-cert", "Custom cert file for performing verification", "" };
+const command_line::arg_descriptor<bool> arg_daemon_no_verify = { "daemon-no-verify", "Disable verification procedure", false };
 const command_line::arg_descriptor<std::string> arg_password = { "password", "Wallet password", "", true };
 const command_line::arg_descriptor<std::string> arg_change_password = { "change-password", "Change wallet password and exit", "", true };
 const command_line::arg_descriptor<std::string> arg_mnemonic_seed = { "mnemonic-seed", "Specify mnemonic seed for wallet recovery", "" };
@@ -126,6 +128,22 @@ const command_line::arg_descriptor<bool> arg_reset = { "reset", "Discard cache d
 const command_line::arg_descriptor<uint32_t> arg_scan_height = { "scan-height", "The height to begin scanning a wallet from", 0 };
 const command_line::arg_descriptor< std::vector<std::string> > arg_command = { "command", "" };
 
+
+bool validateCertPath(std::string &path) {
+  bool res = false;
+  boost::system::error_code ec;
+  boost::filesystem::path data_dir_path(boost::filesystem::current_path());
+  boost::filesystem::path cert_file_path(path);
+  if (!cert_file_path.has_parent_path()) cert_file_path = data_dir_path / cert_file_path;
+  if (boost::filesystem::exists(cert_file_path, ec)) {
+    path = boost::filesystem::canonical(cert_file_path).string();
+    res = true;
+  } else {
+    path.clear();
+    res = false;
+  }
+  return res;
+}
 
 void seedFormater(std::string& seed){
   const unsigned int word_width = 12;
@@ -541,38 +559,6 @@ bool writeAddressFile(const std::string& addressFilename, const std::string& add
 }
 
 #ifndef __ANDROID__
-bool processServerAliasResponse(const std::string& s, std::string& address) {
-	try {
-
-		// Courtesy of Monero Project
-		// make sure the txt record has "oa1:krb" and find it
-		auto pos = s.find("oa1:krb");
-		if (pos == std::string::npos)
-			return false;
-		// search from there to find "recipient_address="
-		pos = s.find("recipient_address=", pos);
-		if (pos == std::string::npos)
-			return false;
-		pos += 18; // move past "recipient_address="
-		// find the next semicolon
-		auto pos2 = s.find(";", pos);
-		if (pos2 != std::string::npos)
-		{
-			// length of address == 95, we can at least validate that much here
-			if (pos2 - pos == 95)
-			{
-				address = s.substr(pos, 95);
-			} else {
-				return false;
-			}
-		}
-	}
-	catch (std::exception&) {
-		return false;
-	}
-
-	return true;
-}
 
 bool comfirmPrompt() {
   std::string answer;
@@ -648,6 +634,8 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_daemon_port(0),
   m_daemon_path("/"),
   m_daemon_ssl(false),
+  m_daemon_cert(""),
+  m_daemon_no_verify(false),
   m_scan_height(0),
   m_currency(currency), 
   m_logManager(log),
@@ -865,6 +853,12 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
 {
 	handle_command_line(vm);
 
+	if (!m_daemon_cert.empty()) {
+		if (!validateCertPath(m_daemon_cert)) {
+			fail_msg_writer() << "Custom cert file could not be found" << std::endl;
+		}
+	}
+
 	if (!m_daemon_address.empty() && (!m_daemon_host.empty() || 0 != m_daemon_port))
 	{
 		fail_msg_writer() << "you can't specify daemon host or port several times";
@@ -993,7 +987,10 @@ bool simple_wallet::init(const boost::program_options::variables_map& vm)
 		return false;
 	}
 
-	this->m_node.reset(new NodeRpcProxy(m_daemon_host, m_daemon_port));
+	this->m_node.reset(new NodeRpcProxy(m_daemon_host, m_daemon_port, m_daemon_path, m_daemon_ssl));
+
+	if (!m_daemon_cert.empty()) this->m_node->setRootCert(m_daemon_cert);
+	if (m_daemon_no_verify) this->m_node->disableVerify();
 
 	std::promise<std::error_code> errorPromise;
 	std::future<std::error_code> f_error = errorPromise.get_future();
@@ -1392,6 +1389,8 @@ void simple_wallet::handle_command_line(const boost::program_options::variables_
 	m_daemon_address               = command_line::get_arg(vm, arg_daemon_address);
 	m_daemon_host                  = command_line::get_arg(vm, arg_daemon_host);
 	m_daemon_port                  = command_line::get_arg(vm, arg_daemon_port);
+	m_daemon_cert                  = command_line::get_arg(vm, arg_daemon_cert);
+	m_daemon_no_verify             = command_line::get_arg(vm, arg_daemon_no_verify);
 	m_mnemonic_seed                = command_line::get_arg(vm, arg_mnemonic_seed);
 	m_view_key                     = command_line::get_arg(vm, arg_view_secret_key);
 	m_spend_key                    = command_line::get_arg(vm, arg_spend_secret_key);
@@ -1743,10 +1742,15 @@ bool simple_wallet::start_mining(const std::vector<std::string>& args) {
 
   COMMAND_RPC_START_MINING::response res;
 
-  try {
-    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port);
+  std::string rpc_url = this->m_daemon_path + "start_mining";
 
-    invokeJsonCommand(httpClient, "/start_mining", req, res);
+  try {
+    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port, m_daemon_ssl);
+
+    if (!m_daemon_cert.empty()) httpClient.setRootCert(m_daemon_cert);
+    if (m_daemon_no_verify) httpClient.disableVerify();
+
+    invokeJsonCommand(httpClient, rpc_url, req, res);
 
     std::string err = interpret_rpc_response(true, res.status);
     if (err.empty())
@@ -1768,10 +1772,16 @@ bool simple_wallet::stop_mining(const std::vector<std::string>& args)
   COMMAND_RPC_STOP_MINING::request req;
   COMMAND_RPC_STOP_MINING::response res;
 
-  try {
-    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port);
+  std::string rpc_url = this->m_daemon_path + "stop_mining";
 
-    invokeJsonCommand(httpClient, "/stop_mining", req, res);
+  try {
+    HttpClient httpClient(m_dispatcher, m_daemon_host, m_daemon_port, m_daemon_ssl);
+
+    if (!m_daemon_cert.empty()) httpClient.setRootCert(m_daemon_cert);
+    if (m_daemon_no_verify) httpClient.disableVerify();
+
+    invokeJsonCommand(httpClient, rpc_url, req, res);
+
     std::string err = interpret_rpc_response(true, res.status);
     if (err.empty())
       success_msg_writer() << "Mining stopped in daemon";
@@ -2007,26 +2017,6 @@ bool simple_wallet::show_unlocked_outputs_count(const std::vector<std::string>& 
   return true;
 }
 
-#ifndef __ANDROID__
-//----------------------------------------------------------------------------------------------------
-std::string simple_wallet::resolveAlias(const std::string& aliasUrl) {
-	std::string host;
-	std::string uri;
-	std::vector<std::string>records;
-	std::string address;
-
-	if (!Common::fetch_dns_txt(aliasUrl, records)) {
-		throw std::runtime_error("Failed to lookup DNS record");
-	}
-
-	for (const auto& record : records) {
-		if (processServerAliasResponse(record, address)) {
-			return address;
-		}
-	}
-	throw std::runtime_error("Failed to parse server response");
-}
-#endif
 //----------------------------------------------------------------------------------------------------
 uint64_t simple_wallet::getMinimalFee() {
   uint64_t ret(0);
@@ -2069,7 +2059,7 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
 		std::string address;
 
 		try {
-			address = resolveAlias(kv.first);
+			address = Common::resolveAlias(kv.first);
 
 			AccountPublicAddress ignore;
 			if (!m_currency.parseAccountAddressString(address, ignore)) {
@@ -2321,25 +2311,12 @@ bool simple_wallet::verify_message(const std::vector<std::string> &args) {
     fail_msg_writer() << "failed to parse address " << address_string;
 	return true;
   }
-  const size_t header_len = strlen("SigV1");
-  if (signature.size() < header_len || signature.substr(0, header_len) != "SigV1") {
-    fail_msg_writer() << ("Signature header check error");
-    return false;
-  }
-  std::string decoded;
-  if (!Tools::Base58::decode(signature.substr(header_len), decoded)) {
-    fail_msg_writer() << ("Signature decoding error");
-    return false;
-  }
-  if (sizeof(Crypto::Signature) != decoded.size()) {
-    fail_msg_writer() << ("Signature decoding error");
-    return false;
-  }
+  
   bool r = m_wallet->verify_message(message, address, signature);
   if (!r) {
     fail_msg_writer() << "Invalid signature from " << address_string;
   } else {
-    success_msg_writer() << "Valid signature from " << address_string;
+    success_msg_writer(true) << "Valid signature from " << address_string;
   }
   return true;
 }
@@ -2355,7 +2332,7 @@ void simple_wallet::printConnectionError() const {
 
 int main(int argc, char* argv[]) {
 #ifdef WIN32
-   setlocale(LC_ALL, "");
+   setlocale(LC_ALL, "Russian");
    SetConsoleCP(1251);
    SetConsoleOutputCP(1251);
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -2380,6 +2357,8 @@ int main(int argc, char* argv[]) {
   command_line::add_arg(desc_params, arg_daemon_address);
   command_line::add_arg(desc_params, arg_daemon_host);
   command_line::add_arg(desc_params, arg_daemon_port);
+  command_line::add_arg(desc_params, arg_daemon_cert);
+  command_line::add_arg(desc_params, arg_daemon_no_verify);
   command_line::add_arg(desc_params, arg_command);
   command_line::add_arg(desc_params, arg_log_file);
   command_line::add_arg(desc_params, arg_log_level);
@@ -2484,9 +2463,11 @@ int main(int argc, char* argv[]) {
     }
 
     std::string daemon_address = command_line::get_arg(vm, arg_daemon_address);
+    std::string daemon_cert = command_line::get_arg(vm, arg_daemon_cert);
     std::string daemon_host = command_line::get_arg(vm, arg_daemon_host);
-    std::string daemon_path = "/";
     uint16_t daemon_port = command_line::get_arg(vm, arg_daemon_port);
+    bool daemon_no_verify = command_line::get_arg(vm, arg_daemon_no_verify);
+    std::string daemon_path = "/";
     bool daemon_ssl = false;
 
     if (!daemon_address.empty()) {
@@ -2500,7 +2481,16 @@ int main(int argc, char* argv[]) {
     if (!daemon_port)
       daemon_port = RPC_DEFAULT_PORT;
 
-    std::unique_ptr<INode> node(new NodeRpcProxy(daemon_host, daemon_port));
+    if (!daemon_cert.empty()) {
+      if (!validateCertPath(daemon_cert)) {
+        logger(ERROR, BRIGHT_RED) << "Custom cert file could not be found" << std::endl;
+      }
+    }
+
+    std::unique_ptr<INode> node(new NodeRpcProxy(daemon_host, daemon_port, daemon_path, daemon_ssl));
+
+    if (!daemon_cert.empty()) node->setRootCert(daemon_cert);
+    if (daemon_no_verify) node->disableVerify();
 
     std::promise<std::error_code> errorPromise;
     std::future<std::error_code> error = errorPromise.get_future();
@@ -2538,7 +2528,13 @@ int main(int argc, char* argv[]) {
       wrpc.send_stop_signal();
     });
 
-    logger(INFO) << "Starting wallet rpc server";
+    bool enable_ssl;
+    std::string bind_address;
+    std::string bind_address_ssl;
+    std::string ssl_info;
+    wrpc.getServerConf(bind_address, bind_address_ssl, enable_ssl);
+    if (enable_ssl) ssl_info += std::string(", SSL on address ") + bind_address_ssl;
+    logger(INFO) << "Starting wallet rpc server on address " << bind_address << ssl_info;
     wrpc.run();
     logger(INFO) << "Stopped wallet rpc server";
     
