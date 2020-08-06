@@ -465,10 +465,8 @@ namespace CryptoNote {
 
     // calculate final stake as aurea mediocritas between emission based stake
     // and reward/profitability based stake
-    std::vector<uint64_t> stakes;
-    stakes.push_back(supplyStake);
-    stakes.push_back(interStake);
-    uint64_t adjustedStake = Common::medianValue(stakes);
+    // (in our case of 2 elements median is the same as average)
+    uint64_t adjustedStake = (supplyStake + interStake) / 2;
 
     return adjustedStake;
   }
