@@ -1364,8 +1364,21 @@ bool RpcServer::on_alt_blocks_list_json(const COMMAND_RPC_GET_ALT_BLOCKS_LIST::r
       block_short.hash = Common::podToHex(block_hash);
       block_short.cumulative_size = blokBlobSize + tx_cumulative_block_size - minerTxBlobSize;
       block_short.transactions_count = b.transactionHashes.size() + 1;
-      block_short.difficulty = blockDiff;
+      block_short.base_difficulty = blockDiff;
       block_short.min_fee = m_core.getMinimalFeeForHeight(block_height);
+
+      uint64_t baseStake = 0;
+      uint64_t actualtake = 0;
+      difficulty_type actualDiff = blockDiff;
+      if (b.majorVersion >= CryptoNote::BLOCK_MAJOR_VERSION_5) {
+        m_core.getBaseStake(block_height, baseStake);
+        actualtake = m_core.getActualStake(block_height);
+        actualDiff = m_core.currency().calculateStakeDifficulty(blockDiff, baseStake, actualtake);
+      }
+      block_short.base_stake = baseStake;
+      block_short.actual_stake = actualtake;
+      block_short.actual_difficulty = actualDiff;
+      block_short.unlock_time = b.baseTransaction.unlockTime;
 
       res.alt_blocks.push_back(block_short);
     }

@@ -546,7 +546,7 @@ bool Core::requestStakeTransaction(uint64_t& baseStake,
   try {
     if (local_dispatcher) {
       System::Dispatcher localDispatcher;
-      HttpClient httpClient(localDispatcher, m_wallet_host, m_wallet_port);
+      HttpClient httpClient(localDispatcher, m_wallet_host, m_wallet_port, false);
       if (!m_wallet_rpc_user.empty() && !m_wallet_rpc_password.empty()) {
         invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res, m_wallet_rpc_user, m_wallet_rpc_password);
       }
@@ -555,7 +555,7 @@ bool Core::requestStakeTransaction(uint64_t& baseStake,
       }
     }
     else {
-      HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port);
+      HttpClient httpClient(m_dispatcher, m_wallet_host, m_wallet_port, false);
       if (!m_wallet_rpc_user.empty() && !m_wallet_rpc_password.empty()) {
         invokeJsonRpcCommand(httpClient, "construct_stake_tx", req, res, m_wallet_rpc_user, m_wallet_rpc_password);
       }
