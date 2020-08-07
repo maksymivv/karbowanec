@@ -1692,7 +1692,7 @@ size_t Blockchain::find_end_of_allowed_index(const std::vector<std::pair<Transac
   size_t i = amount_outs.size();
   do {
     --i;
-    if (amount_outs[i].first.block + (getBlockMajorVersionForHeight(amount_outs[i].first.block) < CryptoNote::BLOCK_MAJOR_VERSION_5 ? m_currency.minedMoneyUnlockWindow() : m_currency.expectedNumberOfBlocksPerDay()) <= getCurrentBlockchainHeight()) {
+    if (amount_outs[i].first.block + (amount_outs[i].first.block < m_currency.minedMoneyUnlockWindow()) <= getCurrentBlockchainHeight()) {
       return i + 1;
     }
   } while (i != 0);
