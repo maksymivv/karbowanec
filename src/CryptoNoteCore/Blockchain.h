@@ -96,7 +96,6 @@ namespace CryptoNote {
     difficulty_type getDifficultyForNextBlock();
     difficulty_type getAvgDifficulty(uint32_t height);
     difficulty_type getAvgDifficulty(uint32_t height, size_t window);
-    difficulty_type getMedianDifficulty(uint32_t height, size_t window);
     uint64_t getBlockTimestamp(uint32_t height);
     uint64_t getMinimalFee(uint32_t height);
     uint64_t getCoinsInCirculation();
