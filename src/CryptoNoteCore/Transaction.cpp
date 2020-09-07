@@ -220,7 +220,7 @@ namespace CryptoNote {
   }
 
   uint64_t TransactionImpl::getUnlockTime() const {
-    return transaction.unlockTime;
+    return transaction.version < 2 ? transaction.unlockTime : *max_element(transaction.outputUnlockTimes.begin(), transaction.outputUnlockTimes.end());
   }
 
   uint64_t TransactionImpl::getUnlockTime(size_t index) const {
@@ -229,7 +229,14 @@ namespace CryptoNote {
 
   void TransactionImpl::setUnlockTime(uint64_t unlockTime) {
     checkIfSigning();
-    transaction.unlockTime = unlockTime;
+    if (transaction.version < 2) {
+      transaction.unlockTime = unlockTime;
+    }
+    else {
+      for (size_t i = 0; i < transaction.outputs.size(); ++i) {
+        transaction.outputUnlockTimes[i] = unlockTime;
+      }
+    }
     invalidateHash();
   }
 

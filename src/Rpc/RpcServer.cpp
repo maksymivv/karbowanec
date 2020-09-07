@@ -1332,7 +1332,7 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     block_short.base_stake = baseStake;
     block_short.actual_stake = actualtake;
     block_short.actual_difficulty = actualDiff;
-    block_short.unlock_time = blk.baseTransaction.unlockTime;
+    block_short.unlock_time = blk.baseTransaction.version < 2 ? blk.baseTransaction.unlockTime : *max_element(blk.baseTransaction.outputUnlockTimes.begin(), blk.baseTransaction.outputUnlockTimes.end());
 
     res.blocks.push_back(block_short);
 
@@ -1378,7 +1378,7 @@ bool RpcServer::on_alt_blocks_list_json(const COMMAND_RPC_GET_ALT_BLOCKS_LIST::r
       block_short.base_stake = baseStake;
       block_short.actual_stake = actualtake;
       block_short.actual_difficulty = actualDiff;
-      block_short.unlock_time = b.baseTransaction.unlockTime;
+      block_short.unlock_time = b.baseTransaction.version < 2 ? b.baseTransaction.unlockTime : *max_element(b.baseTransaction.outputUnlockTimes.begin(), b.baseTransaction.outputUnlockTimes.end());
 
       res.alt_blocks.push_back(block_short);
     }
@@ -2023,7 +2023,7 @@ bool RpcServer::on_check_reserve_proof(const COMMAND_RPC_CHECK_RESERVE_PROOF::re
 
     CryptoNote::TransactionPrefix tx = *static_cast<const TransactionPrefix*>(&transactions[i]);
     
-    bool unlocked = m_core.is_tx_spendtime_unlocked(tx.unlockTime, req.height);
+    bool unlocked = m_core.is_tx_spendtime_unlocked(tx.version < 2 ? tx.unlockTime : *max_element(tx.outputUnlockTimes.begin(), tx.outputUnlockTimes.end()), req.height);
 
     if (proof.index_in_transaction >= tx.outputs.size()) {
       throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "index_in_tx is out of bound" };

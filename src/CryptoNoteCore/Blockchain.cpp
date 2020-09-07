@@ -615,7 +615,7 @@ void Blockchain::rebuildCache() {
     // TODO: consider including reward
     if (block.bl.majorVersion >= BLOCK_MAJOR_VERSION_5) {
       uint64_t block_stake = block.cumulative_stake - (m_blocks[b - 1].bl.majorVersion < BLOCK_MAJOR_VERSION_5 ? 0 : m_blocks[b - 1].cumulative_stake);
-      uint64_t u = block.bl.baseTransaction.unlockTime; // it's same as individual unlock times for each stake output, so can be used here
+      uint64_t u = *max_element(block.bl.baseTransaction.outputUnlockTimes.begin(), block.bl.baseTransaction.outputUnlockTimes.end());
       m_locked_amounts[u].push_back(std::make_pair<>(blockHash, block_stake));
     }
   }
@@ -1261,11 +1261,9 @@ bool Blockchain::validate_miner_transaction(const Block& b, uint32_t height, siz
     }
 
     // make sure all unlockTime is equal to common stake unlock times
-    for (const auto& u : unlockTimes) {
-      if (u != b.baseTransaction.unlockTime) {
-        logger(ERROR, BRIGHT_RED) << "Wrong unlockTime in coibase stake transaction";
-        return false;
-      }
+    if (std::adjacent_find(unlockTimes.begin(), unlockTimes.end(), std::not_equal_to<>()) != unlockTimes.end()) {
+      logger(ERROR, BRIGHT_RED) << "All engaged unlockTimes in coibase stake transaction should be equal";
+      return false;
     }
 
     // check that deposit amount + reward is enough for given deposit terms
@@ -2422,7 +2420,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   // push locked stake to index
   if (blockData.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    uint64_t u = blockData.baseTransaction.unlockTime; // it's same as individual unlock times for each stake output, so can be used here
+    uint64_t u = *max_element(block.bl.baseTransaction.outputUnlockTimes.begin(), block.bl.baseTransaction.outputUnlockTimes.end());
     m_locked_amounts[u].push_back(std::make_pair<>(blockHash, blockStake));
   }
 
@@ -2758,7 +2756,7 @@ void Blockchain::removeLastBlock() {
   m_generatedTransactionsIndex.remove(m_blocks.back().bl);
 
   // remove this block's locked amounts
-  auto l = m_locked_amounts.find(m_blocks.back().bl.baseTransaction.unlockTime);
+  auto l = m_locked_amounts.find(*max_element(m_blocks.back().bl.baseTransaction.outputUnlockTimes.begin(), m_blocks.back().bl.baseTransaction.outputUnlockTimes.end()));
   if (l != m_locked_amounts.end()) {
     auto v = l->second;
     if (!v.empty()) {

@@ -152,7 +152,8 @@ bool constructTransaction(
   tx.signatures.clear();
 
   tx.version = version;
-  tx.unlockTime = unlock_time;
+  if (version < 2)
+    tx.unlockTime = unlock_time;
 
   tx.extra = extra;
 

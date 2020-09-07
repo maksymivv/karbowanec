@@ -286,7 +286,8 @@ namespace CryptoNote {
 
 		tx.version = blockMajorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5 ? CryptoNote::TRANSACTION_VERSION_1 : CryptoNote::STAKE_TRANSACTION_VERSION;
 		//lock
-		tx.unlockTime = height + minedMoneyUnlockWindow();
+		if (tx.version < CryptoNote::TRANSACTION_VERSION_2)
+			tx.unlockTime = height + minedMoneyUnlockWindow();
 		tx.inputs.push_back(in);
 		return true;
 	}

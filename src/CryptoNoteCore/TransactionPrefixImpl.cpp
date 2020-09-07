@@ -114,7 +114,7 @@ PublicKey TransactionPrefixImpl::getTransactionPublicKey() const {
 }
 
 uint64_t TransactionPrefixImpl::getUnlockTime() const {
-  return m_txPrefix.unlockTime;
+  return  m_txPrefix.version < 2 ? m_txPrefix.unlockTime : *max_element(m_txPrefix.outputUnlockTimes.begin(), m_txPrefix.outputUnlockTimes.end());
 }
 
 uint64_t TransactionPrefixImpl::getUnlockTime(size_t index) const {
