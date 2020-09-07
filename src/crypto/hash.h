@@ -22,10 +22,7 @@
 
 #include <CryptoTypes.h>
 #include "generic-ops.h"
-#include <boost/align/aligned_alloc.hpp>
-
-/* Standard Cryptonight */
-#define CN_PAGE_SIZE                    2097152
+#include "yespower.h"
 
 namespace Crypto {
 
@@ -50,29 +47,40 @@ namespace Crypto {
   class cn_context {
   public:
 
-    cn_context()
-    {
-        long_state = (uint8_t*)boost::alignment::aligned_alloc(4096, CN_PAGE_SIZE);
-        hash_state = (uint8_t*)boost::alignment::aligned_alloc(4096, 4096);
-    }
-
-    ~cn_context()
-    {
-        if(long_state != nullptr)
-            boost::alignment::aligned_free(long_state);
-        if(hash_state != nullptr)
-            boost::alignment::aligned_free(hash_state);
-    }
-
+    cn_context();
+    ~cn_context();
+#if !defined(_MSC_VER) || _MSC_VER >= 1800
     cn_context(const cn_context &) = delete;
     void operator=(const cn_context &) = delete;
+#endif
 
-     uint8_t* long_state = nullptr;
-     uint8_t* hash_state = nullptr;
+  private:
+
+    void *data;
+    friend inline void cn_slow_hash(cn_context &, const void *, size_t, Hash &);
   };
 
-  void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash);
-  void cn_slow_hash_k(cn_context &context, const void *data, size_t length, Hash &hash);
+  inline void cn_slow_hash(cn_context &context, const void *data, size_t length, Hash &hash) {
+    cn_slow_hash(data, length, reinterpret_cast<char *>(&hash));
+  }
+
+  inline bool y_slow_hash(const void *data, size_t length, Hash &hash) {
+    Hash h;
+    cn_fast_hash(data, length, reinterpret_cast<char *>(&h));
+
+    static const yespower_params_t yespower_params = {
+      2048,
+      32,
+      h.data,
+      sizeof(h)
+    };
+
+    if (yespower_tls(reinterpret_cast<uint8_t *>(&data), length, &yespower_params, reinterpret_cast<yespower_binary_t *>(&hash))) {
+      return false;
+    }
+
+    return true;
+  }
 
   inline void tree_hash(const Hash *hashes, size_t count, Hash &root_hash) {
     tree_hash(reinterpret_cast<const char (*)[HASH_SIZE]>(hashes), count, reinterpret_cast<char *>(&root_hash));
