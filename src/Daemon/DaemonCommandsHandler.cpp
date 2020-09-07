@@ -401,7 +401,13 @@ bool DaemonCommandsHandler::start_mining(const std::vector<std::string> &args) {
     threads_count = (ok && 0 < threads_count) ? threads_count : 1;
   }
 
-  m_core.get_miner().start(adr, threads_count);
+  uint64_t stake_amount = CryptoNote::parameters::MINIMUM_STAKE;
+  if (args.size() > 2) {
+    bool ok = m_core.currency().parseAmount(args[2], stake_amount);
+    stake_amount = (ok && CryptoNote::parameters::MINIMUM_STAKE <= stake_amount) ? stake_amount : CryptoNote::parameters::MINIMUM_STAKE;
+  }
+
+  m_core.get_miner().start(adr, threads_count, stake_amount);
   return true;
 }
 
