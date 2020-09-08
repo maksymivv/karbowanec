@@ -455,7 +455,7 @@ namespace CryptoNote {
     return txExtraSize > 100 ? minFee / 100 * (txExtraSize - 100) : 0;
   }
 
-  uint64_t Currency::calculateStake(uint64_t& alreadyGeneratedCoins) const {
+  uint64_t Currency::calculateStake(uint64_t alreadyGeneratedCoins) const {
     // calculate supply based stake
     uint64_t supplyStake = alreadyGeneratedCoins / CryptoNote::parameters::STAKE_BASE_TERM / CryptoNote::parameters::STAKE_EMISSION_FRACTION;
     
@@ -472,17 +472,17 @@ namespace CryptoNote {
     return adjustedStake;
   }
 
-  uint64_t Currency::calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& actualStake) const {
+  uint64_t Currency::calculateStakeDepositTerm(uint64_t baseStake, uint64_t actualStake) const {
     // T = Sb / S * Tb
     return std::max<uint64_t>(static_cast<uint64_t>(static_cast<double>(baseStake) / static_cast<double>(actualStake) * static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM)), CryptoNote::parameters::STAKE_BASE_TERM);
   }
 
-  uint64_t Currency::calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& actualTerm) const {
+  uint64_t Currency::calculateStakeDepositAmount(uint64_t baseStake, uint64_t actualTerm) const {
     // S = Sb * Tb / T
     return static_cast<uint64_t>(static_cast<double>(CryptoNote::parameters::STAKE_BASE_TERM) / static_cast<double>(actualTerm) * static_cast<double>(baseStake));
   }
 
-  difficulty_type Currency::calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const {
+  difficulty_type Currency::calculateStakeDifficulty(difficulty_type baseDifficulty, uint64_t baseStake, uint64_t transactionStake) const {
     // D = Sb / S * Db
     double workFactor = static_cast<double>(baseStake) / static_cast<double>(transactionStake);
     return static_cast<uint64_t>(static_cast<double>(baseDifficulty) * workFactor);
@@ -773,13 +773,6 @@ namespace CryptoNote {
       next_D = (avg_D / (200 * L)) * (N * (N + 1) * T * 99);
     }
     else { next_D = (avg_D * N * (N + 1) * T * 99) / (200 * L); }
-
-    // Optional. Make all insignificant digits zero for easy reading.
-    i = 1000000000;
-    while (i > 1) {
-      if (next_D > i * 100) { next_D = ((next_D + i / 2) / i) * i; break; }
-      else { i /= 10; }
-    }
 
     // minimum limit
     if (!isTestnet() && next_D < 1000000) {

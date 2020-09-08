@@ -83,7 +83,6 @@ private:
 
   // json handlers
   bool on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_GET_INFO::response& res);
-  bool on_get_stake_info(const COMMAND_RPC_GET_STAKE_INFO::request& req, COMMAND_RPC_GET_STAKE_INFO::response& res);
   bool on_get_height(const COMMAND_RPC_GET_HEIGHT::request& req, COMMAND_RPC_GET_HEIGHT::response& res);
   bool on_get_transactions(const COMMAND_RPC_GET_TRANSACTIONS::request& req, COMMAND_RPC_GET_TRANSACTIONS::response& res);
   bool on_send_raw_transaction(const COMMAND_RPC_SEND_RAW_TRANSACTION::request& req, COMMAND_RPC_SEND_RAW_TRANSACTION::response& res);
@@ -128,7 +127,9 @@ private:
   bool on_get_stats_by_heights_range(const COMMAND_RPC_GET_STATS_BY_HEIGHTS_RANGE::request& req, COMMAND_RPC_GET_STATS_BY_HEIGHTS_RANGE::response& res);
   bool on_get_block_reward(const COMMAND_RPC_GET_BLOCK_REWARD::request& req, COMMAND_RPC_GET_BLOCK_REWARD::response& res);
   bool on_resolve_open_alias(const COMMAND_RPC_RESOLVE_OPEN_ALIAS::request& req, COMMAND_RPC_RESOLVE_OPEN_ALIAS::response& res);
-
+  bool on_calculate_stake_amount(const COMMAND_RPC_CALCULATE_STAKE_AMOUNT::request& req, COMMAND_RPC_CALCULATE_STAKE_AMOUNT::response& res);
+  bool on_calculate_stake_term(const COMMAND_RPC_CALCULATE_STAKE_TERM::request& req, COMMAND_RPC_CALCULATE_STAKE_TERM::response& res);
+  
   void fill_block_header_response(const Block& blk, bool orphan_status, uint32_t height, const Crypto::Hash& hash, block_header_response& responce);
 
   Logging::LoggerRef logger;

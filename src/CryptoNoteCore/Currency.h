@@ -174,10 +174,10 @@ public:
   difficulty_type nextDifficultyV4(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
 
-  uint64_t calculateStake(uint64_t& alreadyGeneratedCoins) const;
-  uint64_t calculateStakeDepositTerm(uint64_t& baseStake, uint64_t& actualStake) const;
-  uint64_t calculateStakeDepositAmount(uint64_t& baseStake, uint64_t& actualTerm) const;
-  difficulty_type calculateStakeDifficulty(difficulty_type& baseDifficulty, uint64_t& baseStake, uint64_t& transactionStake) const;
+  uint64_t calculateStake(uint64_t alreadyGeneratedCoins) const;
+  uint64_t calculateStakeDepositTerm(uint64_t baseStake, uint64_t actualStake) const;
+  uint64_t calculateStakeDepositAmount(uint64_t baseStake, uint64_t actualTerm) const;
+  difficulty_type calculateStakeDifficulty(difficulty_type baseDifficulty, uint64_t baseStake, uint64_t transactionStake) const;
 
   bool checkProofOfWorkV1(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
   bool checkProofOfWorkV2(Crypto::cn_context& context, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;

@@ -377,6 +377,8 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
       { "verifymessage", { makeMemberMethod(&RpcServer::on_verify_message), true } },
       { "submitblock", { makeMemberMethod(&RpcServer::on_submitblock), false } },
       { "resolveopenalias", { makeMemberMethod(&RpcServer::on_resolve_open_alias), true } },
+      { "calculatestakeamount", { makeMemberMethod(&RpcServer::on_calculate_stake_amount), true } },
+      { "calculatestaketerm", { makeMemberMethod(&RpcServer::on_calculate_stake_term), true } },
 
     };
 
@@ -2151,6 +2153,22 @@ bool RpcServer::on_resolve_open_alias(const COMMAND_RPC_RESOLVE_OPEN_ALIAS::requ
     throw JsonRpc::JsonRpcError(CORE_RPC_ERROR_CODE_WRONG_PARAM, "Couldn't resolve alias: " + std::string(e.what()));
     return true;
   }
+
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::on_calculate_stake_amount(const COMMAND_RPC_CALCULATE_STAKE_AMOUNT::request& req, COMMAND_RPC_CALCULATE_STAKE_AMOUNT::response& res) {
+  uint64_t baseStake = m_core.getBaseStake();
+  res.stake = m_core.currency().calculateStakeDepositAmount(baseStake, req.term);
+
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::on_calculate_stake_term(const COMMAND_RPC_CALCULATE_STAKE_TERM::request& req, COMMAND_RPC_CALCULATE_STAKE_TERM::response& res) {
+  uint64_t baseStake = m_core.getBaseStake();
+  res.term = m_core.currency().calculateStakeDepositTerm(baseStake, req.stake);
 
   res.status = CORE_RPC_STATUS_OK;
   return true;

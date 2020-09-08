@@ -1166,20 +1166,43 @@ struct COMMAND_RPC_CHECK_RESERVE_PROOF {
 };
 
 //-----------------------------------------------
-struct COMMAND_RPC_GET_STAKE_INFO {
-  typedef EMPTY_STRUCT request;
+struct COMMAND_RPC_CALCULATE_STAKE_AMOUNT {
+  struct request {
+    uint64_t term;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(term);
+    }
+  };
 
   struct response {
+    uint64_t stake;
     std::string status;
-    uint64_t next_reward;
-    uint64_t next_stake;
-    uint64_t total_coins_locked;
+    
+    void serialize(ISerializer& s) {
+      KV_MEMBER(stake);
+      KV_MEMBER(status);
+    }
+  };
+};
 
-    void serialize(ISerializer &s) {
-      KV_MEMBER(status)
-      KV_MEMBER(next_reward)
-      KV_MEMBER(next_stake)
-      KV_MEMBER(total_coins_locked)
+//-----------------------------------------------
+struct COMMAND_RPC_CALCULATE_STAKE_TERM {
+  struct request {
+    uint64_t stake;
+
+    void serialize(ISerializer& s) {
+      KV_MEMBER(stake);
+    }
+  };
+
+  struct response {
+    uint64_t term;
+    std::string status;
+    
+    void serialize(ISerializer& s) {
+      KV_MEMBER(term);
+      KV_MEMBER(status);
     }
   };
 };
