@@ -563,6 +563,7 @@ bool get_block_longhash(cn_context &context, const Block& b, Hash& res) {
   } else {
     return false;
   }
+
   if (b.majorVersion <= BLOCK_MAJOR_VERSION_4) {
     cn_slow_hash(context, bd.data(), bd.size(), res);
   } else {
