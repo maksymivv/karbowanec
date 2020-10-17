@@ -114,7 +114,7 @@ void HttpServer::sslServerUnitControl(boost::asio::ssl::stream<tcp::socket&> &st
   }
   if (unit_control_do && !unit_do) {
     try {
-      stream.shutdown(ec);
+      stream.lowest_layer().close(ec);
     } catch (std::exception& e) {
       logger(ERROR, BRIGHT_RED) << "SSL server unit control error: " << e.what() << std::endl;
     }
@@ -123,7 +123,7 @@ void HttpServer::sslServerUnitControl(boost::asio::ssl::stream<tcp::socket&> &st
 
 void HttpServer::sslServerUnit(boost::asio::ip::tcp::socket &socket, boost::asio::ssl::context &ctx){
   const size_t request_max_len = 1024 * 32;
-  bool keep_alive_conn = true;
+  const char end_req[] = {0x0D, 0x0A, 0x0D, 0x0A, 0x00};
   bool unit_do = true;
   bool unit_control_do = true;
   size_t stream_timeout_n = 0;
@@ -142,92 +142,47 @@ void HttpServer::sslServerUnit(boost::asio::ip::tcp::socket &socket, boost::asio
     stream.handshake(boost::asio::ssl::stream_base::server, ec);
     if (!ec) {
       char req_buff[request_max_len];
-      while (keep_alive_conn) {
-        const char *header_end_sep = "\r\n\r\n";
-        const char *content_lenght_name = "Content-Length";
-        const char *content_lenght_end_sep = "\r\n";
-        size_t req_size_full = 0;
-        size_t header_end = 0;
-        size_t stream_len = 0;
-        bool header_found = false;
-        memset(req_buff, 0x00, sizeof(char) * request_max_len);
-        while (unit_do) {
-          size_t req_size = 0;
-          if (unit_do) req_size = stream.read_some(boost::asio::buffer((char *) req_buff + req_size_full,
-                                                   request_max_len - req_size_full - 1),
-                                                   ec);
-          req_size_full += req_size;
-          if (req_size == 0) {
-            keep_alive_conn = false;
-            break;
-          } else {
-            if (!header_found) {
-              std::string data = std::string(req_buff);
-              header_end = data.find(header_end_sep);
-              if (header_end != std::string::npos) {
-                header_found = true;
-                data.resize(header_end + 2);
-                data.push_back(0x00);
-                size_t content_lenght_start = data.find(content_lenght_name);
-                size_t content_lenght_end = data.find(content_lenght_end_sep, content_lenght_start);
-                if (content_lenght_start != std::string::npos && content_lenght_end != std::string::npos) {
-                  sscanf(data.substr(content_lenght_start + strlen(content_lenght_name) + 2,
-                                     content_lenght_end - content_lenght_start - strlen(content_lenght_name) - 2).c_str(),
-                         "%zu",
-                         &stream_len);
-                  stream_len += header_end + 4;
-                }
-              }
-            }
-          }
-          if (header_found) {
-            if (stream_len > 0) {
-              if (req_size_full >= stream_len) break;
-            } else {
-              if (req_size_full == header_end + 4) break;
-            }
-          }
+      size_t size_req = 0;
+      size_t read_req = 0;
+      while (unit_do) {
+        if (unit_do) read_req = stream.read_some(boost::asio::buffer((char *) req_buff + size_req, request_max_len - size_req), ec);
+        size_req += read_req;
+        if (read_req == 0) break;
+        if (size_req > 5) {
+          if (strstr(req_buff, end_req) != NULL) break;
         }
-        if (req_size_full > 0 && req_size_full < request_max_len && unit_do) {
-          System::SocketStreambuf streambuf((char *) req_buff, req_size_full);
+      }
+      if (size_req > 0 && size_req < request_max_len && unit_do) {
+        System::SocketStreambuf streambuf((char *) req_buff, size_req);
 
-          HttpParser parser;
-          HttpRequest req;
-          HttpResponse resp;
-          resp.addHeader("Access-Control-Allow-Origin", "*");
-          resp.addHeader("content-type", "application/json");
+        HttpParser parser;
+        HttpRequest req;
+        HttpResponse resp;
+        resp.addHeader("Access-Control-Allow-Origin", "*");
+        resp.addHeader("content-type", "application/json");
 
-          std::iostream io_stream(&streambuf);
-          parser.receiveRequest(io_stream, req);
+        std::iostream io_stream(&streambuf);
+        parser.receiveRequest(io_stream, req);
 
-          if (authenticate(req)) {
-            processRequest(req, resp);
-          } else {
-            logger(WARNING) << "Authorization required" << std::endl;
-          }
-          io_stream << resp;
-          io_stream.flush();
-
-          std::vector<uint8_t> resp_data;
-          streambuf.getRespdata(resp_data);
-          size_t resp_size_data = resp_data.size();
-          size_t resp_size_full = 0;
-          while (resp_size_full < resp_size_data && unit_do) {
-            size_t resp_size = 0;
-            if (unit_do) resp_size = stream.write_some(boost::asio::buffer(resp_data.data() + resp_size_full,
-                                                       resp_size_data - resp_size_full),
-                                                       ec);
-            if (resp_size > 0) {
-              resp_size_full += resp_size;
-            } else {
-              keep_alive_conn = false;
-              break;
-            }
-          }
-          stream_timeout_n = 0;
+        if (authenticate(req)) {
+          processRequest(req, resp);
         } else {
-          logger(DEBUGGING) << "Unable to process request (SSL server)" << std::endl;
+          logger(WARNING) << "Authorization required" << std::endl;
         }
+        io_stream << resp;
+        io_stream.flush();
+
+        std::vector<uint8_t> resp_data;
+        streambuf.getRespdata(resp_data);
+        size_t size_resp = resp_data.size();
+        size_t write_resp = 0;
+        while (write_resp < size_resp && unit_do) {
+          write_resp += stream.write_some(boost::asio::buffer(resp_data.data() + write_resp, size_resp - write_resp), ec);
+        }
+        stream_timeout_n = 0;
+        stream.lowest_layer().close(ec);
+      } else {
+        logger(WARNING) << "Unable to process request (SSL server)" << std::endl;
       }
     }
   } catch (std::exception& e) {
@@ -375,7 +330,7 @@ bool HttpServer::authenticate(const HttpRequest& request) const {
 }
 
 size_t HttpServer::get_connections_count() const {
-	return m_connections.size() + m_server_ssl_clients;
+	return m_connections.size();
 }
 
 }
