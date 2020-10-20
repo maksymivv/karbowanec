@@ -1,3 +1,5 @@
+![Build check](https://github.com/seredat/karbowanec/workflows/Build%20check/badge.svg)
+
 Karbo is people's electronic cash, a cryptocurrency, just like Bitcoin but Ukrainian and anonymous thanks to Cryptonote technology. The key principle of CryptoNote is adaptive parameters. Karbo already has adaptive block size limit and adaptive difficulty, which we improved, and which ensures it's stable emission rate and thus makes Karbo sound money. In addition in Karbo was implemented adaptive fee to keep transaction costs stable regardless of karbo price.
 
 **HARDFORK V4 IS SET AT HEIGHT 266000!!!** In this hardfork _we introduce adaptive minimal transaction fee_ as first step towards our goal. Information for exchanges and other services how to work with new fees: https://github.com/seredat/karbowanec/wiki/Dynamic-transaction-minimum-fee
@@ -46,7 +48,7 @@ cd ..
 make
 ```
 
- The resulting executables can be found in `build/release/src`.
+The resulting executables can be found in `build/release/src`.
 
 **Advanced options:**
 
@@ -56,6 +58,7 @@ make
 * Building with Clang: it may be possible to use Clang instead of GCC, but this may not work everywhere. To build, run `export CC=clang CXX=clang++` before running `make`.
 
 ### On Windows
+
 Dependencies: MSVC 2013 or later, CMake 2.8.6 or later, and Boost 1.55. You may download them from:
 
 * http://www.microsoft.com/
@@ -121,3 +124,8 @@ cd build/release.android32
 CC=clang CXX=clang++ cmake -D BUILD_TESTS=OFF -D ARCH="armv7-a" -ldl -D STATIC=ON -D BUILD_64=OFF -D CMAKE_BUILD_TYPE=release -D ANDROID=true -D BUILD_TAG="android" -D BOOST_ROOT=/opt/android/boost_1_65_1 -D BOOST_LIBRARYDIR=/opt/android/boost_1_65_1/android32/lib -D CMAKE_POSITION_INDEPENDENT_CODE:BOOL=true -D BOOST_IGNORE_SYSTEM_PATHS_DEFAULT=ON ../..
 make SimpleWallet
 ```
+
+### Portable and optimized binaries
+
+By default it will compile portable binary, to build optimized for your CPU, run Cmake with flag `-DARCH=native`.
+

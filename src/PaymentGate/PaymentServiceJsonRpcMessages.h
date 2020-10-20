@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2019 The Cash2 developers
 // Copyright (c) 2018-2019 The Karbo developers
 //
 // This file is part of Karbo.
@@ -121,7 +122,7 @@ struct ValidateAddress {
 	};
 
 	struct Response {
-		bool isvalid;
+		bool isValid;
 		std::string address;
 		std::string spendPublicKey;
 		std::string viewPublicKey;
@@ -137,6 +138,18 @@ struct GetAddresses {
 
   struct Response {
     std::vector<std::string> addresses;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct GetAddressesCount {
+  struct Request {
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    size_t addresses_count;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
@@ -368,14 +381,46 @@ struct GetTransactionProof {
 struct GetReserveProof {
   struct Request {
     std::string address;
-	std::string message;
-	uint64_t amount = 0;
+    std::string message;
+    uint64_t amount = 0;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };
 
   struct Response {
     std::string reserveProof;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct SignMessage {
+  struct Request {
+    std::string address;
+    std::string message;
+  
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string address;
+    std::string signature;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
+struct VerifyMessage {
+  struct Request {
+    std::string address;
+    std::string message;
+    std::string signature;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    bool isValid;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };

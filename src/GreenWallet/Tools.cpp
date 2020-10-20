@@ -20,7 +20,7 @@
 
 #include <iostream>
 
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/ColouredMsg.h>
 #include <Common/PasswordContainer.h>
 #include <GreenWallet/WalletConfig.h>
 
@@ -199,6 +199,13 @@ std::string unixTimeToDate(uint64_t timestamp)
 	char buffer[100];
 	std::strftime(buffer, sizeof(buffer), "%F %R", std::localtime(&time));
 	return std::string(buffer);
+}
+
+uint64_t calculateNodeFee(uint64_t amount) {
+  uint64_t node_fee = static_cast<int64_t>(amount * 0.0025);
+  if (node_fee > (uint64_t)CryptoNote::parameters::COIN)
+      node_fee = (uint64_t)CryptoNote::parameters::COIN;
+  return node_fee;
 }
 
 std::string createIntegratedAddress(std::string address, std::string paymentID)

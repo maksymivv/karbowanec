@@ -8,7 +8,7 @@
 ////////////////////////////////////////
 
 #include <GreenWallet/AddressBook.h>
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/ColouredMsg.h>
 #include <GreenWallet/CommandImplementations.h>
 #include <GreenWallet/Fusion.h>
 #include <GreenWallet/Open.h>
@@ -45,7 +45,7 @@ bool handleCommand(const std::string command,
     }
     else if (command == "transfer")
     {
-        transfer(walletInfo, node.getLastKnownBlockHeight(), false, node.feeAddress());
+        transfer(walletInfo, node.getLastKnownBlockHeight(), false, node.feeAddress(), node.feeAmount());
     }
     /* Advanced commands */
     else if (command == "ab_add")
@@ -63,7 +63,7 @@ bool handleCommand(const std::string command,
     else if (command == "ab_send")
     {
         sendFromAddressBook(walletInfo, node.getLastKnownBlockHeight(),
-                            node.feeAddress());
+                            node.feeAddress(), node.feeAmount());
     }
     else if (command == "change_password")
     {
@@ -116,6 +116,14 @@ bool handleCommand(const std::string command,
     else if (command == "tx_proof")
     {
         txProof(walletInfo->wallet);
+    }
+    else if (command == "sign_message")
+    {
+      signMessage(walletInfo, walletInfo->viewWallet);
+    }
+    else if (command == "verify_message")
+    {
+      verifyMessage(walletInfo->wallet);
     }
     /* This should never happen */
     else

@@ -1,6 +1,6 @@
-// Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2012-2018, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2014-2017, The Monero Project
-// Copyright (c) 2016-2019, The Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -28,18 +28,12 @@
 #include <CryptoTypes.h>
 
 #include "generic-ops.h"
+#include "crypto-ops.h"
+#include "crypto-util.h"
 #include "hash.h"
 #include "random.h"
 
 namespace Crypto {
-
-struct EllipticCurvePoint {
-  uint8_t data[32];
-};
-
-struct EllipticCurveScalar {
-  uint8_t data[32];
-};
 
   class crypto_ops {
     crypto_ops();
@@ -49,14 +43,16 @@ struct EllipticCurveScalar {
 
     static void generate_keys(PublicKey &, SecretKey &);
     friend void generate_keys(PublicKey &, SecretKey &);
-	static void generate_deterministic_keys(PublicKey &pub, SecretKey &sec, SecretKey& second);
-	friend void generate_deterministic_keys(PublicKey &pub, SecretKey &sec, SecretKey& second);
-	static SecretKey generate_m_keys(PublicKey &pub, SecretKey &sec, const SecretKey& recovery_key = SecretKey(), bool recover = false);
-	friend SecretKey generate_m_keys(PublicKey &pub, SecretKey &sec, const SecretKey& recovery_key, bool recover);
+    static void generate_deterministic_keys(PublicKey &pub, SecretKey &sec, SecretKey& second);
+    friend void generate_deterministic_keys(PublicKey &pub, SecretKey &sec, SecretKey& second);
+    static SecretKey generate_m_keys(PublicKey &pub, SecretKey &sec, const SecretKey& recovery_key = SecretKey(), bool recover = false);
+    friend SecretKey generate_m_keys(PublicKey &pub, SecretKey &sec, const SecretKey& recovery_key, bool recover);
     static bool check_key(const PublicKey &);
     friend bool check_key(const PublicKey &);
     static bool secret_key_to_public_key(const SecretKey &, PublicKey &);
     friend bool secret_key_to_public_key(const SecretKey &, PublicKey &);
+    static bool secret_key_mult_public_key(const SecretKey &, const PublicKey &, PublicKey &);
+    friend bool secret_key_mult_public_key(const SecretKey &, const PublicKey &, PublicKey &);
     static bool generate_key_derivation(const PublicKey &, const SecretKey &, KeyDerivation &);
     friend bool generate_key_derivation(const PublicKey &, const SecretKey &, KeyDerivation &);
     static bool derive_public_key(const KeyDerivation &, size_t, const PublicKey &, PublicKey &);
@@ -81,10 +77,10 @@ struct EllipticCurveScalar {
     friend void generate_signature(const Hash &, const PublicKey &, const SecretKey &, Signature &);
     static bool check_signature(const Hash &, const PublicKey &, const Signature &);
     friend bool check_signature(const Hash &, const PublicKey &, const Signature &);
-	static void generate_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const SecretKey &, Signature &);
-	friend void generate_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const SecretKey &, Signature &);
-	static bool check_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const Signature &);
-	friend bool check_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const Signature &);
+    static void generate_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const SecretKey &, Signature &);
+    friend void generate_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const SecretKey &, Signature &);
+    static bool check_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const Signature &);
+    friend bool check_tx_proof(const Hash &, const PublicKey &, const PublicKey &, const PublicKey &, const Signature &);
     static void generate_key_image(const PublicKey &, const SecretKey &, KeyImage &);
     friend void generate_key_image(const PublicKey &, const SecretKey &, KeyImage &);
     static KeyImage scalarmultKey(const KeyImage & P, const KeyImage & a);
@@ -100,6 +96,8 @@ struct EllipticCurveScalar {
     friend bool check_ring_signature(const Hash &, const KeyImage &,
       const PublicKey *const *, size_t, const Signature *);
   };
+
+  void hash_to_scalar(const void *data, size_t length, EllipticCurveScalar &res);
 
   /* Generate a new key pair
    */
@@ -125,6 +123,12 @@ struct EllipticCurveScalar {
    */
   inline bool secret_key_to_public_key(const SecretKey &sec, PublicKey &pub) {
     return crypto_ops::secret_key_to_public_key(sec, pub);
+  }
+
+  /* Multiply secret key to public key
+ */
+  inline bool secret_key_mult_public_key(const SecretKey &sec, const PublicKey &pub, PublicKey &result) {
+    return crypto_ops::secret_key_mult_public_key(sec, pub, result);
   }
 
   /* To generate an ephemeral key used to send money to:
@@ -239,9 +243,17 @@ struct EllipticCurveScalar {
     return check_ring_signature(prefix_hash, image, pubs.data(), pubs.size(), sig);
   }
 
-}
+  static inline const KeyImage &EllipticCurveScalar2KeyImage(const EllipticCurveScalar &k) { return (const KeyImage&)k; }
+  static inline const PublicKey &EllipticCurveScalar2PublicKey(const EllipticCurveScalar &k) { return (const PublicKey&)k; }
+  static inline const SecretKey &EllipticCurveScalar2SecretKey(const EllipticCurveScalar &k) { return (const SecretKey&)k; }
 
-CRYPTO_MAKE_HASHABLE(PublicKey)
-CRYPTO_MAKE_HASHABLE(KeyImage)
-CRYPTO_MAKE_COMPARABLE(Signature)
-CRYPTO_MAKE_COMPARABLE(SecretKey)
+} // namespace Crypto
+
+CRYPTO_MAKE_COMPARABLE(Crypto::Hash, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::EllipticCurveScalar, sodium_compare)
+CRYPTO_MAKE_COMPARABLE(Crypto::EllipticCurvePoint, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::PublicKey, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::SecretKey, sodium_compare)
+CRYPTO_MAKE_COMPARABLE(Crypto::KeyDerivation, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::KeyImage, std::memcmp)
+CRYPTO_MAKE_COMPARABLE(Crypto::Signature, std::memcmp)

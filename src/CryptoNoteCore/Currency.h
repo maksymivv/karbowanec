@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbowanec developers
+// Copyright (c) 2016-2020, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -40,7 +40,6 @@ public:
   size_t maxTxSize() const { return m_maxTxSize; }
   uint64_t publicAddressBase58Prefix() const { return m_publicAddressBase58Prefix; }
   size_t minedMoneyUnlockWindow() const { return m_minedMoneyUnlockWindow; }
-  size_t minedMoneyUnlockWindow_v1() const { return m_minedMoneyUnlockWindow_v1; }
   size_t transactionSpendableAge() const { return m_transactionSpendableAge; }
   size_t expectedNumberOfBlocksPerDay() const { return m_expectedNumberOfBlocksPerDay; }
 
@@ -82,7 +81,9 @@ public:
   uint64_t coin() const { return m_coin; }
 
   uint64_t minimumFee() const { return m_minimumFee; }
-  uint64_t getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t avgCurrentReward, uint64_t avgHistoricDifficulty, uint64_t avgHistoricReward, uint32_t height) const;
+  uint64_t getMinimalFee(uint64_t avgCurrentDifficulty, uint64_t currentReward, uint64_t avgReferenceDifficulty, uint64_t avgReferenceReward, uint32_t height) const;
+  uint64_t getFeePerByte(const uint64_t txExtraSize, const uint64_t minFee) const;
+
   uint64_t defaultDustThreshold() const { return m_defaultDustThreshold; }
 
   uint64_t difficultyTarget() const { return m_difficultyTarget; }
@@ -143,6 +144,7 @@ public:
   const Block& genesisBlock() const { return m_genesisBlock; }
   const Crypto::Hash& genesisBlockHash() const { return m_genesisBlockHash; }
 
+  uint64_t calculateReward(uint64_t alreadyGeneratedCoins) const;
   bool getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size_t currentBlockSize, uint64_t alreadyGeneratedCoins, uint64_t fee,
     uint64_t& reward, int64_t& emissionChange) const;
   size_t maxBlockCumulativeSize(uint64_t height) const;
@@ -197,7 +199,6 @@ private:
   size_t m_maxTxSize;
   uint64_t m_publicAddressBase58Prefix;
   size_t m_minedMoneyUnlockWindow;
-  size_t m_minedMoneyUnlockWindow_v1;
   size_t m_transactionSpendableAge;
   size_t m_expectedNumberOfBlocksPerDay;
 
@@ -287,7 +288,6 @@ public:
   CurrencyBuilder& maxTxSize(size_t val) { m_currency.m_maxTxSize = val; return *this; }
   CurrencyBuilder& publicAddressBase58Prefix(uint64_t val) { m_currency.m_publicAddressBase58Prefix = val; return *this; }
   CurrencyBuilder& minedMoneyUnlockWindow(size_t val) { m_currency.m_minedMoneyUnlockWindow = val; return *this; }
-  CurrencyBuilder& minedMoneyUnlockWindow_v1(size_t val) { m_currency.m_minedMoneyUnlockWindow_v1 = val; return *this; }
   CurrencyBuilder& transactionSpendableAge(size_t val) { m_currency.m_transactionSpendableAge = val; return *this; }
   CurrencyBuilder& expectedNumberOfBlocksPerDay(size_t val) { m_currency.m_expectedNumberOfBlocksPerDay = val; return *this; }
 

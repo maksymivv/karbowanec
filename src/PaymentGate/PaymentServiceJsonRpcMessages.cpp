@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2019 The Cash2 developers
 // Copyright (c) 2018-2019 The Karbo developers
 //
 // This file is part of Karbo.
@@ -80,7 +81,7 @@ void ValidateAddress::Request::serialize(CryptoNote::ISerializer& serializer) {
 }
 
 void ValidateAddress::Response::serialize(CryptoNote::ISerializer& serializer) {
-  serializer(isvalid, "isvalid");
+  serializer(isValid, "isValid");
   serializer(address, "address");
   serializer(spendPublicKey, "spendPublicKey");
   serializer(viewPublicKey, "viewPublicKey");
@@ -91,6 +92,13 @@ void GetAddresses::Request::serialize(CryptoNote::ISerializer& serializer) {
 
 void GetAddresses::Response::serialize(CryptoNote::ISerializer& serializer) {
   serializer(addresses, "addresses");
+}
+
+void GetAddressesCount::Request::serialize(CryptoNote::ISerializer& serializer) {
+}
+
+void GetAddressesCount::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(addresses_count, "addressesCount");
 }
 
 void CreateAddress::Request::serialize(CryptoNote::ISerializer& serializer) {
@@ -309,6 +317,29 @@ void WalletRpcOrder::serialize(CryptoNote::ISerializer& serializer) {
   if (!r) {
     throw RequestSerializationError();
   }
+}
+
+void SignMessage::Request::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(address, "address");
+
+  if (!serializer(message, "message")) {
+    throw RequestSerializationError();
+  }
+}
+
+void SignMessage::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(address, "address");
+  serializer(signature, "signature");
+}
+
+void VerifyMessage::Request::serialize(CryptoNote::ISerializer& serializer) {
+  if (!serializer(address, "address") || !serializer(message, "message") || !serializer(signature, "signature")) {
+    throw RequestSerializationError();
+  }
+}
+
+void VerifyMessage::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(isValid, "isValid");
 }
 
 void SendTransaction::Request::serialize(CryptoNote::ISerializer& serializer) {

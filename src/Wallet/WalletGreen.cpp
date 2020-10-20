@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The BBSCoin Developers
+// Copyright (c) 2018-2019, The TurtleCoin Developers
 // Copyright (c) 2017-2018, Karbo developers
 //
 // This file is part of Karbo.
@@ -51,6 +52,7 @@
 #include "CryptoNoteCore/CryptoNoteSerialization.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
 #include "CryptoNoteCore/TransactionApi.h"
+#include "CryptoNoteCore/TransactionExtra.h"
 #include "crypto/crypto.h"
 #include "crypto/random.h"
 #include "Transfers/TransfersContainer.h"
@@ -358,7 +360,8 @@ void WalletGreen::initWithKeys(const std::string& path, const std::string& passw
   prefix->version = static_cast<uint8_t>(WalletSerializerV2::SERIALIZATION_VERSION);
   prefix->nextIv = Crypto::randomChachaIV();
 
-  Crypto::generate_chacha8_key(password, m_key);
+  Crypto::cn_context cnContext;
+  Crypto::generate_chacha8_key(cnContext, password, m_key);
 
   prefix->encryptedViewKeys = encryptKeyPair(viewPublicKey, viewSecretKey, _creationTimestamp, m_key, prefix->nextIv);
 
@@ -425,7 +428,8 @@ void WalletGreen::exportWallet(const std::string& path, bool encrypt, WalletSave
     if (encrypt) {
       newStorageKey = m_key;
     } else {
-      generate_chacha8_key("", newStorageKey);
+      cn_context cnContext;
+      generate_chacha8_key(cnContext, "", newStorageKey);
     }
 
     copyContainerStoragePrefix(m_containerStorage, m_key, newStorage, newStorageKey);
@@ -457,7 +461,8 @@ void WalletGreen::load(const std::string& path, const std::string& password, std
 
   stopBlockchainSynchronizer();
 
-  generate_chacha8_key(password, m_key);
+  Crypto::cn_context cnContext;
+  generate_chacha8_key(cnContext, password, m_key);
 
   std::ifstream walletFileStream(path, std::ios_base::binary);
   int version = walletFileStream.peek();
@@ -914,8 +919,9 @@ void WalletGreen::changePassword(const std::string& oldPassword, const std::stri
     return;
   }
 
+  Crypto::cn_context cnContext;
   Crypto::chacha8_key newKey;
-  Crypto::generate_chacha8_key(newPassword, newKey);
+  Crypto::generate_chacha8_key(cnContext, newPassword, newKey);
 
   m_containerStorage.atomicUpdate([this, newKey](ContainerStorage& newStorage) {
     copyContainerStoragePrefix(m_containerStorage, m_key, newStorage, newKey);
@@ -2447,7 +2453,7 @@ void WalletGreen::requestMixinOuts(
 
 uint64_t WalletGreen::selectTransfers(
   uint64_t neededMoney,
-  bool dust,
+  bool unmixable,
   uint64_t dustThreshold,
   std::vector<WalletOuts>&& wallets,
   std::vector<OutputToTransfer>& selectedTransfers) {
@@ -2455,32 +2461,56 @@ uint64_t WalletGreen::selectTransfers(
   uint64_t foundMoney = 0;
 
   typedef std::pair<WalletRecord*, TransactionOutputInformation> OutputData;
-  std::vector<OutputData> dustOutputs;
-  std::vector<OutputData> walletOuts;
+  std::vector<OutputData> unmixableOuts;
+  std::map<uint64_t, std::vector<OutputData>> buckets;
+
   for (auto walletIt = wallets.begin(); walletIt != wallets.end(); ++walletIt) {
+    // Sort inputs by their amounts, largest first
+    std::sort(walletIt->outs.begin(), walletIt->outs.end(), [](const TransactionOutputInformation& a, const TransactionOutputInformation& b) {
+      return a.amount > b.amount;
+    });
+
     for (auto outIt = walletIt->outs.begin(); outIt != walletIt->outs.end(); ++outIt) {
-      if (outIt->amount > dustThreshold) {
-        walletOuts.emplace_back(std::piecewise_construct, std::forward_as_tuple(walletIt->wallet), std::forward_as_tuple(*outIt));
-      } else if (dust) {
-        dustOutputs.emplace_back(std::piecewise_construct, std::forward_as_tuple(walletIt->wallet), std::forward_as_tuple(*outIt));
+      if (is_valid_decomposed_amount(outIt->amount)) {
+        int numberOfDigits = floor(log10(outIt->amount)) + 1;
+        buckets[numberOfDigits].emplace_back(std::piecewise_construct, std::forward_as_tuple(walletIt->wallet), std::forward_as_tuple(*outIt));
+      } else {
+        unmixableOuts.emplace_back(std::piecewise_construct, std::forward_as_tuple(walletIt->wallet), std::forward_as_tuple(*outIt));
       }
     }
   }
 
-  ShuffleGenerator<size_t> indexGenerator(walletOuts.size());
-  while (foundMoney < neededMoney && !indexGenerator.empty()) {
-    auto& out = walletOuts[indexGenerator()];
-    foundMoney += out.second.amount;
-    selectedTransfers.emplace_back(OutputToTransfer{ std::move(out.second), std::move(out.first) });
-  }
-
-  if (dust && !dustOutputs.empty()) {
-    ShuffleGenerator<size_t> dustIndexGenerator(dustOutputs.size());
+  if (unmixable && !unmixableOuts.empty()) {
+    ShuffleGenerator<size_t> unmixableIndexGenerator(unmixableOuts.size());
     do {
-      auto& out = dustOutputs[dustIndexGenerator()];
+      auto& out = unmixableOuts[unmixableIndexGenerator()];
       foundMoney += out.second.amount;
       selectedTransfers.emplace_back(OutputToTransfer{ std::move(out.second), std::move(out.first) });
-    } while (foundMoney < neededMoney && !dustIndexGenerator.empty());
+    } while (foundMoney < neededMoney && !unmixableIndexGenerator.empty());
+  }
+
+  while (foundMoney < neededMoney && !buckets.empty()) {
+    // Take one element from each bucket, smallest first
+    for (auto bucket = buckets.begin(); bucket != buckets.end();) {
+      // Bucket has been exhausted, remove from list
+      if (bucket->second.empty()) {
+        bucket = buckets.erase(bucket);
+      } else {
+        // Add the amount to the selected transfers so long as
+        // foundMoney is still less than neededMoney. This prevents
+        // larger outputs than we need when we already have enough funds.
+        if (foundMoney < neededMoney) {
+          auto out = bucket->second.back();
+          selectedTransfers.emplace_back(OutputToTransfer{ std::move(out.second), std::move(out.first) });
+          foundMoney += out.second.amount;
+        }
+
+        // Remove amount we just added
+        bucket->second.pop_back();
+
+        bucket++;
+      }
+    }
   }
 
   return foundMoney;
@@ -2733,6 +2763,36 @@ std::vector<TransactionOutputInformation> WalletGreen::getTransfers(size_t index
   return allTransfers;
 }
 
+Crypto::SecretKey WalletGreen::getTransactionDeterministicSecretKey(Crypto::Hash& transactionHash) const {
+  throwIfNotInitialized();
+  throwIfStopped();
+
+  Crypto::SecretKey txKey = CryptoNote::NULL_SECRET_KEY;
+
+  auto getTransactionCompleted = std::promise<std::error_code>();
+  auto getTransactionWaitFuture = getTransactionCompleted.get_future();
+  CryptoNote::Transaction tx;
+  m_node.getTransaction(std::move(transactionHash), std::ref(tx),
+    [&getTransactionCompleted](std::error_code ec) {
+    auto detachedPromise = std::move(getTransactionCompleted);
+    detachedPromise.set_value(ec);
+  });
+  std::error_code ec = getTransactionWaitFuture.get();
+  if (ec) {
+    m_logger(ERROR) << "Failed to get tx: " << ec << ", " << ec.message();
+    return CryptoNote::NULL_SECRET_KEY;
+  }
+
+  Crypto::PublicKey txPubKey = getTransactionPublicKeyFromExtra(tx.extra);
+  KeyPair deterministicTxKeys;
+  bool ok = generateDeterministicTransactionKeys(tx, m_viewSecretKey, deterministicTxKeys)
+    && deterministicTxKeys.publicKey == txPubKey;
+
+  return ok ? deterministicTxKeys.secretKey : CryptoNote::NULL_SECRET_KEY;
+
+  return txKey;
+}
+
 Crypto::SecretKey WalletGreen::getTransactionSecretKey(size_t transactionIndex) const {
   throwIfNotInitialized();
   throwIfStopped();
@@ -2742,7 +2802,13 @@ Crypto::SecretKey WalletGreen::getTransactionSecretKey(size_t transactionIndex) 
     throw std::system_error(make_error_code(CryptoNote::error::INDEX_OUT_OF_RANGE));
   }
 
-  return m_transactions.get<RandomAccessIndex>()[transactionIndex].secretKey.get();
+  Crypto::SecretKey txKey = m_transactions.get<RandomAccessIndex>()[transactionIndex].secretKey.get_value_or(CryptoNote::NULL_SECRET_KEY);
+  if (txKey == CryptoNote::NULL_SECRET_KEY) {
+    Crypto::Hash transactionHash = m_transactions.get<RandomAccessIndex>()[transactionIndex].hash;
+    txKey = getTransactionDeterministicSecretKey(transactionHash);
+  }
+
+  return txKey;
 }
 
 Crypto::SecretKey WalletGreen::getTransactionSecretKey(Crypto::Hash& transactionHash) const {
@@ -2750,31 +2816,17 @@ Crypto::SecretKey WalletGreen::getTransactionSecretKey(Crypto::Hash& transaction
   throwIfStopped();
 
   auto txInfo = getTransaction(transactionHash);
-  return txInfo.transaction.secretKey.get_value_or(CryptoNote::NULL_SECRET_KEY);
+  Crypto::SecretKey txKey = txInfo.transaction.secretKey.get_value_or(CryptoNote::NULL_SECRET_KEY);
+
+  if (txKey == CryptoNote::NULL_SECRET_KEY) {
+    txKey = getTransactionDeterministicSecretKey(transactionHash);
+  }
+
+  return txKey;
 }
 
 bool WalletGreen::getTransactionProof(const Crypto::Hash& transactionHash, const CryptoNote::AccountPublicAddress& destinationAddress, const Crypto::SecretKey& txKey, std::string& transactionProof) {
-  Crypto::KeyImage p = *reinterpret_cast<const Crypto::KeyImage*>(&destinationAddress.viewPublicKey);
-  Crypto::KeyImage k = *reinterpret_cast<const Crypto::KeyImage*>(&txKey);
-  Crypto::KeyImage pk = Crypto::scalarmultKey(p, k);
-  Crypto::PublicKey R;
-  Crypto::PublicKey rA = reinterpret_cast<const PublicKey&>(pk);
-  Crypto::secret_key_to_public_key(txKey, R);
-  Crypto::Signature sig;
-
-  try {
-    Crypto::generate_tx_proof(transactionHash, R, destinationAddress.viewPublicKey, rA, txKey, sig);
-  }
-  catch (const std::runtime_error &e) {
-    m_logger(ERROR, BRIGHT_RED) << "Proof generation error: " << *e.what();
-    return false;
-  }
-
-  transactionProof = std::string("ProofV1") +
-    Tools::Base58::encode(std::string((const char *)&rA, sizeof(Crypto::PublicKey))) +
-    Tools::Base58::encode(std::string((const char *)&sig, sizeof(Crypto::Signature)));
-
-  return true;
+  return CryptoNote::getTransactionProof(transactionHash, destinationAddress, txKey, transactionProof, m_logger.getLogger());
 }
 
 std::string WalletGreen::getReserveProof(const uint64_t &reserve, const std::string& address, const std::string &message) {
@@ -2821,90 +2873,57 @@ std::string WalletGreen::getReserveProof(const uint64_t &reserve, const std::str
   keys.viewSecretKey = m_viewSecretKey;
   keys.address = { wallets[0].wallet->spendPublicKey, m_viewPublicKey };
 
-  // compute signature prefix hash
-  std::string prefix_data = message;
-  prefix_data.append((const char*)&keys.address, sizeof(CryptoNote::AccountPublicAddress));
-
-  std::vector<Crypto::KeyImage> kimages;
-  CryptoNote::KeyPair ephemeral;
-
-  for (size_t i = 0; i < selectedTransfers.size(); ++i) {
-    // have to repeat this to get key image as we don't store m_key_image
-    const TransactionOutputInformation &td = selectedTransfers[i];
-
-    // derive ephemeral secret key
-    Crypto::KeyImage ki;
-    const bool r = CryptoNote::generate_key_image_helper(keys, td.transactionPublicKey, td.outputInTransaction, ephemeral, ki);
-    if (!r) {
-      throw std::runtime_error("Failed to generate key image");
-    }
-    // now we can insert key image
-    prefix_data.append((const char*)&ki, sizeof(Crypto::PublicKey));
-    kimages.push_back(ki);
+  std::string reserveProof = "";
+  bool r = CryptoNote::getReserveProof(selectedTransfers, keys, reserve, message, reserveProof, m_logger.getLogger());
+  if (!r) {
+    throw std::runtime_error("Failed to get reserve proof");
   }
 
-  Crypto::Hash prefix_hash;
-  Crypto::cn_fast_hash(prefix_data.data(), prefix_data.size(), prefix_hash);
+  return reserveProof;
+}
 
-  // generate proof entries
-  std::vector<reserve_proof_entry> proofs(selectedTransfers.size());
+std::string WalletGreen::signMessage(const std::string &message, const std::string& address) {
+  throwIfNotInitialized();
+  throwIfTrackingMode();
+  throwIfStopped();
 
-  for (size_t i = 0; i < selectedTransfers.size(); ++i) {
-    const TransactionOutputInformation &td = selectedTransfers[i];
-    reserve_proof_entry& proof = proofs[i];
-    proof.key_image = kimages[i];
-    proof.txid = td.transactionHash;
-    proof.index_in_tx = td.outputInTransaction;
+  WalletRecord wallet;
 
-    auto txPubKey = td.transactionPublicKey;
-
-    for (int i = 0; i < 2; ++i) {
-      Crypto::KeyImage sk = Crypto::scalarmultKey(*reinterpret_cast<const Crypto::KeyImage*>(&txPubKey), *reinterpret_cast<const Crypto::KeyImage*>(&m_viewSecretKey));
-      proof.shared_secret = *reinterpret_cast<const Crypto::PublicKey *>(&sk);
-
-      Crypto::KeyDerivation derivation;
-      if (!Crypto::generate_key_derivation(proof.shared_secret, m_viewSecretKey, derivation)) {
-        throw std::runtime_error("Failed to generate key derivation");
-      }
+  if (!address.empty()) {
+    wallet = getWalletRecord(address);
+  }
+  else {
+    if (!m_walletsContainer.empty()) {
+      wallet = m_walletsContainer.get<RandomAccessIndex>()[0];
     }
-
-    // generate signature for shared secret
-    Crypto::generate_tx_proof(prefix_hash, keys.address.viewPublicKey, txPubKey, proof.shared_secret, m_viewSecretKey, proof.shared_secret_sig);
-
-    // derive ephemeral secret key
-    Crypto::KeyImage ki;
-    CryptoNote::KeyPair ephemeral;
-
-    const bool r = CryptoNote::generate_key_image_helper(keys, td.transactionPublicKey, td.outputInTransaction, ephemeral, ki);
-    if (!r) {
-      throw std::runtime_error("Failed to generate key image");
+    else {
+      throw std::system_error(make_error_code(CryptoNote::error::BAD_ADDRESS));
     }
-
-    if (ephemeral.publicKey != td.outputKey) {
-      throw std::runtime_error("Derived public key doesn't agree with the stored one");
-    }
-
-    // generate signature for key image
-    const std::vector<const Crypto::PublicKey *>& pubs = { &ephemeral.publicKey };
-
-    Crypto::generate_ring_signature(prefix_hash, proof.key_image, &pubs[0], 1, ephemeral.secretKey, 0, &proof.key_image_sig);
   }
 
-  // generate signature for the spend key that received those outputs
-  Crypto::Signature signature;
-  Crypto::generate_signature(prefix_hash, keys.address.spendPublicKey, keys.spendSecretKey, signature);
+  CryptoNote::AccountKeys keys;
+  keys.spendSecretKey = wallet.spendSecretKey;
+  keys.viewSecretKey = m_viewSecretKey;
+  keys.address.viewPublicKey = m_viewPublicKey;
+  keys.address.spendPublicKey = wallet.spendPublicKey;
 
-  // serialize & encode
-  reserve_proof p;
-  p.proofs.assign(proofs.begin(), proofs.end());
-  memcpy(&p.signature, &signature, sizeof(signature));
+  return CryptoNote::signMessage(message, keys);
+}
 
-  BinaryArray ba = toBinaryArray(p);
-  std::string ret = Common::toHex(ba);
+bool WalletGreen::verifyMessage(const std::string &message, const std::string& address, const std::string &signature) {
+  throwIfNotInitialized();
+  throwIfStopped();
 
-  ret = "ReserveProofV1" + Tools::Base58::encode(ret);
+  try {
+    CryptoNote::AccountPublicAddress pubAddr = parseAddress(address);
 
-  return ret;
+    return CryptoNote::verifyMessage(message, pubAddr, signature, m_logger.getLogger());
+  }
+  catch (const std::exception& e) {
+    m_logger(ERROR, BRIGHT_RED) << "Failed to verify message: " << e.what();
+  }
+
+  return false;
 }
 
 void WalletGreen::start() {

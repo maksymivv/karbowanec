@@ -12,6 +12,7 @@
 #include "Common/Base58.h"
 #include "Common/StringTools.h"
 #include "Common/FormatTools.h"
+#include "Tools.h"
 #include "CryptoNoteCore/Account.h"
 #include "CryptoNoteCore/CryptoNoteBasicImpl.h"
 
@@ -22,7 +23,7 @@
 #include "Mnemonics/electrum-words.h"
 
 #include <GreenWallet/AddressBook.h>
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/ColouredMsg.h>
 #include <GreenWallet/Commands.h>
 #include <GreenWallet/Fusion.h>
 #include <GreenWallet/Menu.h>
@@ -291,10 +292,10 @@ void printSyncStatus(uint32_t localHeight, uint32_t remoteHeight,
 	uint32_t walletHeight)
 {
 	std::string networkSyncPercentage
-		= Common::get_sync_percentage(localHeight, remoteHeight) + "%";
+		= Common::Format::get_sync_percentage(localHeight, remoteHeight) + "%";
 
 	std::string walletSyncPercentage
-		= Common::get_sync_percentage(walletHeight, remoteHeight) + "%";
+		= Common::Format::get_sync_percentage(walletHeight, remoteHeight) + "%";
 
 	std::cout << "Network sync status: ";
 
@@ -370,7 +371,7 @@ void printHashrate(uint64_t difficulty)
     );
 
     std::cout << "Network hashrate: "
-              << SuccessMsg(Common::get_mining_speed(hashrate))
+              << SuccessMsg(Common::Format::get_mining_speed(hashrate))
               << " (Based on the last local block)" << std::endl;
 }
 
@@ -741,8 +742,8 @@ void txProof(CryptoNote::WalletGreen &wallet)
     {
         std::cout << InformationMsg("Enter destination address: ");
 
-		std::string addrStr;
-		uint64_t prefix;
+        std::string addrStr;
+        uint64_t prefix;
 
         std::getline(std::cin, addrStr);
         boost::algorithm::trim(addrStr);
@@ -915,6 +916,146 @@ void reserveProof(std::shared_ptr<WalletInfo> walletInfo, bool viewWallet)
     }
     catch (const std::exception &e) {
         std::cout << WarningMsg("Failed to get reserve proof: ")
+                  << WarningMsg(e.what())
+                  << std::endl;
+    }
+}
+
+void signMessage(std::shared_ptr<WalletInfo> walletInfo, bool viewWallet)
+{
+    if (viewWallet)
+    {
+        std::cout << WarningMsg("This is tracking wallet. ")
+                  << WarningMsg("The message can be signed ")
+                  << WarningMsg("only by a full wallet.")
+                  << std::endl;
+        return;
+    }
+
+    std::string message;
+
+    while (true)
+    {
+        std::cout << InformationMsg("Enter message to sign: ");
+
+        std::getline(std::cin, message);
+        boost::algorithm::trim(message);
+
+        if (!message.empty())
+        {
+          break;
+        }
+
+        if (std::cin.fail() || std::cin.eof()) {
+            std::cin.clear();
+            break;
+        }
+    }
+
+    try
+    {
+        std::string walletAddress = walletInfo->walletAddress;
+
+        std::string signature = walletInfo->wallet.signMessage(message, walletAddress);
+
+        std::cout << SuccessMsg("Signature: ") 
+                  << InformationMsg(signature)
+                  << std::endl;
+    }
+    catch (const std::exception &e) {
+        std::cout << WarningMsg("Failed to sign message: ")
+                  << WarningMsg(e.what())
+                  << std::endl;
+    }
+}
+
+void verifyMessage(CryptoNote::WalletGreen &wallet)
+{
+    std::string addrStr;
+
+    while (true)
+    {
+        std::cout << InformationMsg("Enter address: ");
+
+        CryptoNote::AccountPublicAddress address;
+        
+        uint64_t prefix;
+
+        std::getline(std::cin, addrStr);
+        boost::algorithm::trim(addrStr);
+
+        if (!CryptoNote::parseAccountAddressString(prefix, address, addrStr))
+        {
+            std::cout << WarningMsg("Failed to parse address") << std::endl;
+        }
+        else
+        {
+            break;
+        }
+
+        if (std::cin.fail() || std::cin.eof()) {
+            std::cin.clear();
+            break;
+        }
+    }
+
+    std::string message;
+
+    while (true)
+    {
+        std::cout << InformationMsg("Enter message: ");
+
+        std::getline(std::cin, message);
+        boost::algorithm::trim(message);
+
+        if (!message.empty())
+        {
+            break;
+        }
+
+        if (std::cin.fail() || std::cin.eof()) {
+            std::cin.clear();
+            break;
+        }
+    }
+
+    std::string signature;
+
+    while (true)
+    {
+        std::cout << InformationMsg("Enter signature: ");
+
+        std::getline(std::cin, signature);
+        boost::algorithm::trim(signature);       
+
+        if (!signature.empty())
+        {
+            break;
+        }
+
+        if (std::cin.fail() || std::cin.eof()) {
+            std::cin.clear();
+            break;
+        }
+    }
+
+    try
+    {
+        bool r = wallet.verifyMessage(message, addrStr, signature);
+
+        if (r)
+        {
+            std::cout << SuccessMsg("Signature is valid") 
+                      << std::endl;
+        }
+        else
+        {
+            std::cout << WarningMsg("Signature is invalid")
+                      << std::endl;
+        }
+    }
+    catch (const std::exception &e) {
+        std::cout << WarningMsg("Failed to verify message: ")
                   << WarningMsg(e.what())
                   << std::endl;
     }

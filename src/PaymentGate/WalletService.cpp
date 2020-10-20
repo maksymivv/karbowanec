@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin Developers
+// Copyright (c) 2018-2019 The Cash2 developers
 // Copyright (c) 2016-2019, Karbo developers
 //
 // This file is part of Karbo.
@@ -378,9 +379,9 @@ void generateNewWallet(const CryptoNote::Currency& currency, const WalletConfigu
       log(Logging::INFO, Logging::BRIGHT_WHITE) << "Imported wallet successfully.";
   }
   else {
-    if (conf.secretSpendKey.empty() || conf.secretViewKey.empty())
-    {
-  	  log(Logging::ERROR, Logging::BRIGHT_RED) << "Need both secret spend key and secret view key.";
+    if ((!conf.secretViewKey.empty() && conf.secretSpendKey.empty())
+      || (conf.secretViewKey.empty() && !conf.secretSpendKey.empty())) {
+  	  log(Logging::ERROR, Logging::BRIGHT_RED) << "Both the secret spend key and the secret view key are required.";
   	  return;
     } else {
       log(Logging::INFO, Logging::BRIGHT_WHITE) << "Importing wallet from keys";
@@ -1164,6 +1165,40 @@ std::error_code WalletService::getReserveProof(std::string& reserveProof, const 
   return std::error_code();
 }
 
+std::error_code WalletService::signMessage(const std::string& message, const std::string& address, std::string& signature) {
+  try {
+    System::EventLock lk(readyEvent);
+
+    signature = wallet.signMessage(message, address);
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while signing message: " << x.what();
+    return x.code();
+  }
+  catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while signing message: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
+  return std::error_code();
+}
+
+std::error_code WalletService::verifyMessage(const std::string& message, const std::string& signature, const std::string& address, bool& isValid) {
+  try {
+    System::EventLock lk(readyEvent);
+
+    isValid = wallet.verifyMessage(message, address, signature);
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while verifying message: " << x.what();
+    return x.code();
+  }
+  catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while verifying message: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
+  return std::error_code();
+}
+
 std::error_code WalletService::getAddresses(std::vector<std::string>& addresses) {
   try {
     System::EventLock lk(readyEvent);
@@ -1176,6 +1211,20 @@ std::error_code WalletService::getAddresses(std::vector<std::string>& addresses)
     }
   } catch (std::exception& e) {
     logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Can't get addresses: " << e.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
+
+  return std::error_code();
+}
+
+std::error_code WalletService::getAddressesCount(size_t& addressesCount) {
+  try {
+    System::EventLock lk(readyEvent);
+
+    addressesCount = wallet.getAddressCount();
+  }
+  catch (std::exception& e) {
+    logger(Logging::WARNING) << "Can't get addresses count : " << e.what();
     return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
   }
 
@@ -1386,19 +1435,19 @@ std::error_code WalletService::getStatus(uint32_t& blockCount, uint32_t& knownBl
   return std::error_code();
 }
 
-std::error_code WalletService::validateAddress(const std::string& address, bool& isvalid, std::string& _address, std::string& spendPublicKey, std::string& viewPublicKey) {
+std::error_code WalletService::validateAddress(const std::string& address, bool& isValid, std::string& _address, std::string& spendPublicKey, std::string& viewPublicKey) {
   try {
     System::EventLock lk(readyEvent);
 
     CryptoNote::AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
     if (currency.parseAccountAddressString(address, acc)) {
-      isvalid = true;
+      isValid = true;
       _address = currency.accountAddressAsString(acc);
       spendPublicKey = Common::podToHex(acc.spendPublicKey);
       viewPublicKey = Common::podToHex(acc.viewPublicKey);
     }
     else {
-      isvalid = false;
+      isValid = false;
     }
   }
   catch (std::system_error& x) {

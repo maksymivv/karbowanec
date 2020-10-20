@@ -31,7 +31,7 @@ namespace NodeErrors
     #include <NodeRpcProxy/NodeErrors.h>
 }
 
-#include <GreenWallet/ColouredMsg.h>
+#include <Common/ColouredMsg.h>
 #include <GreenWallet/Fusion.h>
 #include <GreenWallet/Tools.h>
 #include <GreenWallet/WalletConfig.h>
@@ -64,7 +64,7 @@ bool parseAmount(std::string strAmount, uint64_t &amount)
         while (numDecimalPlaces < fractionSize && '0' == strAmount.back())
         {
             strAmount.erase(strAmount.size() - 1, 1);
-            fractionSize--;
+            --fractionSize;
         }
 
         if (numDecimalPlaces < fractionSize)
@@ -296,7 +296,7 @@ void splitTx(CryptoNote::WalletGreen &wallet,
     }
 }
 
-void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool sendAll, std::string nodeAddress)
+void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool sendAll, std::string nodeAddress, uint64_t nodeFee)
 {
     std::cout << InformationMsg("Note: You can type cancel at any time to "
                                 "cancel the transaction")
@@ -325,7 +325,6 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 	/* Make sure we set this later if we're sending everything by deducting
 	   the fee from full balance */
 	uint64_t amount = 0;
-	uint64_t nodeFee = 0;
 
 	uint64_t mixin = WalletConfig::defaultMixin;
 
@@ -341,8 +340,10 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 		}
 		amount = maybeAmount.x;
 
-		if (!nodeAddress.empty())
-			nodeFee = calculateNodeFee(amount);
+    if (!nodeAddress.empty() && nodeFee == 0)
+      nodeFee = calculateNodeFee(amount);
+    else if (!nodeAddress.empty() && nodeFee != 0)
+      nodeFee = std::min<uint64_t>(nodeFee, (uint64_t)CryptoNote::parameters::COIN);
 
 		switch (doWeHaveEnoughBalance(amount, WalletConfig::defaultFee,
 			walletInfo, height, nodeFee))
@@ -405,7 +406,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
 			if (!nodeAddress.empty())
 				nodeFee = calculateNodeFee(amount);
 
-			std::cout << WarningMsg("Due to dust inputs, we are unable to ")
+			std::cout << WarningMsg("Due to unmixable inputs, we are unable to ")
 				<< WarningMsg("send ")
 				<< InformationMsg(formatAmount(unsendable))
 				<< WarningMsg("of your balance.") << std::endl;
@@ -447,13 +448,6 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo, uint32_t height, bool send
     doTransfer(address, amount, fee, extra, walletInfo, height, mixin, nodeAddress, nodeFee);
 }
 
-uint64_t calculateNodeFee(uint64_t amount) {
-	uint64_t node_fee = static_cast<int64_t>(amount * 0.0025);
-	if (node_fee > (uint64_t)10000000000000)
-		node_fee = (uint64_t)10000000000000;
-	return node_fee;
-}
-
 BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
                                   std::shared_ptr<WalletInfo> walletInfo,
 	                              uint32_t height, uint64_t nodeFee)
@@ -490,7 +484,7 @@ BalanceInfo doWeHaveEnoughBalance(uint64_t amount, uint64_t fee,
 	{
 		std::cout << std::endl
 			<< WarningMsg("This transaction is unable to be sent ")
-			<< WarningMsg("due to dust inputs.") << std::endl
+			<< WarningMsg("due to unmixable inputs.") << std::endl
 			<< "You can send "
 			<< InformationMsg(formatAmount(balanceNoDust))
 			<< " without issues (includes a network fee of "

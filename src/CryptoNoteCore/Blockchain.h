@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbowanec developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -19,22 +19,15 @@
 #pragma once
 
 #include <atomic>
-
+#include <unordered_map>
+#include <parallel_hashmap/phmap.h>
 #include "google/sparse_hash_set"
 #include "google/sparse_hash_map"
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/mem_fun.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/random_access_index.hpp>
-
 #include "Common/ObserverManager.h"
 #include "Common/Util.h"
+#include "Checkpoints/Checkpoints.h"
 #include "CryptoNoteCore/BlockIndex.h"
-#include "CryptoNoteCore/Checkpoints.h"
 #include "CryptoNoteCore/Currency.h"
 #include "CryptoNoteCore/IBlockchainStorageObserver.h"
 #include "CryptoNoteCore/ITransactionValidator.h"
@@ -51,6 +44,8 @@
 #include <Logging/LoggerRef.h>
 
 #undef ERROR
+
+using phmap::parallel_flat_hash_map;
 
 namespace CryptoNote {
 
@@ -84,6 +79,7 @@ namespace CryptoNote {
     void setCheckpoints(Checkpoints&& chk_pts) { m_checkpoints = chk_pts; }
     bool getBlocks(uint32_t start_offset, uint32_t count, std::list<Block>& blocks, std::list<Transaction>& txs);
     bool getBlocks(uint32_t start_offset, uint32_t count, std::list<Block>& blocks);
+    bool getTransactionsWithOutputGlobalIndexes(const std::vector<Crypto::Hash>& txs_ids, std::list<Crypto::Hash>& missed_txs, std::vector<std::pair<Transaction, std::vector<uint32_t>>>& txs);
     bool getAlternativeBlocks(std::list<Block>& blocks);
     uint32_t getAlternativeBlocksCount();
     Crypto::Hash getBlockIdByHeight(uint32_t height);
@@ -104,9 +100,9 @@ namespace CryptoNote {
     uint64_t getBlockTimestamp(uint32_t height);
     uint64_t getMinimalFee(uint32_t height);
     uint64_t getCoinsInCirculation();
+    uint64_t getCoinsInCirculation(uint32_t height);
     uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
-    uint8_t blockMajorVersion;
-    bool addNewBlock(const Block& bl_, block_verification_context& bvc);
+    bool addNewBlock(const Block& bl, block_verification_context& bvc);
     bool resetAndSetGenesisBlock(const Block& b);
     bool haveBlock(const Crypto::Hash& id);
     size_t getTotalTransactions();
@@ -124,6 +120,7 @@ namespace CryptoNote {
     uint64_t getCurrentCumulativeBlocksizeLimit();
     uint64_t blockDifficulty(size_t i);
     uint64_t blockCumulativeDifficulty(size_t i);
+    bool getblockEntry(size_t i, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp);
     bool getBlockContainingTransaction(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight);
     bool getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& generatedCoins);
     bool getBlockSize(const Crypto::Hash& hash, size_t& size);
@@ -191,7 +188,7 @@ namespace CryptoNote {
         getBlockchainTransactions(txs_ids, txs, missed_txs);
       }
     }
-
+    
     //debug functions
     void print_blockchain(uint64_t start_index, uint64_t end_index);
     void print_blockchain_index();
@@ -207,16 +204,6 @@ namespace CryptoNote {
       }
     };
 
-    struct SpentKeyImage {
-      uint32_t blockIndex;
-      Crypto::KeyImage keyImage;
-
-      void serialize(ISerializer& s) {
-        s(blockIndex, "block_index");
-        s(keyImage, "key_image");
-      }
-    };
-
     void rollbackBlockchainTo(uint32_t height);
     bool have_tx_keyimg_as_spent(const Crypto::KeyImage &key_im);
 
@@ -224,6 +211,9 @@ namespace CryptoNote {
     bool checkIfSpent(const Crypto::KeyImage& keyImage);
     bool is_tx_spendtime_unlocked(uint64_t unlock_time);
     bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint32_t height);
+
+    void rebuildCache();
+    bool storeCache();
 
   private:
 
@@ -267,25 +257,10 @@ namespace CryptoNote {
       }
     };
 
-    struct BlockIndexTag {};
-    struct KeyImageTag {};
-
-    typedef boost::multi_index_container<
-      SpentKeyImage,
-      boost::multi_index::indexed_by<
-      boost::multi_index::ordered_non_unique<
-      boost::multi_index::tag<BlockIndexTag>,
-      BOOST_MULTI_INDEX_MEMBER(SpentKeyImage, uint32_t, blockIndex)
-      >,
-      boost::multi_index::hashed_unique<
-      boost::multi_index::tag<KeyImageTag>,
-      BOOST_MULTI_INDEX_MEMBER(SpentKeyImage, Crypto::KeyImage, keyImage)
-      >
-      >
-    > SpentKeyImagesContainer;
-    typedef std::unordered_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
-    typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
-    typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
+    typedef parallel_flat_hash_map<Crypto::KeyImage, uint32_t> key_images_container;
+    typedef parallel_flat_hash_map<Crypto::Hash, BlockEntry> blocks_ext_by_hash;
+    typedef parallel_flat_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
+    typedef parallel_flat_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
 
     const Currency& m_currency;
     tx_memory_pool& m_tx_pool;
@@ -294,18 +269,17 @@ namespace CryptoNote {
 
     Tools::ObserverManager<IBlockchainStorageObserver> m_observerManager;
 
-    SpentKeyImagesContainer spentKeyImages;
+    key_images_container m_spent_key_images;
     size_t m_current_block_cumul_sz_limit;
     blocks_ext_by_hash m_alternative_chains; // Crypto::Hash -> block_extended_info
     outputs_container m_outputs;
 
     std::string m_config_folder;
     Checkpoints m_checkpoints;
-    std::atomic<bool> m_is_in_checkpoint_zone;
 
     typedef SwappedVector<BlockEntry> Blocks;
-    typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
-    typedef std::unordered_map<Crypto::Hash, TransactionIndex> TransactionMap;
+    typedef parallel_flat_hash_map<Crypto::Hash, uint32_t> BlockMap;
+    typedef parallel_flat_hash_map<Crypto::Hash, TransactionIndex> TransactionMap;
     typedef BasicUpgradeDetector<Blocks> UpgradeDetector;
 
     friend class BlockCacheSerializer;
@@ -330,8 +304,6 @@ namespace CryptoNote {
 
     Logging::LoggerRef logger;
 
-    void rebuildCache();
-    bool storeCache();
     bool switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::iterator>& alt_chain, bool discard_disconnected_chain);
     bool handle_alternative_block(const Block& b, const Crypto::Hash& id, block_verification_context& bvc, bool sendNewAlternativeBlockMessage = true);
     difficulty_type get_next_difficulty_for_alternative_chain(const std::list<blocks_ext_by_hash::iterator>& alt_chain, BlockEntry& bei);
@@ -356,9 +328,9 @@ namespace CryptoNote {
     bool checkTransactionInputs(const Transaction& tx, const Crypto::Hash& tx_prefix_hash, uint32_t* pmax_used_block_height = NULL);
     bool checkTransactionInputs(const Transaction& tx, uint32_t* pmax_used_block_height = NULL);
     const TransactionEntry& transactionByIndex(TransactionIndex index);
-    bool pushBlock(const Block& blockData, block_verification_context& bvc);
-    bool pushBlock(const Block& blockData, const std::vector<Transaction>& transactions, block_verification_context& bvc);
-    bool pushBlock(BlockEntry& block);
+    bool pushBlock(const Block& blockData, const Crypto::Hash& id, block_verification_context& bvc);
+    bool pushBlock(const Block& blockData, const std::vector<Transaction>& transactions, const Crypto::Hash& blockHash, block_verification_context& bvc);
+    bool pushBlock(BlockEntry& block, const Crypto::Hash& blockHash);
     void popBlock();
     bool pushTransaction(BlockEntry& block, const Crypto::Hash& transactionHash, TransactionIndex transactionIndex);
     void popTransaction(const Transaction& transaction, const Crypto::Hash& transactionHash);

@@ -1,6 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2019, The Tax developers
-// Copyright (c) 2019, Karbo developers
+// Copyright (c) 2016-2020, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -55,3 +54,9 @@ extern "C" {
 }
 
 CRYPTO_MAKE_HASHABLE(Hash)
+CRYPTO_MAKE_HASHABLE(EllipticCurveScalar)
+CRYPTO_MAKE_HASHABLE(EllipticCurvePoint)
+CRYPTO_MAKE_HASHABLE(PublicKey)
+CRYPTO_MAKE_HASHABLE(SecretKey)
+CRYPTO_MAKE_HASHABLE(KeyDerivation)
+CRYPTO_MAKE_HASHABLE(KeyImage)
