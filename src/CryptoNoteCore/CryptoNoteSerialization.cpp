@@ -401,9 +401,6 @@ void serializeBlockHeader(BlockHeader& header, ISerializer& serializer) {
   else {
     throw std::runtime_error("Wrong major version");
   }
-  if (header.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    serializer(header.algorithm, "algorithm");
-  }
 }
 
 void serialize(BlockHeader& header, ISerializer& serializer) {
@@ -420,6 +417,10 @@ void serialize(Block& block, ISerializer& serializer) {
 
   serializer(block.baseTransaction, "miner_tx");
   serializer(block.transactionHashes, "tx_hashes");
+
+  if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+    serializer(block.algorithm, "algorithm");
+  }
 }
 
 void serialize(AccountPublicAddress& address, ISerializer& serializer) {

@@ -101,13 +101,13 @@ struct BlockHeader {
   uint32_t nonce;
   uint64_t timestamp;
   Crypto::Hash previousBlockHash;
-  uint8_t algorithm;
 };
 
 struct Block : public BlockHeader {
   ParentBlock parentBlock;
   Transaction baseTransaction;
   std::vector<Crypto::Hash> transactionHashes;
+  uint8_t algorithm;
 };
 
 struct AccountPublicAddress {
