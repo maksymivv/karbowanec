@@ -1374,11 +1374,11 @@ bool Core::getMixin(const Transaction& transaction, uint64_t& mixin) {
 }
 
 bool Core::getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
-  difficulty_type base_diffic = height < get_current_blockchain_height() ? 
+  difficulty_type base_diffic = height < getCurrentBlockchainHeight() ?
     m_blockchain.blockDifficulty(height + 1) : getNextBlockDifficulty();
   std::vector<int> prev_algos;
   Block prevBlk;
-  Crypto::Hash prevHash = getBlockIdByHeight(height < get_current_blockchain_height() ? height : get_current_blockchain_height() - 1);
+  Crypto::Hash prevHash = getBlockIdByHeight(height < getCurrentBlockchainHeight() ? height : getCurrentBlockchainHeight() - 1);
   if (!getBlockByHash(prevHash, prevBlk)) {
     logger(ERROR, BRIGHT_RED) <<
       "Couldn't find previous block with id: " << Common::podToHex(prevHash);
