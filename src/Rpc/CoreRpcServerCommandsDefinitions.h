@@ -48,12 +48,12 @@ struct STATUS_STRUCT {
 struct algo_difficulties {
   difficulty_type cryptonight;
   difficulty_type cn_gpu;
-  difficulty_type cn_power;
+  difficulty_type cn_cpu;
 
   void serialize(ISerializer &s) {
     KV_MEMBER(cryptonight)
     KV_MEMBER(cn_gpu)
-    KV_MEMBER(cn_power)
+    KV_MEMBER(cn_cpu)
   }
 };
 

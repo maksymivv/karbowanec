@@ -79,7 +79,7 @@ std::string printAlgo(int algo) {
     return "CryptoNight";
   } else if (algo == ALGO_CN_GPU) {
     return "CN-GPU";
-  } else if (algo == ALGO_CN_POWER) {
+  } else if (algo == ALGO_CN_CPU) {
     return "CN-POWER";
   } else {
     return "Unknown";

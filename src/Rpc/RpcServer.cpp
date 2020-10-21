@@ -1207,7 +1207,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
 
   if (!m_core.getNextDifficultyForAlgo(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
     !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu) ||
-    !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_POWER, res.multi_algo_difficulties.cn_power)) {
+    !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_CPU, res.multi_algo_difficulties.cn_cpu)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
       "Internal error: couldn't get algo difficulties" };
   }
@@ -1741,7 +1741,7 @@ bool RpcServer::on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request&
   CryptoNote::BinaryArray blob_reserve;
   blob_reserve.resize(req.reserve_size, 0);
 
-  if (req.algo != ALGO_CN && req.algo != ALGO_CN_GPU && req.algo != ALGO_CN_POWER) {
+  if (req.algo != ALGO_CN && req.algo != ALGO_CN_GPU && req.algo != ALGO_CN_CPU) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Wrong algo" };
   }
 

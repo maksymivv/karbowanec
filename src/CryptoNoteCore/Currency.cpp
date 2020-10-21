@@ -755,8 +755,8 @@ namespace CryptoNote {
       return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
     case ALGO_CN_GPU:
       return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU;
-    case ALGO_CN_POWER:
-      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER;
+    case ALGO_CN_CPU:
+      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_CPU;
     default:
       return 1;
     }

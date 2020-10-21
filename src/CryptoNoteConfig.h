@@ -89,7 +89,7 @@ const size_t   MULTI_DIFFICULTY_ADJUSTMENT_WINDOW            = 12;  // blocks
 // work factor = absolute work ratio * optimization factor
 const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN               = 34 * 8;
 const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU           = 3 * 4;
-const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_POWER         = 2 * 4;
+const int      MULTI_DIFFICULTY_ALGO_FACTOR_CN_CPU           = 2 * 4;
 
 const uint64_t AVERAGE_DIFFICULTY_WINDOW                     = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY * 7 * 4;
 

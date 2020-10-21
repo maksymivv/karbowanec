@@ -182,8 +182,8 @@ namespace CryptoNote
       else if (config.algo == "cn-gpu") {
         m_algo = ALGO_CN_GPU;
       }
-      else if (config.algo == "cn-power") {
-        m_algo = ALGO_CN_POWER;
+      else if (config.algo == "cn-cpu") {
+        m_algo = ALGO_CN_CPU;
       }
       else {
         logger(ERROR) << "Wrong algo " << config.algo << " in config, starting daemon canceled." <<

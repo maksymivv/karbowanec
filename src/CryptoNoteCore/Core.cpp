@@ -528,7 +528,7 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
       } else if (algo == 1) {
         b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN_GPU;
       } else if (algo == 2) {
-        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN_POWER;
+        b.algorithm = CURRENCY_BLOCK_POW_TYPE_CN_CPU;
       } else {
         logger(ERROR, BRIGHT_RED) << "Failed to set block pow type field: wrong algo";
         return false;
