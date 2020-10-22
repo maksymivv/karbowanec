@@ -739,31 +739,35 @@ bool Blockchain::getBlockHeight(const Crypto::Hash& blockId, uint32_t& blockHeig
   return m_blockIndex.getBlockHeight(blockId, blockHeight);
 }
 
-difficulty_type Blockchain::getDifficultyForNextBlock() {
+difficulty_type Blockchain::getDifficultyForNextBlock(int algo) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(m_blocks.size()));
-  size_t offset;
-  offset = m_blocks.size() - std::min<size_t>(m_blocks.size(), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
 
-  if (offset == 0) {
-    ++offset;
-  }
-  for (; offset < m_blocks.size(); offset++) {
-    if (m_blocks.size() > CryptoNote::parameters::UPGRADE_HEIGHT_V5 && offset < CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-      // skip to reset difficulty for hardfork block 5
+  for (size_t i = m_blocks.size() - 1, 
+    need = std::min<size_t>(m_blocks.size(), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion))), 
+    got = 0; got < need; i--) {
+    if (m_blocks[i].bl.algorithm == algo) {
+      timestamps.push_back(m_blocks[i].bl.timestamp);
+      if (algo == ALGO_CN_GPU && i > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+        cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty_gpu);
+      else if (algo == ALGO_CN_CPU && i > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+        cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty_cpu);
+      else
+        cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty);
+      got++;
     }
-    else {
-      timestamps.push_back(m_blocks[offset].bl.timestamp);
-      cumulative_difficulties.push_back(m_blocks[offset].cumulative_difficulty);
-    }
   }
+
+  std::reverse(timestamps.begin(), timestamps.end());
+  std::reverse(cumulative_difficulties.begin(), cumulative_difficulties.end());
 
   // push penultimate diff for hardfork block 5 reset
   if (m_blocks.size() == CryptoNote::parameters::UPGRADE_HEIGHT_V5 + 1) {
     cumulative_difficulties.push_back(m_blocks[CryptoNote::parameters::UPGRADE_HEIGHT_V5 - 1].cumulative_difficulty);
   }
+
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 

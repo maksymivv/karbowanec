@@ -94,7 +94,7 @@ namespace CryptoNote {
     uint32_t getCurrentBlockchainHeight(); //TODO rename to getCurrentBlockchainSize
     Crypto::Hash getTailId();
     Crypto::Hash getTailId(uint32_t& height);
-    difficulty_type getDifficultyForNextBlock();
+    difficulty_type getDifficultyForNextBlock(int algo = 0);
     difficulty_type getAvgDifficulty(uint32_t height);
     difficulty_type getAvgDifficulty(uint32_t height, size_t window);
     uint64_t getBlockTimestamp(uint32_t height);
@@ -244,6 +244,8 @@ namespace CryptoNote {
       uint32_t height;
       uint64_t block_cumulative_size;
       difficulty_type cumulative_difficulty;
+      difficulty_type cumulative_difficulty_gpu;
+      difficulty_type cumulative_difficulty_cpu;
       uint64_t already_generated_coins;
       std::vector<TransactionEntry> transactions;
 
@@ -252,6 +254,10 @@ namespace CryptoNote {
         s(height, "height");
         s(block_cumulative_size, "block_cumulative_size");
         s(cumulative_difficulty, "cumulative_difficulty");
+        if (bl.majorVersion >= BLOCK_MAJOR_VERSION_5) {
+          s(cumulative_difficulty_gpu, "cumulative_difficulty_gpu");
+          s(cumulative_difficulty_cpu, "cumulative_difficulty_cpu");
+        }
         s(already_generated_coins, "already_generated_coins");
         s(transactions, "transactions");
       }
