@@ -17,6 +17,7 @@
 // along with Karbo.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "CryptoNoteBasic.h"
+#include "CryptoNoteConfig.h"
 #include "crypto/crypto.h"
 
 namespace CryptoNote {
@@ -28,6 +29,8 @@ KeyPair generateKeyPair() {
 }
 
 int getAlgo(const Block& b) {
+  if (b.majorVersion < CryptoNote::BLOCK_MAJOR_VERSION_5) return ALGO_CN;
+
   switch (b.algorithm)
   {
   case CURRENCY_BLOCK_POW_TYPE_CN:
