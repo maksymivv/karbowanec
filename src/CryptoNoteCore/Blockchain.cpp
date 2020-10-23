@@ -559,7 +559,11 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   logger(INFO, BRIGHT_GREEN)
     << "Blockchain initialized. last block: " << m_blocks.size() - 1 << ", "
     << Common::timeIntervalToString(timestamp_diff)
-    << " time ago, current difficulty: " << getDifficultyForNextBlock();
+    << " time ago, current difficulties: " 
+    << "ASIC: " << getDifficultyForNextBlock(ALGO_CN) << ", "
+    << "CPU: "  << getDifficultyForNextBlock(ALGO_CN_CPU) << ", "
+    << "GPU: "  << getDifficultyForNextBlock(ALGO_CN_GPU);
+
   return true;
 }
 
@@ -1070,6 +1074,7 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::
 
 //------------------------------------------------------------------
 // This function calculates the difficulty target for the block being added to an alternate chain.
+// TODO: ADJUST FOR MULTIALGO!!!
 difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std::list<blocks_ext_by_hash::iterator>& alt_chain, BlockEntry& bei) {
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
@@ -1368,6 +1373,7 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     }
 
     // Check the block's hash against the difficulty target for its alt chain
+    // TODO: ADJUST FOR MULTIALGO!!!
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
     if (!(current_diff)) { logger(ERROR, BRIGHT_RED) << "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!"; return false; }
     Crypto::Hash proof_of_work = NULL_HASH;
@@ -2227,7 +2233,9 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   }
 
   auto targetTimeStart = std::chrono::steady_clock::now();
-  difficulty_type currentDifficulty = getDifficultyForNextBlock();
+
+  difficulty_type currentDifficulty = getDifficultyForNextBlock(getAlgo(blockData));
+
   auto target_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - targetTimeStart).count();
 
   if (!(currentDifficulty)) {
