@@ -1341,9 +1341,11 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
       }
     }
 
-    // Check the block's hash against the difficulty target for its alt chain
-    difficulty_type current_diff = getDifficultyForNextBlock(bei.bl.previousBlockHash, getAlgo(bei.bl));
+    int current_algo = getAlgo(bei.bl);
 
+    // Check the block's hash against the difficulty target for its alt chain
+    difficulty_type current_diff = getDifficultyForNextBlock(bei.bl.previousBlockHash, current_algo);
+    
     if (!(current_diff)) { logger(ERROR, BRIGHT_RED) << "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!"; return false; }
     Crypto::Hash proof_of_work = NULL_HASH;
 
@@ -1386,8 +1388,15 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
       return false;
     }
 
+    bei.cumulative_difficulty_cpu = alt_chain.size() ? it_prev->second.cumulative_difficulty_cpu : m_blocks[mainPrevHeight].cumulative_difficulty_cpu;
+    bei.cumulative_difficulty_gpu = alt_chain.size() ? it_prev->second.cumulative_difficulty_gpu : m_blocks[mainPrevHeight].cumulative_difficulty_gpu;
     bei.cumulative_difficulty = alt_chain.size() ? it_prev->second.cumulative_difficulty : m_blocks[mainPrevHeight].cumulative_difficulty;
-    bei.cumulative_difficulty += current_diff;
+    if (current_algo == ALGO_CN_CPU)
+      bei.cumulative_difficulty_cpu += current_diff;
+    else if (current_algo == ALGO_CN_GPU)
+      bei.cumulative_difficulty_gpu += current_diff;
+    else
+      bei.cumulative_difficulty += current_diff;
 
 #ifdef _DEBUG
     auto i_dres = m_alternative_chains.find(id);
@@ -1414,12 +1423,17 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
         bvc.m_verification_failed = true;
       }
       return r;
-    } else if (m_blocks.back().cumulative_difficulty < bei.cumulative_difficulty) //check if difficulty bigger then in main chain
+    } //check if ALL difficulties are bigger then in main chain
+    else if (m_blocks.back().cumulative_difficulty     < bei.cumulative_difficulty &&
+             m_blocks.back().cumulative_difficulty_cpu < bei.cumulative_difficulty_cpu &&
+             m_blocks.back().cumulative_difficulty_gpu < bei.cumulative_difficulty_gpu)
     {
       //do reorganize!
       logger(INFO, BRIGHT_GREEN) <<
-        "###### REORGANIZE on height: " << alt_chain.front()->second.height << " of " << m_blocks.size() - 1 << " with cum_difficulty " << m_blocks.back().cumulative_difficulty
-        << ENDL << " alternative blockchain size: " << alt_chain.size() << " with cum_difficulty " << bei.cumulative_difficulty;
+        "###### REORGANIZE on height: " << alt_chain.front()->second.height << " of " << m_blocks.size() - 1 
+        << " with cumulative difficulties " << m_blocks.back().cumulative_difficulty << " / " << m_blocks.back().cumulative_difficulty_cpu << " / " << m_blocks.back().cumulative_difficulty_gpu
+        << ENDL << " alternative blockchain size: " << alt_chain.size() << " with cumulative difficulties " 
+        << bei.cumulative_difficulty << " / " << bei.cumulative_difficulty_cpu << " / " << bei.cumulative_difficulty_gpu;
       bool r = switch_to_alternative_blockchain(alt_chain, false);
       if (r) {
         bvc.m_added_to_main_chain = true;
@@ -1433,7 +1447,8 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
         "----- BLOCK ADDED AS ALTERNATIVE ON HEIGHT " << bei.height
         << ENDL << "id:\t" << id
         << ENDL << "PoW:\t" << proof_of_work
-        << ENDL << "difficulty:\t" << current_diff;
+        << ENDL << "difficulty:\t" << current_diff
+        << ENDL << "algo:\t" << current_algo;
       if (sendNewAlternativeBlockMessage) {
         sendMessage(BlockchainMessage(NewAlternativeBlockMessage(id)));
       }
@@ -2202,7 +2217,8 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   }
 
   auto targetTimeStart = std::chrono::steady_clock::now();
-  difficulty_type currentDifficulty = getDifficultyForNextBlock(blockData.previousBlockHash, getAlgo(blockData));
+  int currentAlgo = getAlgo(blockData);
+  difficulty_type currentDifficulty = getDifficultyForNextBlock(blockData.previousBlockHash, currentAlgo);
   auto target_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - targetTimeStart).count();
 
   if (!(currentDifficulty)) {
@@ -2316,11 +2332,21 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   block.height = static_cast<uint32_t>(m_blocks.size());
   block.block_cumulative_size = cumulative_block_size;
-  block.cumulative_difficulty = currentDifficulty;
-  block.already_generated_coins = already_generated_coins + emissionChange;
+  if (currentAlgo == ALGO_CN_CPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+    block.cumulative_difficulty_cpu = currentDifficulty;
+  else if (currentAlgo == ALGO_CN_GPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+    block.cumulative_difficulty_gpu = currentDifficulty;
+  else
+    block.cumulative_difficulty = currentDifficulty;
   if (m_blocks.size() > 0) {
-    block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
+    if (currentAlgo == ALGO_CN_CPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+      block.cumulative_difficulty_cpu += m_blocks.back().cumulative_difficulty_cpu;
+    else if (currentAlgo == ALGO_CN_GPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+      block.cumulative_difficulty_gpu += m_blocks.back().cumulative_difficulty_gpu;
+    else
+      block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
   }
+  block.already_generated_coins = already_generated_coins + emissionChange;
 
   pushBlock(block, blockHash);
 
@@ -2329,7 +2355,9 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   logger(DEBUGGING) <<
     "+++++ BLOCK SUCCESSFULLY ADDED" << ENDL << "id:\t" << blockHash
     << ENDL << "PoW:\t" << proof_of_work
-    << ENDL << "HEIGHT " << block.height << ", difficulty:\t" << currentDifficulty
+    << ENDL << "HEIGHT " << block.height 
+    << ENDL << "difficulty:\t" << currentDifficulty 
+    << ENDL << "algo:\t" << currentAlgo
     << ENDL << "block reward: " << m_currency.formatAmount(reward) << ", fee = " << m_currency.formatAmount(fee_summary)
     << ", coinbase_blob_size: " << coinbase_blob_size << ", cumulative size: " << cumulative_block_size
     << ", " << block_processing_time << "(" << target_calculating_time << "/" << longhash_calculating_time << ")ms";
