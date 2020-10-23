@@ -743,11 +743,15 @@ difficulty_type Blockchain::getDifficultyForNextBlock(int algo) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
-  uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(m_blocks.size()));
 
-  for (size_t i = m_blocks.size() - 1, 
-    need = std::min<size_t>(m_blocks.size(), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion))), 
-    got = 0; got < need; i--) {
+  uint32_t height = m_blocks.size();
+  uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(height));
+  size_t need = std::min<size_t>(height - 1, static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
+  size_t got = 0;
+  size_t i = static_cast<size_t>(height);
+  do {
+    --i;
+    
     if (m_blocks[i].bl.algorithm == algo) {
       timestamps.push_back(m_blocks[i].bl.timestamp);
       if (algo == ALGO_CN_GPU && i > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
@@ -758,13 +762,14 @@ difficulty_type Blockchain::getDifficultyForNextBlock(int algo) {
         cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty);
       got++;
     }
-  }
+
+  } while (got < need);
 
   std::reverse(timestamps.begin(), timestamps.end());
   std::reverse(cumulative_difficulties.begin(), cumulative_difficulties.end());
 
   // push penultimate diff for hardfork block 5 reset
-  if (m_blocks.size() == CryptoNote::parameters::UPGRADE_HEIGHT_V5 + 1) {
+  if (height == CryptoNote::parameters::UPGRADE_HEIGHT_V5 + 1) {
     cumulative_difficulties.push_back(m_blocks[CryptoNote::parameters::UPGRADE_HEIGHT_V5 - 1].cumulative_difficulty);
   }
 
