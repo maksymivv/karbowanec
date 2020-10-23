@@ -557,12 +557,12 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   }
 
   logger(INFO, BRIGHT_GREEN)
-    << "Blockchain initialized. last block: " << m_blocks.size() - 1 << ", "
+    << "Blockchain initialized. last block: " << m_blocks.size() - 1 /*<< ", "
     << Common::timeIntervalToString(timestamp_diff)
     << " time ago, current difficulties: " 
-    << "ASIC: " << getDifficultyForNextBlock(ALGO_CN) << ", "
-    << "CPU: "  << getDifficultyForNextBlock(ALGO_CN_CPU) << ", "
-    << "GPU: "  << getDifficultyForNextBlock(ALGO_CN_GPU);
+    << "ASIC: " << getDifficultyForNextBlock(getTailId(), ALGO_CN) << ", "
+    << "CPU: "  << getDifficultyForNextBlock(getTailId(), ALGO_CN_CPU) << ", "
+    << "GPU: "  << getDifficultyForNextBlock(getTailId(), ALGO_CN_GPU)*/;
 
   return true;
 }
@@ -743,7 +743,7 @@ bool Blockchain::getBlockHeight(const Crypto::Hash& blockId, uint32_t& blockHeig
   return m_blockIndex.getBlockHeight(blockId, blockHeight);
 }
 
-difficulty_type Blockchain::getDifficultyForNextBlock(int algo) {
+difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHash, int algo) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
@@ -752,23 +752,43 @@ difficulty_type Blockchain::getDifficultyForNextBlock(int algo) {
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(height));
   size_t need = std::min<size_t>(height - 1, static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
   size_t got = 0;
-  size_t i = static_cast<size_t>(height);
-  do {
-    --i;
-    
-    if (algo != ALGO_CN && i <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) break;
 
-    int actual_algo = m_blocks[i].bl.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(m_blocks[i].bl) : 0;
+  Crypto::Hash h = prevHash;
+
+  do {
+    
+    uint32_t bh = 0;
+    BlockEntry b;
+    if (getBlockHeight(h, bh)) {
+      b = m_blocks[bh];
+    }
+    else {
+      auto blockByHashIterator = m_alternative_chains.find(h);
+      if (blockByHashIterator != m_alternative_chains.end()) {
+        b = blockByHashIterator->second;
+        bh = b.height;
+      }
+      else {
+        logger(ERROR) << "Can't find block " << h << " for difficulty calculation";
+        return 0;
+      }
+    }
+
+    if (algo != ALGO_CN && bh <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) break;
+
+    int actual_algo = getAlgo(b.bl);
     if (actual_algo == algo) {
-      timestamps.push_back(m_blocks[i].bl.timestamp);
-      if (algo == ALGO_CN_GPU && i > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
-        cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty_gpu);
-      else if (algo == ALGO_CN_CPU && i > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
-        cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty_cpu);
+      timestamps.push_back(b.bl.timestamp);
+      if (algo == ALGO_CN_GPU && bh > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+        cumulative_difficulties.push_back(b.cumulative_difficulty_gpu);
+      else if (algo == ALGO_CN_CPU && bh > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+        cumulative_difficulties.push_back(b.cumulative_difficulty_cpu);
       else
-        cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty);
+        cumulative_difficulties.push_back(b.cumulative_difficulty);
       got++;
     }
+
+    h = b.bl.previousBlockHash;
 
   } while (got < need);
 
@@ -1072,62 +1092,6 @@ bool Blockchain::switch_to_alternative_blockchain(std::list<blocks_ext_by_hash::
   return true;
 }
 
-//------------------------------------------------------------------
-// This function calculates the difficulty target for the block being added to an alternate chain.
-// TODO: ADJUST FOR MULTIALGO!!!
-difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std::list<blocks_ext_by_hash::iterator>& alt_chain, BlockEntry& bei) {
-  std::vector<uint64_t> timestamps;
-  std::vector<difficulty_type> cumulative_difficulties;
-  uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(m_blocks.size()));
-
-  // if the alt chain isn't long enough to calculate the difficulty target
-  // based on its blocks alone, need to get more blocks from the main chain
-  if (alt_chain.size() < m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)) {
-    std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-    size_t main_chain_stop_offset = alt_chain.size() ? alt_chain.front()->second.height : bei.height;
-    size_t main_chain_count = m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion) - std::min(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion), alt_chain.size());
-    main_chain_count = std::min(main_chain_count, main_chain_stop_offset);
-    size_t main_chain_start_offset = main_chain_stop_offset - main_chain_count;
-
-    if (!main_chain_start_offset)
-      ++main_chain_start_offset; //skip genesis block
-    
-    // get difficulties and timestamps from relevant main chain blocks
-    for (; main_chain_start_offset < main_chain_stop_offset; ++main_chain_start_offset) {
-      timestamps.push_back(m_blocks[main_chain_start_offset].bl.timestamp);
-      cumulative_difficulties.push_back(m_blocks[main_chain_start_offset].cumulative_difficulty);
-    }
-
-    // make sure we haven't accidentally grabbed too many blocks... ???
-    if (!((alt_chain.size() + timestamps.size()) <= m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion))) {
-      logger(ERROR, BRIGHT_RED) << "Internal error, alt_chain.size()[" << alt_chain.size() << "] + timestamps.size()[" << timestamps.size() <<
-        "] NOT <= m_currency.difficultyBlocksCount()[" << m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion) << ']'; return false;
-    }
-    for (auto it : alt_chain) {
-      timestamps.push_back(it->second.bl.timestamp);
-      cumulative_difficulties.push_back(it->second.cumulative_difficulty);
-    }
-  // if the alt chain is long enough for the difficulty calc, grab difficulties
-  // and timestamps from it alone
-  } else {
-    timestamps.resize(std::min(alt_chain.size(), m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
-    cumulative_difficulties.resize(std::min(alt_chain.size(), m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
-    size_t count = 0;
-    size_t max_i = timestamps.size() - 1;
-    // get difficulties and timestamps from most recent blocks in alt chain
-    BOOST_REVERSE_FOREACH(auto it, alt_chain) {
-      timestamps[max_i - count] = it->second.bl.timestamp;
-      cumulative_difficulties[max_i - count] = it->second.cumulative_difficulty;
-      count++;
-      if (count >= m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)) {
-        break;
-      }
-    }
-  }
-
-  return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
-}
-
 bool Blockchain::prevalidate_miner_transaction(const Block& b, uint32_t height) {
 
   if (!(b.baseTransaction.inputs.size() == 1)) {
@@ -1373,8 +1337,8 @@ bool Blockchain::handle_alternative_block(const Block& b, const Crypto::Hash& id
     }
 
     // Check the block's hash against the difficulty target for its alt chain
-    // TODO: ADJUST FOR MULTIALGO!!!
-    difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, bei);
+    difficulty_type current_diff = getDifficultyForNextBlock(bei.bl.previousBlockHash, getAlgo(bei.bl));
+
     if (!(current_diff)) { logger(ERROR, BRIGHT_RED) << "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!"; return false; }
     Crypto::Hash proof_of_work = NULL_HASH;
 
@@ -2233,9 +2197,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   }
 
   auto targetTimeStart = std::chrono::steady_clock::now();
-
-  difficulty_type currentDifficulty = getDifficultyForNextBlock(getAlgo(blockData));
-
+  difficulty_type currentDifficulty = getDifficultyForNextBlock(blockData.previousBlockHash, getAlgo(blockData));
   auto target_calculating_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - targetTimeStart).count();
 
   if (!(currentDifficulty)) {
