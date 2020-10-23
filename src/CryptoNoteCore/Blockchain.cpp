@@ -557,12 +557,12 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
   }
 
   logger(INFO, BRIGHT_GREEN)
-    << "Blockchain initialized. last block: " << m_blocks.size() - 1 /*<< ", "
+    << "Blockchain initialized. last block: " << m_blocks.size() - 1 << ", "
     << Common::timeIntervalToString(timestamp_diff)
     << " time ago, current difficulties: " 
     << "ASIC: " << getDifficultyForNextBlock(getTailId(), ALGO_CN) << ", "
     << "CPU: "  << getDifficultyForNextBlock(getTailId(), ALGO_CN_CPU) << ", "
-    << "GPU: "  << getDifficultyForNextBlock(getTailId(), ALGO_CN_GPU)*/;
+    << "GPU: "  << getDifficultyForNextBlock(getTailId(), ALGO_CN_GPU);
 
   return true;
 }
@@ -749,6 +749,11 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
   std::vector<difficulty_type> cumulative_difficulties;
 
   uint32_t height = m_blocks.size();
+
+  if (algo != ALGO_CN && height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
+    return 0;
+  }
+
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(height));
   size_t need = std::min<size_t>(height - 1, static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
   size_t got = 0;
