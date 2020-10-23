@@ -752,7 +752,10 @@ difficulty_type Blockchain::getDifficultyForNextBlock(int algo) {
   do {
     --i;
     
-    if (m_blocks[i].bl.algorithm == algo) {
+    if (algo != ALGO_CN && i <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) break;
+
+    int actual_algo = m_blocks[i].bl.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(m_blocks[i].bl) : 0;
+    if (actual_algo == algo) {
       timestamps.push_back(m_blocks[i].bl.timestamp);
       if (algo == ALGO_CN_GPU && i > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
         cumulative_difficulties.push_back(m_blocks[i].cumulative_difficulty_gpu);
