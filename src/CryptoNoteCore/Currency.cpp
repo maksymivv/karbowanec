@@ -667,18 +667,7 @@ namespace CryptoNote {
     // Copyright (c) 2017-2018 Zawy, MIT License
     // See commented link below for required config file changes. Fix FTL and MTP.
     // https://github.com/zawy12/difficulty-algorithms/issues/3
-
-    // reset difficulty for new epoch
-    if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-      return 1000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
-    }
-    uint32_t count = (uint32_t)difficultyBlocksCountByBlockVersion(blockMajorVersion);
-    if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 + count) {
-      uint32_t offset = count - (height - upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5));
-      timestamps.erase(timestamps.begin(), timestamps.begin() + offset);
-      cumulativeDifficulties.erase(cumulativeDifficulties.begin(), cumulativeDifficulties.begin() + offset);
-    }
-
+   
     assert(timestamps.size() == cumulativeDifficulties.size());
 
     const int64_t T = static_cast<int64_t>(m_difficultyTarget);

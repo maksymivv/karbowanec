@@ -750,8 +750,12 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
 
   uint32_t height = m_blocks.size();
 
-  if (algo != ALGO_CN && height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) {
-    return 0;
+  if (algo != ALGO_CN && height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) return 0;
+
+  // reset difficulty for new epoch
+  if (height == m_currency.upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1 ||
+      height == m_currency.upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 2) {
+    return 1000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
   }
 
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(height));
@@ -779,8 +783,6 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
       }
     }
 
-    if (algo != ALGO_CN && bh <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) break;
-
     int actual_algo = getAlgo(b.bl);
     if (actual_algo == algo) {
       timestamps.push_back(b.bl.timestamp);
@@ -799,11 +801,6 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
 
   std::reverse(timestamps.begin(), timestamps.end());
   std::reverse(cumulative_difficulties.begin(), cumulative_difficulties.end());
-
-  // push penultimate diff for hardfork block 5 reset
-  if (height == CryptoNote::parameters::UPGRADE_HEIGHT_V5 + 1) {
-    cumulative_difficulties.push_back(m_blocks[CryptoNote::parameters::UPGRADE_HEIGHT_V5 - 1].cumulative_difficulty);
-  }
 
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
@@ -2471,6 +2468,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   block.height = static_cast<uint32_t>(m_blocks.size());
   block.block_cumulative_size = cumulative_block_size;
+
   if (currentAlgo == ALGO_CN_CPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
     block.cumulative_difficulty_cpu = currentDifficulty;
   else if (currentAlgo == ALGO_CN_GPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
@@ -2478,12 +2476,11 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   else
     block.cumulative_difficulty = currentDifficulty;
   if (m_blocks.size() > 0) {
-    if (currentAlgo == ALGO_CN_CPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
+    block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
+    if (block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5 + 1) {
       block.cumulative_difficulty_cpu += m_blocks.back().cumulative_difficulty_cpu;
-    else if (currentAlgo == ALGO_CN_GPU && block.height > CryptoNote::parameters::UPGRADE_HEIGHT_V5)
       block.cumulative_difficulty_gpu += m_blocks.back().cumulative_difficulty_gpu;
-    else
-      block.cumulative_difficulty += m_blocks.back().cumulative_difficulty;
+    }
   }
   block.already_generated_coins = already_generated_coins + emissionChange;
 
