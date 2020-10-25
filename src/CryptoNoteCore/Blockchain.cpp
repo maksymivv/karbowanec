@@ -783,6 +783,8 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
       }
     }
 
+    if (algo != ALGO_CN && bh <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) break;
+
     int actual_algo = getAlgo(b.bl);
     if (actual_algo == algo) {
       timestamps.push_back(b.bl.timestamp);
