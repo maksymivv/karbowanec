@@ -80,9 +80,11 @@ namespace CryptoNote {
      virtual bool scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pair<Crypto::Hash, size_t>>& outputReferences) override;
      virtual bool getBlockDifficulty(uint32_t height, difficulty_type& difficulty) override;
      virtual bool getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) override;
+     virtual bool getDifficulties(uint32_t height, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) override;
+     virtual bool getCumulativeDifficulties(uint32_t height, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) override;
      virtual bool getBlockTimestamp(uint32_t height, uint64_t& timestamp) override;
-     virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window) override;
-     virtual difficulty_type getAvgDifficulty(uint32_t height) override;
+     virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window, int algo = ALGO_CN) override;
+     virtual difficulty_type getAvgDifficulty(uint32_t height, int algo = ALGO_CN) override;
      virtual bool getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) override;
      virtual bool getMultisigOutputReference(const MultisignatureInput& txInMultisig, std::pair<Crypto::Hash, size_t>& output_reference) override;
      virtual bool getGeneratedTransactionsNumber(uint32_t height, uint64_t& generatedTransactions) override;
@@ -175,12 +177,12 @@ namespace CryptoNote {
 
      virtual bool saveBlockchain() override;
 
-     uint64_t getNextBlockDifficulty() override;
+     uint64_t getNextBlockDifficulty(int algo = 0) override;
      uint64_t getTotalGeneratedAmount() override;
      uint8_t getBlockMajorVersionForHeight(uint32_t height) const;
      virtual bool getMixin(const Transaction& transaction, uint64_t& mixin) override;
 
-     virtual bool getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) override;
+     virtual bool getAdjustedDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) override;
 
      bool is_key_image_spent(const Crypto::KeyImage& key_im);
      bool is_key_image_spent(const Crypto::KeyImage& key_im, uint32_t height);

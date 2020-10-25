@@ -1205,9 +1205,9 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   }
   res.max_cumulative_block_size = (uint64_t)m_core.currency().maxBlockCumulativeSize(res.height);
 
-  if (!m_core.getNextDifficultyForAlgo(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
-    !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu) ||
-    !m_core.getNextDifficultyForAlgo(res.height, ALGO_CN_CPU, res.multi_algo_difficulties.cn_cpu)) {
+  if (!m_core.getAdjustedDifficultyForAlgo(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
+      !m_core.getAdjustedDifficultyForAlgo(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu) ||
+      !m_core.getAdjustedDifficultyForAlgo(res.height, ALGO_CN_CPU, res.multi_algo_difficulties.cn_cpu)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
       "Internal error: couldn't get algo difficulties" };
   }
@@ -1551,7 +1551,7 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
 
     block_short.algo = blk.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(blk) : -1;
     if (blk.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-      if (!m_core.getNextDifficultyForAlgo(i - 1, block_short.algo, block_short.algo_difficulty)) {
+      if (!m_core.getAdjustedDifficultyForAlgo(i - 1, block_short.algo, block_short.algo_difficulty)) {
         throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
           "Internal error: couldn't get algo difficulty for height " + std::to_string(i) + '.' };
       }

@@ -808,14 +808,32 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
   return m_currency.nextDifficulty(static_cast<uint32_t>(m_blocks.size()), BlockMajorVersion, timestamps, cumulative_difficulties);
 }
 
-difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window) {
+difficulty_type Blockchain::getAvgDifficulty(uint32_t height, int algo) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (height <= 1)
+    return 1;
+
+  if (algo == ALGO_CN_CPU)
+    return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty_cpu / std::min<difficulty_type>(height, m_blocks.size());
+  else if (algo == ALGO_CN_GPU)
+    return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty_gpu / std::min<difficulty_type>(height, m_blocks.size());
+  else
+    return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty / std::min<difficulty_type>(height, m_blocks.size());
+}
+
+difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window, int algo) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   height = std::min<uint32_t>(height, (uint32_t)m_blocks.size() - 1);
   if (height <= 1)
     return 1;
 
   if (window == height) {
-    return m_blocks[height].cumulative_difficulty / height;
+    if (algo == ALGO_CN_CPU)
+      return m_blocks[height].cumulative_difficulty_cpu / height;
+    else if (algo == ALGO_CN_GPU)
+      return m_blocks[height].cumulative_difficulty_gpu / height;
+    else
+      return m_blocks[height].cumulative_difficulty / height;
   }
 
   size_t offset;
@@ -823,15 +841,43 @@ difficulty_type Blockchain::getAvgDifficulty(uint32_t height, size_t window) {
   if (offset == 0) {
     ++offset;
   }
-  difficulty_type cumulDiffForPeriod = m_blocks[height].cumulative_difficulty - m_blocks[offset].cumulative_difficulty;
+  difficulty_type cumulDiffForPeriod;
+  if (algo == ALGO_CN_CPU)
+    cumulDiffForPeriod = m_blocks[height].cumulative_difficulty_cpu - m_blocks[offset].cumulative_difficulty_cpu;
+  else if (algo == ALGO_CN_GPU)
+    cumulDiffForPeriod = m_blocks[height].cumulative_difficulty_gpu - m_blocks[offset].cumulative_difficulty_gpu;
+  else
+    cumulDiffForPeriod = m_blocks[height].cumulative_difficulty - m_blocks[offset].cumulative_difficulty;
+
   return cumulDiffForPeriod / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), static_cast<uint32_t>(window));
 }
 
-difficulty_type Blockchain::getAvgDifficulty(uint32_t height) {
+bool Blockchain::getAvgDifficulties(uint32_t height, size_t window, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  height = std::min<uint32_t>(height, (uint32_t)m_blocks.size() - 1);
   if (height <= 1)
     return 1;
-  return m_blocks[std::min<difficulty_type>(height, m_blocks.size())].cumulative_difficulty / std::min<difficulty_type>(height, m_blocks.size());
+
+  if (window == height) {
+    algo_cn_cpu = m_blocks[height].cumulative_difficulty_cpu / height;
+    algo_cn_gpu = m_blocks[height].cumulative_difficulty_gpu / height;
+    algo_cn = m_blocks[height].cumulative_difficulty / height;
+  }
+
+  size_t offset;
+  offset = height - std::min<uint32_t>(height, std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), static_cast<uint32_t>(window)));
+  if (offset == 0) {
+    ++offset;
+  }
+  difficulty_type cum_cpu = m_blocks[height].cumulative_difficulty_cpu - m_blocks[offset].cumulative_difficulty_cpu;
+  difficulty_type cum_gpu = m_blocks[height].cumulative_difficulty_gpu - m_blocks[offset].cumulative_difficulty_gpu;
+  difficulty_type cum_cn = m_blocks[height].cumulative_difficulty - m_blocks[offset].cumulative_difficulty;
+
+  algo_cn = cum_cn / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), static_cast<uint32_t>(window));
+  algo_cn_cpu = cum_cpu / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), static_cast<uint32_t>(window));
+  algo_cn_gpu = cum_gpu / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), static_cast<uint32_t>(window));
+
+  return true;
 }
 
 uint64_t Blockchain::getBlockTimestamp(uint32_t height) {
@@ -1650,17 +1696,68 @@ uint32_t Blockchain::findBlockchainSupplement(const std::vector<Crypto::Hash>& q
 uint64_t Blockchain::blockDifficulty(size_t i) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
-  if (i == 0)
-    return m_blocks[i].cumulative_difficulty;
+  
+  int algo = getAlgo(m_blocks[i].bl);
 
-  return m_blocks[i].cumulative_difficulty - m_blocks[i - 1].cumulative_difficulty;
+  if (i == 0) {
+    if (algo == ALGO_CN_CPU)
+      return m_blocks[i].cumulative_difficulty_cpu;
+    else if (algo == ALGO_CN_GPU)
+      return m_blocks[i].cumulative_difficulty_gpu;
+    else
+      return m_blocks[i].cumulative_difficulty;
+  }
+
+  if (algo == ALGO_CN_CPU)
+    return m_blocks[i].cumulative_difficulty_cpu - m_blocks[i - 1].cumulative_difficulty_cpu;
+  else if (algo == ALGO_CN_GPU)
+    return m_blocks[i].cumulative_difficulty_gpu - m_blocks[i - 1].cumulative_difficulty_gpu;
+  else
+    return m_blocks[i].cumulative_difficulty - m_blocks[i - 1].cumulative_difficulty;
 }
 
 uint64_t Blockchain::blockCumulativeDifficulty(size_t i) {
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
 
-  return m_blocks[i].cumulative_difficulty;
+  int algo = getAlgo(m_blocks[i].bl);
+
+  if (algo == ALGO_CN_CPU)
+    return m_blocks[i].cumulative_difficulty_cpu;
+  else if (algo == ALGO_CN_GPU)
+    return m_blocks[i].cumulative_difficulty_gpu;
+  else
+    return m_blocks[i].cumulative_difficulty;
+}
+
+bool Blockchain::blockDifficulties(size_t i, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
+
+  if (i == 0) {
+    algo_cn = m_blocks[i].cumulative_difficulty;
+    algo_cn_cpu = m_blocks[i].cumulative_difficulty_cpu;
+    algo_cn_gpu = m_blocks[i].cumulative_difficulty_gpu;
+  
+    return true;
+  }
+
+  algo_cn = m_blocks[i].cumulative_difficulty - m_blocks[i - 1].cumulative_difficulty;
+  algo_cn_cpu = m_blocks[i].cumulative_difficulty_cpu - m_blocks[i - 1].cumulative_difficulty_cpu;
+  algo_cn_gpu = m_blocks[i].cumulative_difficulty_gpu - m_blocks[i - 1].cumulative_difficulty_gpu;
+
+  return true;
+}
+
+bool Blockchain::blockCumulativeDifficulties(size_t i, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) {
+  std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
+  if (!(i < m_blocks.size())) { logger(ERROR, BRIGHT_RED) << "wrong block index i = " << i << " at Blockchain::block_difficulty()"; return false; }
+
+  algo_cn = m_blocks[i].cumulative_difficulty;
+  algo_cn_cpu = m_blocks[i].cumulative_difficulty_cpu;
+  algo_cn_gpu = m_blocks[i].cumulative_difficulty_gpu;
+
+  return true;
 }
 
 bool Blockchain::getblockEntry(size_t i, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp) {

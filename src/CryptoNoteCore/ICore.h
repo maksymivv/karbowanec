@@ -109,10 +109,12 @@ public:
   virtual bool scanOutputkeysForIndices(const KeyInput& txInToKey, std::list<std::pair<Crypto::Hash, size_t>>& outputReferences) = 0;
   virtual bool getBlockDifficulty(uint32_t height, difficulty_type& difficulty) = 0;
   virtual bool getBlockCumulativeDifficulty(uint32_t height, difficulty_type& difficulty) = 0;
+  virtual bool getDifficulties(uint32_t height, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) = 0;
+  virtual bool getCumulativeDifficulties(uint32_t height, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) = 0;
   virtual bool getBlockTimestamp(uint32_t height, uint64_t& timestamp) = 0;
-  virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window) = 0;
-  virtual difficulty_type getAvgDifficulty(uint32_t height) = 0;
-  virtual bool getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) = 0;
+  virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window, int algo = ALGO_CN) = 0;
+  virtual difficulty_type getAvgDifficulty(uint32_t height, int algo = ALGO_CN) = 0;
+  virtual bool getAdjustedDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) = 0;
   virtual bool getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) = 0;
   virtual bool getMultisigOutputReference(const MultisignatureInput& txInMultisig, std::pair<Crypto::Hash, size_t>& outputReference) = 0;
 
@@ -124,7 +126,7 @@ public:
   virtual std::vector<Crypto::Hash> getTransactionHashesByPaymentId(const Crypto::Hash& paymentId) = 0;
   virtual uint64_t getMinimalFeeForHeight(uint32_t height) = 0;
   virtual uint64_t getMinimalFee() = 0;
-  virtual uint64_t getNextBlockDifficulty() = 0;
+  virtual uint64_t getNextBlockDifficulty(int algo = 0) = 0;
   virtual uint64_t getTotalGeneratedAmount() = 0;
   virtual bool check_tx_fee(const Transaction& tx, const Crypto::Hash& txHash, size_t blobSize, tx_verification_context& tvc, uint32_t height) = 0;
   virtual size_t getPoolTransactionsCount() = 0;

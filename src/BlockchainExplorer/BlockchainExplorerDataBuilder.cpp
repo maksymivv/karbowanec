@@ -130,14 +130,6 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
     return false;
   }
 
-  if (block.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-    if (!m_core.getNextDifficultyForAlgo(blockDetails.height - 1, blockDetails.algo, blockDetails.algoDifficulty)) {
-      return false;
-    }
-  } else {
-    blockDetails.algoDifficulty = blockDetails.difficulty;
-  }
-
   std::vector<size_t> blocksSizes;
   if (!m_core.getBackwardBlocksSizes(blockDetails.height, blocksSizes, parameters::CRYPTONOTE_REWARD_BLOCKS_WINDOW)) {
     return false;

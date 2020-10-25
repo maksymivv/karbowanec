@@ -94,9 +94,10 @@ namespace CryptoNote {
     uint32_t getCurrentBlockchainHeight(); //TODO rename to getCurrentBlockchainSize
     Crypto::Hash getTailId();
     Crypto::Hash getTailId(uint32_t& height);
-    difficulty_type getDifficultyForNextBlock(const Crypto::Hash &prevHash, int algo = 0);
-    difficulty_type getAvgDifficulty(uint32_t height);
-    difficulty_type getAvgDifficulty(uint32_t height, size_t window);
+    difficulty_type getDifficultyForNextBlock(const Crypto::Hash &prevHash, int algo = ALGO_CN);
+    difficulty_type getAvgDifficulty(uint32_t height, int algo = ALGO_CN);
+    difficulty_type getAvgDifficulty(uint32_t height, size_t window, int algo = ALGO_CN);
+    bool getAvgDifficulties(uint32_t height, size_t window, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu);
     uint64_t getBlockTimestamp(uint32_t height);
     uint64_t getMinimalFee(uint32_t height);
     uint64_t getCoinsInCirculation();
@@ -120,6 +121,8 @@ namespace CryptoNote {
     uint64_t getCurrentCumulativeBlocksizeLimit();
     uint64_t blockDifficulty(size_t i);
     uint64_t blockCumulativeDifficulty(size_t i);
+    bool blockDifficulties(size_t i, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu);
+    bool blockCumulativeDifficulties(size_t i, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu);
     bool getblockEntry(size_t i, uint64_t& block_cumulative_size, difficulty_type& difficulty, uint64_t& already_generated_coins, uint64_t& reward, uint64_t& transactions_count, uint64_t& timestamp);
     bool getBlockContainingTransaction(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight);
     bool getAlreadyGeneratedCoins(const Crypto::Hash& hash, uint64_t& generatedCoins);

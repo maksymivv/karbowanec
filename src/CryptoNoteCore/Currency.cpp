@@ -748,22 +748,8 @@ namespace CryptoNote {
     return next_D;
   }
 
-  int Currency::getAlgoWorkFactor(int algo) const {
-    switch (algo)
-    {
-    case ALGO_CN:
-      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN;
-    case ALGO_CN_GPU:
-      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_GPU;
-    case ALGO_CN_CPU:
-      return CryptoNote::parameters::MULTI_DIFFICULTY_ALGO_FACTOR_CN_CPU;
-    default:
-      return 1;
-    }
-  }
-
   difficulty_type Currency::algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& prevAlgos) const {
-    difficulty_type adjDiff = currentDiffic * getAlgoWorkFactor(currAlgo);
+    difficulty_type adjDiff = currentDiffic;
     for (size_t i = 0; i < prevAlgos.size(); i++) {
       if (prevAlgos[i] == currAlgo) {
         adjDiff *= 2;
@@ -785,6 +771,7 @@ namespace CryptoNote {
       int currAlgo = getAlgo(block);
       if (currAlgo == ALGO_UNKNOWN) {
         logger(ERROR) << "Unknown algo tag: " << Common::podToHex(block.algorithm);
+        return false;
       }
       if (!get_block_longhash(hash_ctx, currAlgo, block, proofOfWork)) {
         return false;

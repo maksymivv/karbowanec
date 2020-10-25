@@ -200,7 +200,6 @@ void serialize(BlockDetails& block, ISerializer& serializer) {
   serializePod(block.hash, "hash", serializer);
   serializer(block.difficulty, "difficulty");
   serializer(block.cumulativeDifficulty, "cumulativeDifficulty");
-  serializer(block.algoDifficulty, "algoDifficulty");
   serializer(block.reward, "reward");
   serializer(block.baseReward, "baseReward");
   serializer(block.blockSize, "blockSize");

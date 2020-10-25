@@ -1131,6 +1131,14 @@ bool Core::getBlockCumulativeDifficulty(uint32_t height, difficulty_type& diffic
   return true;
 }
 
+bool Core::getDifficulties(uint32_t height, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) {
+  return m_blockchain.blockDifficulties(height, algo_cn, algo_cn_cpu, algo_cn_gpu);
+}
+
+bool Core::getCumulativeDifficulties(uint32_t height, uint64_t& algo_cn, uint64_t& algo_cn_cpu, uint64_t& algo_cn_gpu) {
+  return m_blockchain.blockCumulativeDifficulties(height, algo_cn, algo_cn_cpu, algo_cn_gpu);
+}
+
 bool Core::getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) {
   return m_blockchain.getBlockContainingTransaction(txId, blockId, blockHeight);
 }
@@ -1232,12 +1240,12 @@ std::vector<Crypto::Hash> Core::getTransactionHashesByPaymentId(const Crypto::Ha
   return blockchainTransactionHashes;
 }
 
-difficulty_type Core::getAvgDifficulty(uint32_t height, size_t window) {
-  return m_blockchain.getAvgDifficulty(height, window);
+difficulty_type Core::getAvgDifficulty(uint32_t height, size_t window, int algo) {
+  return m_blockchain.getAvgDifficulty(height, window, algo);
 }
 
-difficulty_type Core::getAvgDifficulty(uint32_t height) {
-  return m_blockchain.getAvgDifficulty(height);
+difficulty_type Core::getAvgDifficulty(uint32_t height, int algo) {
+  return m_blockchain.getAvgDifficulty(height, algo);
 }
 
 uint64_t Core::getMinimalFee() {
@@ -1255,8 +1263,8 @@ std::error_code Core::executeLocked(const std::function<std::error_code()>& func
   return func();
 }
 
-uint64_t Core::getNextBlockDifficulty() {
-  return m_blockchain.getDifficultyForNextBlock(get_tail_id()); // TODO: adjust to multialgo
+uint64_t Core::getNextBlockDifficulty(int algo) {
+  return m_blockchain.getDifficultyForNextBlock(get_tail_id(), algo);
 }
 
 uint64_t Core::getTotalGeneratedAmount() {
@@ -1373,9 +1381,9 @@ bool Core::getMixin(const Transaction& transaction, uint64_t& mixin) {
   return true;
 }
 
-bool Core::getNextDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
+bool Core::getAdjustedDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
   difficulty_type base_diffic = height < getCurrentBlockchainHeight() ?
-    m_blockchain.blockDifficulty(height + 1) : getNextBlockDifficulty();
+    m_blockchain.blockDifficulty(height + 1) : getNextBlockDifficulty(algo);
   std::vector<int> prev_algos;
   Block prevBlk;
   Crypto::Hash prevHash = getBlockIdByHeight(height < getCurrentBlockchainHeight() ? height : getCurrentBlockchainHeight() - 1);
