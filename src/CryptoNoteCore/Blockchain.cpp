@@ -859,9 +859,9 @@ bool Blockchain::getAvgDifficulties(uint32_t height, size_t window, uint64_t& al
     return 1;
 
   if (window == height) {
+    algo_cn = m_blocks[height].cumulative_difficulty / height;
     algo_cn_cpu = m_blocks[height].cumulative_difficulty_cpu / height;
     algo_cn_gpu = m_blocks[height].cumulative_difficulty_gpu / height;
-    algo_cn = m_blocks[height].cumulative_difficulty / height;
   }
 
   size_t offset;
@@ -869,9 +869,9 @@ bool Blockchain::getAvgDifficulties(uint32_t height, size_t window, uint64_t& al
   if (offset == 0) {
     ++offset;
   }
+  difficulty_type cum_cn = m_blocks[height].cumulative_difficulty - m_blocks[offset].cumulative_difficulty;
   difficulty_type cum_cpu = m_blocks[height].cumulative_difficulty_cpu - m_blocks[offset].cumulative_difficulty_cpu;
   difficulty_type cum_gpu = m_blocks[height].cumulative_difficulty_gpu - m_blocks[offset].cumulative_difficulty_gpu;
-  difficulty_type cum_cn = m_blocks[height].cumulative_difficulty - m_blocks[offset].cumulative_difficulty;
 
   algo_cn = cum_cn / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), static_cast<uint32_t>(window));
   algo_cn_cpu = cum_cpu / std::min<uint32_t>(static_cast<uint32_t>(m_blocks.size() - 1), static_cast<uint32_t>(window));
@@ -915,6 +915,7 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
   uint64_t avgReferenceDifficultyCn = m_blocks[height].cumulative_difficulty / height;
   uint64_t avgReferenceDifficultyCpu = m_blocks[height].cumulative_difficulty_cpu / height;
   uint64_t avgReferenceDifficultyGpu = m_blocks[height].cumulative_difficulty_gpu / height;
+
   // calculate current base reward
   uint64_t currentReward = m_currency.calculateReward(m_blocks[height].already_generated_coins);
   // reference trailing average reward
@@ -939,6 +940,7 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
   double gpuRatio = static_cast<double>(avgReferenceDifficultyGpu) / currentDifficultyMooreGpu;
 
   std::vector<double> ratios = { cnRatio, cpuRatio, gpuRatio };
+  // before hf other algos' than CN difficulties are garbage
   double diffRatio = height > CryptoNote::parameters::UPGRADE_HEIGHT_V5 ? Common::medianValue(ratios) : cnRatio;
   const double baseFee = static_cast<double>(250000000000);
   double minFee = baseFee * diffRatio * static_cast<double>(currentReward) / static_cast<double>(avgReferenceReward);
