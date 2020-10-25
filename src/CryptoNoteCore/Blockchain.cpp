@@ -905,20 +905,60 @@ uint64_t Blockchain::getMinimalFee(uint32_t height) {
     ++offset;
   }
 
-  /* Perhaps, in case of POW change, difficulties for calculations here
-   * should be reset and used starting from the fork height.
-   */
-
   // calculate average difficulty for ~last month
-  uint64_t avgCurrentDifficulty = getAvgDifficulty(height, window * 7 * 4);
+  uint64_t avgCurrentDifficultyCn;
+  uint64_t avgCurrentDifficultyCpu;
+  uint64_t avgCurrentDifficultyGpu;
+  getAvgDifficulties(height, window * 7 * 4, avgCurrentDifficultyCn, avgCurrentDifficultyCpu, avgCurrentDifficultyGpu);
+  
   // reference trailing average difficulty
-  uint64_t avgReferenceDifficulty = m_blocks[height].cumulative_difficulty / height;
+  uint64_t avgReferenceDifficultyCn = m_blocks[height].cumulative_difficulty / height;
+  uint64_t avgReferenceDifficultyCpu = m_blocks[height].cumulative_difficulty_cpu / height;
+  uint64_t avgReferenceDifficultyGpu = m_blocks[height].cumulative_difficulty_gpu / height;
   // calculate current base reward
   uint64_t currentReward = m_currency.calculateReward(m_blocks[height].already_generated_coins);
   // reference trailing average reward
   uint64_t avgReferenceReward = m_blocks[height].already_generated_coins / height;
 
-  return m_currency.getMinimalFee(avgCurrentDifficulty, currentReward, avgReferenceDifficulty, avgReferenceReward, height);
+  // The idea is based on Zawy's post
+  // http://zawy1.blogspot.com/2017/12/using-difficulty-to-get-constant-value.html
+  // Moore's law application by Sergey Kozlov
+
+  const uint64_t blocksInTwoYears = m_currency.expectedNumberOfBlocksPerDay() * 365 * 2;
+
+  double currentDifficultyMooreCn = static_cast<double>(avgCurrentDifficultyCn) /
+    pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
+  double cnRatio = static_cast<double>(avgReferenceDifficultyCn) / currentDifficultyMooreCn;
+
+  double currentDifficultyMooreCpu = static_cast<double>(avgCurrentDifficultyCpu) /
+    pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
+  double cpuRatio = static_cast<double>(avgReferenceDifficultyCpu) / currentDifficultyMooreCpu;
+
+  double currentDifficultyMooreGpu = static_cast<double>(avgCurrentDifficultyGpu) /
+    pow(2, static_cast<double>(height) / static_cast<double>(blocksInTwoYears));
+  double gpuRatio = static_cast<double>(avgReferenceDifficultyGpu) / currentDifficultyMooreGpu;
+
+  std::vector<double> ratios = { cnRatio, cpuRatio, gpuRatio };
+  double diffRatio = height > CryptoNote::parameters::UPGRADE_HEIGHT_V5 ? Common::medianValue(ratios) : cnRatio;
+  const double baseFee = static_cast<double>(250000000000);
+  double minFee = baseFee * diffRatio * static_cast<double>(currentReward) / static_cast<double>(avgReferenceReward);
+
+  // zero test 
+  if (minFee == 0 || !std::isfinite(minFee))
+    return CryptoNote::parameters::MAXIMUM_FEE;
+
+  uint64_t minimumFee = static_cast<uint64_t>(minFee);
+
+  if (height > CryptoNote::parameters::UPGRADE_HEIGHT_V4_2) {
+    // Make all insignificant digits zero
+    uint64_t i = 1000000000;
+    while (i > 1) {
+      if (minimumFee > i * 100) { minimumFee = ((minimumFee + i / 2) / i) * i; break; }
+      else { i /= 10; }
+    }
+  }
+
+  return std::min<uint64_t>(CryptoNote::parameters::MAXIMUM_FEE, minimumFee);
 }
 
 uint64_t Blockchain::getCoinsInCirculation() {
