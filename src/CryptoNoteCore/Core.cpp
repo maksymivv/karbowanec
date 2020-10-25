@@ -491,13 +491,16 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
   {
     LockedBlockchainStorage blockchainLock(m_blockchain);
     height = m_blockchain.getCurrentBlockchainHeight();
+    
+    b = boost::value_initialized<Block>();
+    b.previousBlockHash = get_tail_id();
+
     difficulty_type base_diffic = m_blockchain.getDifficultyForNextBlock(b.previousBlockHash, algo);
     if (!(base_diffic)) {
       logger(ERROR, BRIGHT_RED) << "difficulty overhead.";
       return false;
     }
 
-    b = boost::value_initialized<Block>();
     b.majorVersion = m_blockchain.getBlockMajorVersionForHeight(height);
 
     if (b.majorVersion == BLOCK_MAJOR_VERSION_1) {
@@ -535,7 +538,6 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
       }
     }
 
-    b.previousBlockHash = get_tail_id();
     b.timestamp = time(NULL);
 
     std::vector<int> prev_algos;
