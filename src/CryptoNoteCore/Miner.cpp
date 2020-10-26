@@ -63,7 +63,7 @@ namespace CryptoNote
     m_current_hash_rate(0),
     m_update_block_template_interval(5),
     m_update_merge_hr_interval(2),
-    m_algo(0)
+    m_algo(ALGO_CN_CPU)
   {
   }
   //-----------------------------------------------------------------------------------------------------
@@ -191,6 +191,11 @@ namespace CryptoNote
         return false;
       }
     }
+    else { // set default algo for CPU
+      m_algo = ALGO_CN_CPU;
+      m_algo_name = "cn-cpu";
+    }
+
     if (!config.extraMessages.empty()) {
       std::string buff;
       if (!Common::loadFileToString(config.extraMessages, buff)) {
