@@ -666,18 +666,23 @@ namespace CryptoNote {
     std::vector<difficulty_type> cumulativeDifficulties, 
     std::vector<int> prevAlgos, int currAlgo) const {
 
-    // LWMA-1 difficulty algorithm 
+    // LWMA-1 difficulty algorithm (modified, for original see link below)
     // Copyright (c) 2017-2018 Zawy, MIT License
     // See commented link below for required config file changes. Fix FTL and MTP.
     // https://github.com/zawy12/difficulty-algorithms/issues/3
    
     if (currAlgo != ALGO_CN && height <= CryptoNote::parameters::UPGRADE_HEIGHT_V5) return 0;
 
-    // reset difficulty for new epoch
-    if (currAlgo != ALGO_CN && (
-        height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) &&
-        height < upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 10))
-      return 1000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
+    // set initial difficulty for new algos
+    if (currAlgo != ALGO_CN) {
+      int count = 0;
+      for (const auto& a : prevAlgos) {
+        if (a == currAlgo) count++;
+      }
+      while (count < 3) {
+        return 1000;
+      }
+    }
 
     assert(timestamps.size() == cumulativeDifficulties.size());
 
@@ -709,7 +714,7 @@ namespace CryptoNote {
       else { i /= 10; }
     }
 
-    // adjust by previous algos
+    // multi-algo adjustment
     for (size_t i = 0; i < prevAlgos.size(); i++) {
       if (prevAlgos[i] == currAlgo) {
         next_D *= 2;
