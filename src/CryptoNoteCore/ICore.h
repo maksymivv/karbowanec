@@ -114,7 +114,6 @@ public:
   virtual bool getBlockTimestamp(uint32_t height, uint64_t& timestamp) = 0;
   virtual difficulty_type getAvgDifficulty(uint32_t height, size_t window, int algo = ALGO_CN) = 0;
   virtual difficulty_type getAvgDifficulty(uint32_t height, int algo = ALGO_CN) = 0;
-  virtual bool getAdjustedDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) = 0;
   virtual bool getBlockContainingTx(const Crypto::Hash& txId, Crypto::Hash& blockId, uint32_t& blockHeight) = 0;
   virtual bool getMultisigOutputReference(const MultisignatureInput& txInMultisig, std::pair<Crypto::Hash, size_t>& outputReference) = 0;
 

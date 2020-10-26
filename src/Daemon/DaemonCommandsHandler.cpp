@@ -24,6 +24,7 @@
 #include <ctime>
 #include "P2p/NetNode.h"
 #include <Common/ColouredMsg.h>
+#include "CryptoNote.h"
 #include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/Core.h"
 #include "CryptoNoteProtocol/CryptoNoteProtocolHandler.h"
@@ -117,7 +118,9 @@ bool DaemonCommandsHandler::help(const std::vector<std::string>& args) {
 //--------------------------------------------------------------------------------
 bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
   uint32_t height = m_core.getCurrentBlockchainHeight() - 1;
-  uint64_t difficulty = m_core.getNextBlockDifficulty();
+  uint64_t difficulty_cn = m_core.getNextBlockDifficulty(CryptoNote::ALGO_CN);
+  uint64_t difficulty_cpu = m_core.getNextBlockDifficulty(CryptoNote::ALGO_CN_CPU);
+  uint64_t difficulty_gpu = m_core.getNextBlockDifficulty(CryptoNote::ALGO_CN_GPU);
   size_t tx_pool_size = m_core.getPoolTransactionsCount();
   size_t alt_blocks_count = m_core.getAlternativeBlocksCount();
   uint32_t last_known_block_index = std::max(static_cast<uint32_t>(1), protocolQuery.getObservedHeight()) - 1;
@@ -128,7 +131,9 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
   size_t incoming_connections_count = total_conn - outgoing_connections_count;
   size_t white_peerlist_size = m_srv.getPeerlistManager().get_white_peers_count();
   size_t grey_peerlist_size = m_srv.getPeerlistManager().get_gray_peers_count();
-  uint64_t hashrate = (uint64_t) round(difficulty / CryptoNote::parameters::DIFFICULTY_TARGET);
+  uint64_t hashrate_cn = (uint64_t) round(difficulty_cn / CryptoNote::parameters::DIFFICULTY_TARGET);
+  uint64_t hashrate_cpu = (uint64_t) round(difficulty_cpu / CryptoNote::parameters::DIFFICULTY_TARGET);
+  uint64_t hashrate_gpu = (uint64_t) round(difficulty_gpu / CryptoNote::parameters::DIFFICULTY_TARGET);
   std::time_t uptime = std::time(nullptr) - m_core.getStartTime();
   uint8_t majorVersion = m_core.getBlockMajorVersionForHeight(height);
   bool synced = ((uint32_t)height == (uint32_t)last_known_block_index);
@@ -138,19 +143,23 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
     << ColouredMsg(std::to_string(height), Common::Console::Color::BrightWhite) << "/" << ColouredMsg(std::to_string(last_known_block_index), Common::Console::Color::BrightWhite)
     << " (" << ColouredMsg(std::to_string(get_sync_percentage(height, last_known_block_index)).substr(0, 5) + "%", Common::Console::Color::BrightWhite) << ") "
     << "on " << ColouredMsg((m_core.currency().isTestnet() ? "testnet" : "mainnet"), Common::Console::Color::BrightWhite) << ", "
-    << "block v. " << ColouredMsg(std::to_string((int)majorVersion), Common::Console::Color::BrightWhite) << ",\n"
-    << "last block hash: " << ColouredMsg(Common::podToHex(last_block_hash), Common::Console::Color::BrightWhite) << ",\n"
-    << "next difficulty: " << ColouredMsg(std::to_string(difficulty), Common::Console::Color::BrightWhite) << ", "
-    << "network hashrate: " << ColouredMsg(get_mining_speed(hashrate), Common::Console::Color::BrightWhite) << ", "
-    << "alt. blocks: " << ColouredMsg(std::to_string(alt_blocks_count), Common::Console::Color::BrightWhite) << ", \n"
+    << "block v. " << ColouredMsg(std::to_string((int)majorVersion), Common::Console::Color::BrightWhite) << ", "
+    << "uptime: " << ColouredMsg(std::to_string((unsigned int)floor(uptime / 60.0 / 60.0 / 24.0)) + "d " + std::to_string((unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0))) + "h "
+      + std::to_string((unsigned int)floor(fmod((uptime / 60.0), 60.0))) + "m " + std::to_string((unsigned int)fmod(uptime, 60.0)) + "s", Common::Console::Color::BrightWhite) << std::endl
+    << "tail id: " << ColouredMsg(Common::podToHex(last_block_hash), Common::Console::Color::BrightWhite) << ",\n"
+    << "next difficulties: " << "ASIC " << ColouredMsg(std::to_string(difficulty_cn), Common::Console::Color::BrightWhite) << ", "
+    << "CPU " << ColouredMsg(std::to_string(difficulty_cpu), Common::Console::Color::BrightWhite) << ", "
+    << "GPU " << ColouredMsg(std::to_string(difficulty_gpu), Common::Console::Color::BrightWhite) << ",\n"
+    << "network hashrate: " << "ASIC " << ColouredMsg(get_mining_speed(hashrate_cn), Common::Console::Color::BrightWhite) << ", "
+    << "CPU " << ColouredMsg(get_mining_speed(hashrate_cpu), Common::Console::Color::BrightWhite) << ", "
+    << "GPU " << ColouredMsg(get_mining_speed(hashrate_gpu), Common::Console::Color::BrightWhite) << ",\n"
     << ColouredMsg(std::to_string(outgoing_connections_count), Common::Console::Color::BrightWhite) << " out. + " 
     << ColouredMsg(std::to_string(incoming_connections_count), Common::Console::Color::BrightWhite) << " inc. connection(s), "
     << ColouredMsg(std::to_string(rpc_conn), Common::Console::Color::BrightWhite) << " rpc connection(s), " 
     << "peers: " << ColouredMsg(std::to_string(white_peerlist_size), Common::Console::Color::BrightWhite) << " white / " 
     << ColouredMsg(std::to_string(grey_peerlist_size), Common::Console::Color::BrightWhite) << " grey, \n"
     << ColouredMsg(std::to_string(tx_pool_size), Common::Console::Color::BrightWhite) << " transaction(s) in mempool, "
-    << "uptime: " << ColouredMsg(std::to_string((unsigned int)floor(uptime / 60.0 / 60.0 / 24.0)) + "d " + std::to_string((unsigned int)floor(fmod((uptime / 60.0 / 60.0), 24.0))) + "h "
-    + std::to_string((unsigned int)floor(fmod((uptime / 60.0), 60.0))) + "m " + std::to_string((unsigned int)fmod(uptime, 60.0)) + "s", Common::Console::Color::BrightWhite) << std::endl
+    << "alt. blocks: " << ColouredMsg(std::to_string(alt_blocks_count), Common::Console::Color::BrightWhite) << ", "
     << std::endl;
   
   return true;

@@ -1176,7 +1176,6 @@ bool RpcServer::on_get_payment_id(const COMMAND_HTTP::request& req, COMMAND_HTTP
 
 bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_GET_INFO::response& res) {
   res.height = m_core.getCurrentBlockchainHeight();
-  res.difficulty = m_core.getNextBlockDifficulty();
   res.transactions_count = m_core.getBlockchainTotalTransactions() - res.height; //without coinbase
   res.transactions_pool_size = m_core.getPoolTransactionsCount();
   res.alt_blocks_count = m_core.getAlternativeBlocksCount();
@@ -1199,18 +1198,17 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.block_major_version = m_core.getCurrentBlockMajorVersion();
   uint64_t nextReward = m_core.currency().calculateReward(alreadyGeneratedCoins);
   res.next_reward = nextReward;
-  if (!m_core.getBlockCumulativeDifficulty(res.height - 1, res.cumulative_difficulty)) {
+  if (!m_core.getCumulativeDifficulties(res.height - 1, 
+    res.cumulative_difficulties.cryptonight, 
+    res.cumulative_difficulties.cn_cpu, 
+    res.cumulative_difficulties.cn_gpu)) {
     throw JsonRpc::JsonRpcError{
-      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulty." };
+      CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Internal error: can't get last cumulative difficulties." };
   }
+  res.next_difficulties.cryptonight = m_core.getNextBlockDifficulty(ALGO_CN);
+  res.next_difficulties.cn_cpu = m_core.getNextBlockDifficulty(ALGO_CN_CPU);
+  res.next_difficulties.cn_gpu = m_core.getNextBlockDifficulty(ALGO_CN_GPU);
   res.max_cumulative_block_size = (uint64_t)m_core.currency().maxBlockCumulativeSize(res.height);
-
-  if (!m_core.getAdjustedDifficultyForAlgo(res.height, ALGO_CN, res.multi_algo_difficulties.cryptonight) ||
-      !m_core.getAdjustedDifficultyForAlgo(res.height, ALGO_CN_GPU, res.multi_algo_difficulties.cn_gpu) ||
-      !m_core.getAdjustedDifficultyForAlgo(res.height, ALGO_CN_CPU, res.multi_algo_difficulties.cn_cpu)) {
-    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-      "Internal error: couldn't get algo difficulties" };
-  }
 
   res.status = CORE_RPC_STATUS_OK;
   return true;
@@ -1548,18 +1546,8 @@ bool RpcServer::on_blocks_list_json(const COMMAND_RPC_GET_BLOCKS_LIST::request& 
     block_short.transactions_count = blk.transactionHashes.size() + 1;
     block_short.difficulty = blockDiff;
     block_short.min_fee = m_core.getMinimalFeeForHeight(i);
-
     block_short.algo = blk.majorVersion >= BLOCK_MAJOR_VERSION_5 ? getAlgo(blk) : -1;
-    if (blk.majorVersion >= BLOCK_MAJOR_VERSION_5) {
-      if (!m_core.getAdjustedDifficultyForAlgo(i - 1, block_short.algo, block_short.algo_difficulty)) {
-        throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR,
-          "Internal error: couldn't get algo difficulty for height " + std::to_string(i) + '.' };
-      }
-    }
-    else {
-      block_short.algo_difficulty = blockDiff;
-    }
-
+    
     res.blocks.push_back(block_short);
 
     if (i == 0)

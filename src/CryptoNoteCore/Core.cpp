@@ -495,8 +495,8 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     b = boost::value_initialized<Block>();
     b.previousBlockHash = get_tail_id();
 
-    difficulty_type base_diffic = m_blockchain.getDifficultyForNextBlock(b.previousBlockHash, algo);
-    if (!(base_diffic)) {
+    diffic = m_blockchain.getDifficultyForNextBlock(b.previousBlockHash, algo);
+    if (!(diffic)) {
       logger(ERROR, BRIGHT_RED) << "difficulty overhead.";
       return false;
     }
@@ -539,28 +539,6 @@ bool Core::get_block_template(Block& b, const AccountPublicAddress& adr, difficu
     }
 
     b.timestamp = time(NULL);
-
-    std::vector<int> prev_algos;
-    Block prevBlk;
-    Crypto::Hash prevHash = b.previousBlockHash;
-    if (!getBlockByHash(prevHash, prevBlk)) {
-      logger(ERROR, BRIGHT_RED) <<
-        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
-      return false;
-    }
-    int prevBlkAlgo = getAlgo(prevBlk);
-    prev_algos.push_back(prevBlkAlgo);
-    for (size_t i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
-      Crypto::Hash prevHash = prevBlk.previousBlockHash;
-      if (!getBlockByHash(prevHash, prevBlk)) {
-        logger(ERROR, BRIGHT_RED) <<
-          "Couldn't find previous block with id: " << Common::podToHex(prevHash);
-        return false;
-      }
-      int algo = getAlgo(prevBlk);
-      prev_algos.push_back(algo);
-    }
-    diffic = m_currency.algoDifficulty(base_diffic, algo, prev_algos);
 
     // Don't generate a block template with invalid timestamp
     // Fix by Jagerman
@@ -1380,35 +1358,6 @@ bool Core::getMixin(const Transaction& transaction, uint64_t& mixin) {
       mixin = currentMixin;
     }
   }
-  return true;
-}
-
-bool Core::getAdjustedDifficultyForAlgo(uint32_t height, int algo, difficulty_type& algoDifficulty) {  
-  difficulty_type base_diffic = height < getCurrentBlockchainHeight() ?
-    m_blockchain.blockDifficulty(height + 1) : getNextBlockDifficulty(algo);
-  std::vector<int> prev_algos;
-  Block prevBlk;
-  Crypto::Hash prevHash = getBlockIdByHeight(height < getCurrentBlockchainHeight() ? height : getCurrentBlockchainHeight() - 1);
-  if (!getBlockByHash(prevHash, prevBlk)) {
-    logger(ERROR, BRIGHT_RED) <<
-      "Couldn't find previous block with id: " << Common::podToHex(prevHash);
-    return false;
-  }
-  int prevBlkAlgo = getAlgo(prevBlk);
-  prev_algos.push_back(prevBlkAlgo);
-  for (size_t i = 0; i < CryptoNote::parameters::MULTI_DIFFICULTY_ADJUSTMENT_WINDOW - 1; i++) {
-    Crypto::Hash prevHash = prevBlk.previousBlockHash;
-    if (!getBlockByHash(prevHash, prevBlk)) {
-      logger(ERROR, BRIGHT_RED) <<
-        "Couldn't find previous block with id: " << Common::podToHex(prevHash);
-      return false;
-    }
-    int algo = getAlgo(prevBlk);
-    prev_algos.push_back(algo);
-  }
-  
-  algoDifficulty = m_currency.algoDifficulty(base_diffic, algo, prev_algos);
-
   return true;
 }
 

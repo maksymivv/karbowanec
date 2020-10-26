@@ -167,17 +167,17 @@ public:
 
   uint64_t roundUpMinFee(uint64_t minimalFee, int digits) const;
 
-  difficulty_type nextDifficulty(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
+  difficulty_type nextDifficulty(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties, std::vector<int> prev_algos, int curr_algo) const;
   difficulty_type nextDifficultyV1(std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV2(std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV3(std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
   difficulty_type nextDifficultyV4(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
-  difficulty_type nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties) const;
+  difficulty_type nextDifficultyV5(uint32_t height, uint8_t blockMajorVersion, std::vector<uint64_t> timestamps, std::vector<difficulty_type> Difficulties, std::vector<int> prev_algos, int curr_algo) const;
   difficulty_type algoDifficulty(difficulty_type currentDiffic, const int currAlgo, const std::vector<int>& algos) const;
 
-  bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWorkV1(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
   bool checkProofOfWorkV2(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
-  bool checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, const std::vector<int>& algos, Crypto::Hash& proofOfWork) const;
+  bool checkProofOfWork(cn_pow_hash_v2& hash_ctx, const Block& block, difficulty_type currentDiffic, Crypto::Hash& proofOfWork) const;
 
   size_t getApproximateMaximumInputCount(size_t transactionSize, size_t outputCount, size_t mixinCount) const;
 

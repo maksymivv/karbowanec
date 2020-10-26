@@ -141,7 +141,7 @@ void MiningConfig::parse(int argc, char** argv) {
     } else if (options["mining-algo"].as<std::string>() == "cn-cpu") {
       miningAlgo = ALGO_CN_CPU;
     } else {
-      throw std::runtime_error("Wrong --mining-algo parameter, supported algos: cryptonight, cn-gpu, cn-power");
+      throw std::runtime_error("Wrong --mining-algo parameter, supported algos: cryptonight, cn-gpu, cn-cpu");
     }
   } else {
     miningAlgo = ALGO_CN_CPU;

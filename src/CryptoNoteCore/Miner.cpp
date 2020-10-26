@@ -187,7 +187,7 @@ namespace CryptoNote
       }
       else {
         logger(ERROR) << "Wrong algo " << config.algo << " in config, starting daemon canceled." <<
-          ENDL << "Possible algos: cryptonight, cn-gpu, cn-power";
+          ENDL << "Possible algos: cryptonight, cn-gpu, cn-cpu";
         return false;
       }
     }
@@ -367,7 +367,7 @@ namespace CryptoNote
 
       b.nonce = nonce;
       Crypto::Hash h;
-      if (!m_stop && !get_block_longhash(hash_ctx, m_algo, b, h)) {
+      if (!m_stop && !get_block_longhash(hash_ctx, b, h)) {
         logger(ERROR) << "Failed to get block long hash";
         m_stop = true;
       }
@@ -378,7 +378,7 @@ namespace CryptoNote
         ++m_config.current_extra_message_index;
 
         logger(INFO, GREEN) << "Found block for difficulty: " 
-                            << local_diff << std::endl 
+                            << local_diff << "\r\n"
                             << " pow: " << Common::podToHex(h);
 
         Crypto::Hash id;

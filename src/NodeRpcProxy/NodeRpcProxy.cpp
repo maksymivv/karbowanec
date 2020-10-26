@@ -304,7 +304,7 @@ void NodeRpcProxy::updateBlockchainStatus() {
 
     m_minimalFee.store(getInfoResp.min_fee, std::memory_order_relaxed);
     m_nodeHeight.store(getInfoResp.height, std::memory_order_relaxed);
-    m_nextDifficulty.store(getInfoResp.difficulty, std::memory_order_relaxed);
+    m_nextDifficulty.store(getInfoResp.next_difficulties.cryptonight, std::memory_order_relaxed); // TODO fix to use multi
     m_nextReward.store(getInfoResp.next_reward, std::memory_order_relaxed);
     m_transactionsCount.store(getInfoResp.transactions_count, std::memory_order_relaxed);
     m_transactionsPoolSize.store(getInfoResp.transactions_pool_size, std::memory_order_relaxed);

@@ -294,8 +294,6 @@ struct COMMAND_RPC_GET_INFO {
     std::string version;
     uint32_t height;
     std::string top_block_hash;
-    uint64_t difficulty;
-    uint64_t cumulative_difficulty;
     uint64_t max_cumulative_block_size;
     uint64_t next_reward;
     uint64_t min_fee;
@@ -311,7 +309,8 @@ struct COMMAND_RPC_GET_INFO {
     uint64_t start_time;
     uint8_t block_major_version;
     std::string already_generated_coins;
-    algo_difficulties multi_algo_difficulties;
+    algo_difficulties next_difficulties;
+    algo_difficulties cumulative_difficulties;
     std::string contact;   
 
     void serialize(ISerializer &s) {
@@ -319,8 +318,6 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(version)
       KV_MEMBER(height)
       KV_MEMBER(top_block_hash)
-      KV_MEMBER(difficulty)
-      KV_MEMBER(cumulative_difficulty)
       KV_MEMBER(max_cumulative_block_size)
       KV_MEMBER(next_reward)
       KV_MEMBER(min_fee)
@@ -336,7 +333,8 @@ struct COMMAND_RPC_GET_INFO {
       KV_MEMBER(start_time)
       KV_MEMBER(block_major_version)
       KV_MEMBER(already_generated_coins)
-      KV_MEMBER(multi_algo_difficulties)
+      KV_MEMBER(next_difficulties)
+      KV_MEMBER(cumulative_difficulties)
       KV_MEMBER(contact)      
     }
   };
@@ -574,7 +572,6 @@ struct block_short_response {
   uint64_t transactions_count;
   uint64_t cumulative_size;
   difficulty_type difficulty;
-  difficulty_type algo_difficulty;
   uint64_t min_fee;
   int algo;
 
@@ -585,7 +582,6 @@ struct block_short_response {
     KV_MEMBER(cumulative_size)
     KV_MEMBER(transactions_count)
     KV_MEMBER(difficulty)
-    KV_MEMBER(algo_difficulty)
     KV_MEMBER(min_fee)
     KV_MEMBER(algo)
   }
