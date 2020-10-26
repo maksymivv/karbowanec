@@ -246,9 +246,9 @@ namespace CryptoNote {
       Block bl;
       uint32_t height;
       uint64_t block_cumulative_size;
-      difficulty_type cumulative_difficulty;
-      difficulty_type cumulative_difficulty_gpu;
-      difficulty_type cumulative_difficulty_cpu;
+      difficulty_type cumulative_difficulty = 0;
+      difficulty_type cumulative_difficulty_gpu = 0;
+      difficulty_type cumulative_difficulty_cpu = 0;
       uint64_t already_generated_coins;
       std::vector<TransactionEntry> transactions;
 
