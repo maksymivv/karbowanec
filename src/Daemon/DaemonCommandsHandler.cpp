@@ -158,9 +158,9 @@ bool DaemonCommandsHandler::status(const std::vector<std::string>& args) {
     << ColouredMsg(std::to_string(rpc_conn), Common::Console::Color::BrightWhite) << " rpc connection(s), " 
     << "peers: " << ColouredMsg(std::to_string(white_peerlist_size), Common::Console::Color::BrightWhite) << " white / " 
     << ColouredMsg(std::to_string(grey_peerlist_size), Common::Console::Color::BrightWhite) << " grey, \n"
-    << ColouredMsg(std::to_string(tx_pool_size), Common::Console::Color::BrightWhite) << " transaction(s) in mempool, "
-    << "alt. blocks: " << ColouredMsg(std::to_string(alt_blocks_count), Common::Console::Color::BrightWhite) << ", "
-    << std::endl;
+    << "transactions in mempool: " << ColouredMsg(std::to_string(tx_pool_size), Common::Console::Color::BrightWhite) << ", "
+    << "alt. blocks: " << ColouredMsg(std::to_string(alt_blocks_count), Common::Console::Color::BrightWhite)  
+    << std::endl << std::endl;
   
   return true;
 }
