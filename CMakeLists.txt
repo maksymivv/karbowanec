@@ -424,7 +424,7 @@ else()
 
   if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_HAS_TR1_TUPLE=0")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maes -msse4.2 -mavx")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maes -msse4.2 -mavx -mavx2")
   endif()
   
   set(DEBUG_FLAGS "-g3")
