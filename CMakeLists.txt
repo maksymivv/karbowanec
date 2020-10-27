@@ -424,7 +424,6 @@ else()
 
   if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_HAS_TR1_TUPLE=0")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maes -msse4.2 -mavx -mavx2")
   endif()
   
   set(DEBUG_FLAGS "-g3")
@@ -444,6 +443,10 @@ else()
     set(USE_LTO false)
   endif()
 
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT ANDROID)
+  	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -maes -msse4.1 -mavx -mavx2")
+  endif()
+  
   if(USE_LTO)
     set(RELEASE_FLAGS "${RELEASE_FLAGS} -flto")
     if(STATIC)
