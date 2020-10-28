@@ -714,17 +714,17 @@ namespace CryptoNote {
       else { i /= 10; }
     }
 
-    // multi-algo adjustment
+    // Consequences of consecutive algos
     difficulty_type adj_D = next_D;
-    for (size_t i = 1/*sic!*/; i < prevAlgos.size(); i++) {
+    for (size_t i = 0; i < prevAlgos.size(); i++) {
       if (prevAlgos[i] == currAlgo)
-        adj_D = i * next_D;
+        adj_D = (i + 1) * next_D;
       else
         break;
     }
     next_D = adj_D;
 
-    // minimum limit
+    // Minimum limit
     if (!isTestnet() && next_D < 1000000) {
       //next_D = 1000000;
     }
