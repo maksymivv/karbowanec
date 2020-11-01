@@ -686,7 +686,7 @@ namespace CryptoNote {
 
     assert(timestamps.size() == cumulativeDifficulties.size());
 
-    const int64_t T = static_cast<int64_t>(m_difficultyTarget) * 3; // since we have 3 algos
+    const int64_t T = static_cast<int64_t>(m_difficultyTarget) * NUM_ALGOS_IMPL; // since we have several algos
     uint64_t N = std::min<uint64_t>(difficultyBlocksCount4(), cumulativeDifficulties.size() - 1); // adjust for new epoch difficulty reset, N should be by 1 block smaller
     uint64_t L(0), avg_D, next_D, i, this_timestamp(0), previous_timestamp(0);
 
