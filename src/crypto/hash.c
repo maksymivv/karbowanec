@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
+// Copyright (c) 2016-2020, Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -23,5 +24,5 @@
 #include "keccak.h"
 
 void cn_fast_hash(const void* data, size_t length, char* hash) {
-  keccak((const uint8_t*)data, length, (uint8_t*)hash, 32);
+  keccak((const uint8_t*)data, (int)length, (uint8_t*)hash, 32);
 }

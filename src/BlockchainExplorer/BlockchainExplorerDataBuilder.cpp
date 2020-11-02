@@ -116,8 +116,8 @@ bool BlockchainExplorerDataBuilder::fillBlockDetails(const Block &block, BlockDe
 
   blockDetails.proofOfWork = boost::value_initialized<Crypto::Hash>();
   if (calculate_pow) {
-    cn_pow_hash_v2 pow_ctx;
-    if (!get_block_longhash(pow_ctx, block, blockDetails.proofOfWork)) {
+    Crypto::cn_context context;
+    if (!get_block_longhash(context, block, blockDetails.proofOfWork)) {
       return false;
     }
   }

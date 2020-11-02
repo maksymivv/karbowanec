@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
-// Copyright (c) 2016-2019, The Karbowanec developers
+// Copyright (c) 2016-2020, The Karbowanec developers
 //
 // This file is part of Karbo.
 //
@@ -30,7 +30,8 @@
 #include <boost/limits.hpp>
 #include <boost/utility/value_init.hpp>
 
-#include "crypto/cn_slow_hash.hpp"
+#include "../CryptoNoteConfig.h"
+
 #include "crypto/crypto.h"
 #include "crypto/random.h"
 #include "Common/CommandLine.h"
@@ -342,7 +343,7 @@ namespace CryptoNote
     uint32_t nonce = m_starter_nonce + th_local_index;
     difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
-    cn_pow_hash_v2 hash_ctx;
+    Crypto::cn_context context;
     Block b;
 
     while(!m_stop)
@@ -372,7 +373,7 @@ namespace CryptoNote
 
       b.nonce = nonce;
       Crypto::Hash h;
-      if (!m_stop && !get_block_longhash(hash_ctx, b, h)) {
+      if (!m_stop && !get_block_longhash(context, b, h)) {
         logger(ERROR) << "Failed to get block long hash";
         m_stop = true;
       }
