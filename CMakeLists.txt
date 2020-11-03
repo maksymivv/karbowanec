@@ -22,23 +22,23 @@ project(Karbowanec)
 option(WITH_LITE_WALLET "Lite wallet specific" OFF)
 
 if(WITH_LITE_WALLET)
-  add_definitions("-DUSE_LITE_WALLET")
+	add_definitions("-DUSE_LITE_WALLET")
 endif()
 
 include_directories(include src external "${CMAKE_BINARY_DIR}/version")
 
 # Check whether we're on a 32-bit or 64-bit system
 if(CMAKE_SIZEOF_VOID_P EQUAL "8")
-  set(DEFAULT_BUILD_64 ON)
+	set(DEFAULT_BUILD_64 ON)
 else()
-  set(DEFAULT_BUILD_64 OFF)
+	set(DEFAULT_BUILD_64 OFF)
 endif()
 option(BUILD_64 "Build for 64-bit? 'OFF' builds for 32-bit." ${DEFAULT_BUILD_64})
 
 if(BUILD_64)
-  set(ARCH_WIDTH "64")
+	set(ARCH_WIDTH "64")
 else()
-  set(ARCH_WIDTH "32")
+	set(ARCH_WIDTH "32")
 endif()
 message(STATUS "Building for a ${ARCH_WIDTH}-bit system")
 
@@ -246,11 +246,18 @@ else()
 	else()
 		set(WARNINGS "${WARNINGS} -Wlogical-op -Wno-error=maybe-uninitialized -Wno-error=clobbered -Wno-error=unused-but-set-variable")
 	endif()
-  
+	
 	if(MINGW)
-		set(WARNINGS "${WARNINGS} -Wno-error=unused-value")
+		set(WARNINGS "${WARNINGS} -Wno-error=unused-value -Wno-error=unused-but-set-variable")
 		set(MINGW_FLAG "-DWIN32_LEAN_AND_MEAN")
+		set(Boost_THREADAPI win32)
 		include_directories(SYSTEM src/platform/mingw)
+		# mingw doesn't support LTO (multiple definition errors at link time)
+		set(USE_LTO_DEFAULT false)
+		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,10485760")
+		if(NOT BUILD_64)
+			add_definitions(-DWINVER=0x0501 -D_WIN32_WINNT=0x0501)
+		endif()
 	else()
 		set(MINGW_FLAG "")
 	endif()
@@ -339,6 +346,13 @@ if(ANDROID AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND ARCH STREQUAL "i686")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mstackrealign")
 endif()
 
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT ANDROID)
+		set(CMAKE_EXE_LINKER_FLAGS "-pthread")
+	set(Boost_NO_BOOST_CMAKE ON)
+	set(Boost_USE_STATIC_LIBS ON)
+		set(Boost_USE_STATIC_RUNTIME ON)
+endif()
+
 set(OLD_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 if(STATIC)
 	if(MSVC)
@@ -361,51 +375,6 @@ if(NOT Boost_FOUND)
 elseif(Boost_FOUND)
 	message(STATUS "Found Boost Version: ${Boost_VERSION}")
 endif()
-
-# We have to look for Homebrew OpenSSL a bit differently
-# Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
-if (APPLE)
-		find_program(HOMEBREW_EXECUTABLE brew)
-		execute_process(COMMAND ${HOMEBREW_EXECUTABLE} --prefix openssl
-						OUTPUT_VARIABLE HOMEBREW_OPENSSL
-						OUTPUT_STRIP_TRAILING_WHITESPACE)
-		if (DEFINED HOMEBREW_OPENSSL)
-				if (NOT DEFINED OPENSSL_ROOT_DIR)
-						message(STATUS "Setting OpenSSL root to ${HOMEBREW_OPENSSL}")
-						set(OPENSSL_ROOT_DIR "${HOMEBREW_OPENSSL}")
-				endif ()
-		endif ()
-endif ()
-
-find_package(OpenSSL)
-
-if (NOT OPENSSL_FOUND)
-		find_package(PkgConfig)
-
-		if (PKG_CONFIG_FOUND)
-				pkg_search_module(OPENSSL openssl)
-		endif()
-endif()
-
-if (OPENSSL_FOUND)
-		## On non MSVC build systems, we need to link ldl with the static OpenSSL library
-		if (NOT MSVC)
-				set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
-		endif ()
-
-		include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
-		message(STATUS "OpenSSL Found: ${OPENSSL_INCLUDE_DIR}")
-		message(STATUS "OpenSSL Libraries: ${OPENSSL_LIBRARIES}")
-	
-	if (STATIC)
-		set (OPENSSL_USE_STATIC_LIBS ON)
-	endif ()
-	if (MSVC)
-		set(OPENSSL_MSVC_STATIC_RT ON)
-	endif ()
-else ()
-		message(STATUS "OpenSSL Found: No... Skipping...")
-endif ()
 
 if(MINGW)
 	string(REGEX MATCH "^[^/]:/[^/]*" msys2_install_path "${CMAKE_C_COMPILER}")
@@ -480,6 +449,51 @@ if(STATIC OR IOS)
 	add_definitions("-DUPNP_DYNAMIC")
 	include_directories(${UPNP_INCLUDE})
  endif()
+
+# We have to look for Homebrew OpenSSL a bit differently
+# Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
+if (APPLE)
+	find_program(HOMEBREW_EXECUTABLE brew)
+	execute_process(COMMAND ${HOMEBREW_EXECUTABLE} --prefix openssl
+					OUTPUT_VARIABLE HOMEBREW_OPENSSL
+					OUTPUT_STRIP_TRAILING_WHITESPACE)
+	if (DEFINED HOMEBREW_OPENSSL)
+		if (NOT DEFINED OPENSSL_ROOT_DIR)
+			message(STATUS "Setting OpenSSL root to ${HOMEBREW_OPENSSL}")
+			set(OPENSSL_ROOT_DIR "${HOMEBREW_OPENSSL}")
+		endif ()
+	endif ()
+endif ()
+
+find_package(OpenSSL)
+
+if (NOT OPENSSL_FOUND)
+	find_package(PkgConfig)
+
+	if (PKG_CONFIG_FOUND)
+		pkg_search_module(OPENSSL openssl)
+	endif()
+endif()
+
+if (OPENSSL_FOUND)
+	## On non MSVC build systems, we need to link ldl with the static OpenSSL library
+	if (NOT MSVC)
+		set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
+	endif ()
+
+	include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+	message(STATUS "OpenSSL Found: ${OPENSSL_INCLUDE_DIR}")
+	message(STATUS "OpenSSL Libraries: ${OPENSSL_LIBRARIES}")
+	
+	if (STATIC)
+		set (OPENSSL_USE_STATIC_LIBS ON)
+	endif ()
+	if (MSVC)
+		set(OPENSSL_MSVC_STATIC_RT ON)
+	endif ()
+else ()
+	die("OpenSSL not found...")
+endif ()
 
 add_subdirectory(src)
 
