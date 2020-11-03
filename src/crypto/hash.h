@@ -52,7 +52,7 @@ namespace Crypto {
 
     cn_context()
     {
-        long_state = (uint8_t*)boost::alignment::aligned_alloc(4096, CN_PAGE_SIZE);
+        long_state = (uint8_t*)boost::alignment::aligned_alloc(2 * 1024 * 1024, CN_PAGE_SIZE);
         hash_state = (uint8_t*)boost::alignment::aligned_alloc(4096, 4096);
     }
 

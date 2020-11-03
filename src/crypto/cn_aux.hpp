@@ -7,7 +7,6 @@
 
 #pragma once
 #include "soft_aes.hpp"
-#include "cn_var.hpp"
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <intrin.h>
@@ -50,18 +49,6 @@ inline bool hw_check_aes()
 	cpuid(1, 0, cpu_info);
 	return (cpu_info[2] & (1 << 25)) == 0;
 }
-
-struct cryptonight_ctx
-{
-	cryptonight_ctx(cryptonight_algo ALGO)
-	{
-		long_state = (uint8_t*)_mm_malloc(cn_select_memory(ALGO), 2097152);
-		hash_state = (uint8_t*)_mm_malloc(4096, 4096);
-	}
-
-	uint8_t* long_state;
-	uint8_t* hash_state;
-};
 
 // This will shift and xor tmp1 into itself as 4 32-bit vals such as
 // sl_xor(a1 a2 a3 a4) = a1 (a2^a1) (a3^a2^a1) (a4^a3^a2^a1)

@@ -295,8 +295,9 @@ else()
   
   # With GCC 6.1.1 the compiled binary malfunctions due to aliasing. Until that
   # is fixed in the code (Issue #847), force compiler to be conservative.
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
+  # Disable aggressive floating-point optimizations to make CN-GPU work correctly.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing -fno-fast-math")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing -fno-fast-math")
   
   option(NO_AES "Explicitly disable AES support" ${NO_AES})
   
