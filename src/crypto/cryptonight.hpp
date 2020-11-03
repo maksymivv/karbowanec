@@ -14,7 +14,12 @@
 #include "cn_aux.hpp"
 #include "aux_hash.h"
 
-#if !defined(_LP64) && !defined(_WIN64)
+#if defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON)
+#include "sse2neon.h"
+#endif 
+
+// WTF??
+#if !defined(_LP64) && !defined(_WIN64) && (!defined(__ARM_FEATURE_SIMD32) || !defined(__ARM_NEON))
 #error You are trying to do a 32-bit build. This will all end in tears. I know it.
 #endif
 
@@ -336,10 +341,14 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 		cx = _mm_load_si128((__m128i *)&l0[idx0 & MASK]);
 
 		__m128i ax0 = _mm_set_epi64x(ah0, al0);
-		if (SOFT_AES)
-			cx = soft_aesenc(cx, ax0);
-		else
-			cx = _mm_aesenc_si128(cx, ax0);
+    if (SOFT_AES) {
+      cx = soft_aesenc(cx, ax0);
+    }
+    else {
+#if !defined(ARM)
+      cx = _mm_aesenc_si128(cx, ax0);
+#endif
+    }
 
 		if (ALGO == 2)
 		{
@@ -349,9 +358,23 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 				__m128d da = _mm_cvtepi32_pd(cx);
 				__m128d db = _mm_cvtepi32_pd(_mm_shuffle_epi32(cx, _MM_SHUFFLE(0, 1, 2, 3)));
 				da = _mm_mul_pd(da, db);
-        cx = SOFT_AES ? soft_aesenc(_mm_castpd_si128(da), ax0) : _mm_aesenc_si128(_mm_castpd_si128(da), ax0);
+        if (SOFT_AES) {
+          cx = soft_aesenc(_mm_castpd_si128(da), ax0);
+        }
+        else {
+#if !defined(ARM)
+          cx = _mm_aesenc_si128(_mm_castpd_si128(da), ax0);
+#endif
+        }
 			}
-				cx = SOFT_AES ? soft_aesenc(cx, ax0) : _mm_aesenc_si128(cx, ax0);
+      if (SOFT_AES) {
+        cx = soft_aesenc(cx, ax0);
+      }
+      else {
+#if !defined(ARM)
+        cx = _mm_aesenc_si128(cx, ax0);
+#endif
+      }
 		}
 
 		_mm_store_si128((__m128i *)&l0[idx0 & MASK], _mm_xor_si128(bx0, cx));
