@@ -34,20 +34,6 @@ constexpr uint32_t CRYPTONIGHT_ITER     = 0x80000;
 constexpr uint32_t CRYPTONIGHT_GPU_ITER = 0xC000;
 constexpr uint32_t CRYPTONIGHT_KRB_ITER = 0x8000;
 
-inline constexpr uint32_t cn_select_iter(cryptonight_algo algo)
-{
-  switch (algo)
-  {
-  case CRYPTONIGHT:
-    return CRYPTONIGHT_ITER;
-  case CRYPTONIGHT_GPU:
-    return CRYPTONIGHT_GPU_ITER;
-  case CRYPTONIGHT_KRB:
-    return CRYPTONIGHT_KRB_ITER;
-  }
-  return 0;
-}
-
 inline void set_float_rounding_mode_nearest() {
 #ifdef _MSC_VER
 	_control87(RC_NEAR, MCW_RC);
@@ -328,8 +314,7 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 	set_float_rounding_mode_nearest();
 
 	constexpr uint32_t MASK = ALGO > 0 ? CRYPTONIGHT_GPU_MASK : CRYPTONIGHT_MASK;
-  
-	constexpr uint32_t ITER = cn_select_iter(ALGO);
+	constexpr uint32_t ITER = ALGO == 0 ? CRYPTONIGHT_ITER : CRYPTONIGHT_KRB_ITER;
 
 	keccak((const uint8_t *)input, static_cast<uint8_t>(len), ctx0.hash_state, 200);
 
@@ -622,7 +607,7 @@ void cryptonight_hash_gpu(const void* input, size_t len, void* output, cn_contex
 	set_float_rounding_mode_nearest();
 
   constexpr uint32_t MASK = ALGO > 0 ? CRYPTONIGHT_GPU_MASK : CRYPTONIGHT_MASK;
-  constexpr uint32_t ITER = cn_select_iter(ALGO);
+  constexpr uint32_t ITER = ALGO == 0 ? CRYPTONIGHT_ITER : CRYPTONIGHT_GPU_ITER;
 
 	keccak((const uint8_t *)input, static_cast<uint8_t>(len), ctx0.hash_state, 200);
 
