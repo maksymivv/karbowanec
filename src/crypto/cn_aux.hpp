@@ -18,7 +18,7 @@
 #include "sse2neon.h"
 #endif
 
-#ifdef __GNUC__ && !defined(ARM)
+#if defined(__GNUC__) && !defined(ARM)
 #pragma GCC target ("aes,sse2")
 #include <x86intrin.h>
 static inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t* hi)
