@@ -346,6 +346,51 @@ if(ANDROID AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND ARCH STREQUAL "i686")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mstackrealign")
 endif()
 
+# We have to look for Homebrew OpenSSL a bit differently
+# Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
+if (APPLE)
+	find_program(HOMEBREW_EXECUTABLE brew)
+	execute_process(COMMAND ${HOMEBREW_EXECUTABLE} --prefix openssl
+					OUTPUT_VARIABLE HOMEBREW_OPENSSL
+					OUTPUT_STRIP_TRAILING_WHITESPACE)
+	if (DEFINED HOMEBREW_OPENSSL)
+		if (NOT DEFINED OPENSSL_ROOT_DIR)
+			message(STATUS "Setting OpenSSL root to ${HOMEBREW_OPENSSL}")
+			set(OPENSSL_ROOT_DIR "${HOMEBREW_OPENSSL}")
+		endif ()
+	endif ()
+endif ()
+
+find_package(OpenSSL)
+
+if (NOT OPENSSL_FOUND)
+	find_package(PkgConfig)
+
+	if (PKG_CONFIG_FOUND)
+		pkg_search_module(OPENSSL openssl)
+	endif()
+endif()
+
+if (OPENSSL_FOUND)
+	## On non MSVC build systems, we need to link ldl with the static OpenSSL library
+	if (NOT MSVC)
+		set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
+	endif ()
+
+	include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
+	message(STATUS "OpenSSL Found: ${OPENSSL_INCLUDE_DIR}")
+	message(STATUS "OpenSSL Libraries: ${OPENSSL_LIBRARIES}")
+	
+	if (STATIC)
+		set (OPENSSL_USE_STATIC_LIBS ON)
+	endif ()
+	if (MSVC)
+		set(OPENSSL_MSVC_STATIC_RT ON)
+	endif ()
+else ()
+	message(FATAL_ERROR "OpenSSL not found...")
+endif ()
+
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND NOT ANDROID)
 		set(CMAKE_EXE_LINKER_FLAGS "-pthread")
 	set(Boost_NO_BOOST_CMAKE ON)
@@ -371,7 +416,7 @@ include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ${OLD_LIB_SUFFIXES})
 if(NOT Boost_FOUND)
-	die("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev (1.58) or the equivalent")
+	message(FATAL_ERROR("Could not find Boost libraries, please make sure you have installed Boost or libboost-all-dev (1.58) or the equivalent")
 elseif(Boost_FOUND)
 	message(STATUS "Found Boost Version: ${Boost_VERSION}")
 endif()
@@ -449,51 +494,6 @@ if(STATIC OR IOS)
 	add_definitions("-DUPNP_DYNAMIC")
 	include_directories(${UPNP_INCLUDE})
  endif()
-
-# We have to look for Homebrew OpenSSL a bit differently
-# Borrowed from https://github.com/tarantool/tarantool/commit/6eab201af1843f53a833c8928dc58fceffa08147
-if (APPLE)
-	find_program(HOMEBREW_EXECUTABLE brew)
-	execute_process(COMMAND ${HOMEBREW_EXECUTABLE} --prefix openssl
-					OUTPUT_VARIABLE HOMEBREW_OPENSSL
-					OUTPUT_STRIP_TRAILING_WHITESPACE)
-	if (DEFINED HOMEBREW_OPENSSL)
-		if (NOT DEFINED OPENSSL_ROOT_DIR)
-			message(STATUS "Setting OpenSSL root to ${HOMEBREW_OPENSSL}")
-			set(OPENSSL_ROOT_DIR "${HOMEBREW_OPENSSL}")
-		endif ()
-	endif ()
-endif ()
-
-find_package(OpenSSL)
-
-if (NOT OPENSSL_FOUND)
-	find_package(PkgConfig)
-
-	if (PKG_CONFIG_FOUND)
-		pkg_search_module(OPENSSL openssl)
-	endif()
-endif()
-
-if (OPENSSL_FOUND)
-	## On non MSVC build systems, we need to link ldl with the static OpenSSL library
-	if (NOT MSVC)
-		set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};dl")
-	endif ()
-
-	include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
-	message(STATUS "OpenSSL Found: ${OPENSSL_INCLUDE_DIR}")
-	message(STATUS "OpenSSL Libraries: ${OPENSSL_LIBRARIES}")
-	
-	if (STATIC)
-		set (OPENSSL_USE_STATIC_LIBS ON)
-	endif ()
-	if (MSVC)
-		set(OPENSSL_MSVC_STATIC_RT ON)
-	endif ()
-else ()
-	die("OpenSSL not found...")
-endif ()
 
 add_subdirectory(src)
 
