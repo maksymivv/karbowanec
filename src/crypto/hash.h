@@ -26,6 +26,7 @@
 
 /* Standard Cryptonight */
 #define CN_PAGE_SIZE                    2097152
+constexpr size_t CRYPTONIGHT_MEMORY     = 2 * 1024 * 1024;
 
 namespace Crypto {
 
@@ -52,7 +53,7 @@ namespace Crypto {
 
     cn_context()
     {
-        long_state = (uint8_t*)boost::alignment::aligned_alloc(4096, CN_PAGE_SIZE);
+        long_state = (uint8_t*)boost::alignment::aligned_alloc(CRYPTONIGHT_MEMORY, CN_PAGE_SIZE);
         hash_state = (uint8_t*)boost::alignment::aligned_alloc(4096, 4096);
     }
 

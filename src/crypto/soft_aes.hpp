@@ -1,5 +1,5 @@
-// Copyright (c) 2019 fireice-uk
 // Copyright (c) 2019 The Circle Foundation
+// Copyright (c) 2019 fireice-uk
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,11 +9,13 @@
 
 #pragma once
 
-#ifdef __GNUC__
-#include <x86intrin.h>
+#if defined(__GNUC__) && !defined(ARM)
+	#include <x86intrin.h>
+#elif defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON)
+	#include "sse2neon.h"
 #else
-#include <intrin.h>
-#endif // __GNUC__
+	#include <intrin.h>
+#endif
 
 #include <inttypes.h>
 
@@ -87,16 +89,16 @@ inline __m128i soft_aesenc(__m128i in, __m128i key)
 
 inline uint32_t sub_word(uint32_t key)
 {
-	return (saes_sbox[key >> 24 ] << 24)   | 
-		(saes_sbox[(key >> 16) & 0xff] << 16 ) | 
-		(saes_sbox[(key >> 8)  & 0xff] << 8  ) | 
+	return (saes_sbox[key >> 24 ] << 24)   |
+		(saes_sbox[(key >> 16) & 0xff] << 16 ) |
+		(saes_sbox[(key >> 8)  & 0xff] << 8  ) |
 		 saes_sbox[key & 0xff];
 }
 
-#if defined(__clang__) || defined(__arm__) || defined(__aarch64__)
-static inline uint32_t _rotr(uint32_t value, uint32_t amount) {
-	return (value >> amount) | (value << (-amount & 31));
-}
+#if !defined(HAVE_ROTR) || defined(ARM)
+	static inline uint32_t _rotr(uint32_t value, uint32_t amount) {
+		return (value >> amount) | (value << (-amount & 31));
+	}
 #endif
 
 template<uint8_t rcon>

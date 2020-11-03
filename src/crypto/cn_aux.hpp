@@ -7,7 +7,6 @@
 
 #pragma once
 #include "soft_aes.hpp"
-#include "cn_var.hpp"
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <intrin.h>
@@ -15,14 +14,18 @@
 #define HAS_WIN_INTRIN_API
 #endif
 
-#ifdef __GNUC__
+#if defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON)
+#include "sse2neon.h"
+#endif
+
+#if defined(__GNUC__) && !defined(ARM)
 #pragma GCC target ("aes,sse2")
 #include <x86intrin.h>
 static inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t* hi)
 {
-    unsigned __int128 r = (unsigned __int128)a * (unsigned __int128)b;
-    *hi = r >> 64;
-    return (uint64_t)r;
+	unsigned __int128 r = (unsigned __int128)a * (unsigned __int128)b;
+	*hi = r >> 64;
+	return (uint64_t)r;
 }
 #if !defined(HAS_WIN_INTRIN_API)
 #include <cpuid.h>
@@ -46,22 +49,13 @@ inline void cpuid(uint32_t eax, int32_t ecx, int32_t val[4])
 
 inline bool hw_check_aes()
 {
+#if defined(ARM)
+  return true; // just use soft on ARM
+#endif
 	int32_t cpu_info[4];
 	cpuid(1, 0, cpu_info);
 	return (cpu_info[2] & (1 << 25)) == 0;
 }
-
-struct cryptonight_ctx
-{
-	cryptonight_ctx(cryptonight_algo ALGO)
-	{
-		long_state = (uint8_t*)_mm_malloc(cn_select_memory(ALGO), 2097152);
-		hash_state = (uint8_t*)_mm_malloc(4096, 4096);
-	}
-
-	uint8_t* long_state;
-	uint8_t* hash_state;
-};
 
 // This will shift and xor tmp1 into itself as 4 32-bit vals such as
 // sl_xor(a1 a2 a3 a4) = a1 (a2^a1) (a3^a2^a1) (a4^a3^a2^a1)
@@ -93,6 +87,7 @@ inline void aes_round(__m128i key, __m128i& x0, __m128i& x1, __m128i& x2, __m128
 	}
 	else
 	{
+#if !defined(ARM)
 		x0 = _mm_aesenc_si128(x0, key);
 		x1 = _mm_aesenc_si128(x1, key);
 		x2 = _mm_aesenc_si128(x2, key);
@@ -101,5 +96,6 @@ inline void aes_round(__m128i key, __m128i& x0, __m128i& x1, __m128i& x2, __m128
 		x5 = _mm_aesenc_si128(x5, key);
 		x6 = _mm_aesenc_si128(x6, key);
 		x7 = _mm_aesenc_si128(x7, key);
+#endif
 	}
 }
