@@ -27,8 +27,6 @@ enum cryptonight_algo : size_t
   CRYPTONIGHT_KRB
 };
 
-constexpr size_t CRYPTONIGHT_MEMORY     = 2 * 1024 * 1024;
-
 constexpr uint32_t CRYPTONIGHT_MASK     = 0x1FFFF0;
 constexpr uint32_t CRYPTONIGHT_GPU_MASK = 0x1FFFC0;
 
