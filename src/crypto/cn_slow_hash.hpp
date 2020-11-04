@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+constexpr uint32_t CRYPTONIGHT_MASK = 0x1FFFF0;
+constexpr uint32_t CRYPTONIGHT_GPU_MASK = 0x1FFFC0;
 
 // Macros are for template instantiations
 // Cryptonight
@@ -214,7 +216,7 @@ public:
 #endif
 
 private:
-	static constexpr size_t MASK = POW_VER <= 1 ? ((MEMORY - 1) >> 4) << 4 : ((MEMORY - 1) >> 6) << 6;
+	static constexpr size_t MASK = POW_VER <= 1 ? CRYPTONIGHT_MASK : CRYPTONIGHT_GPU_MASK;
 
 	friend cn_pow_hash_v1;
 	friend cn_pow_hash_v2;
