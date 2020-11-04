@@ -182,9 +182,9 @@ void cn_explode_scratchpad(const __m128i* input, __m128i* output)
 		aes_round<SOFT_AES>(k6, xin0, xin1, xin2, xin3, xin4, xin5, xin6, xin7);
 		aes_round<SOFT_AES>(k7, xin0, xin1, xin2, xin3, xin4, xin5, xin6, xin7);
 		aes_round<SOFT_AES>(k8, xin0, xin1, xin2, xin3, xin4, xin5, xin6, xin7);
-		aes_round<SOFT_AES>(k9, xin0, xin1, xin1, xin3, xin4, xin5, xin6, xin7);
+		aes_round<SOFT_AES>(k9, xin0, xin1, xin2, xin3, xin4, xin5, xin6, xin7);
 
-		xor_shift(xin0, xin1, xin1, xin3, xin4, xin5, xin6, xin7);
+		xor_shift(xin0, xin1, xin2, xin3, xin4, xin5, xin6, xin7);
 	}
 
 	for (size_t i = 0; i < MEMORY / sizeof(__m128i); i += 8)
