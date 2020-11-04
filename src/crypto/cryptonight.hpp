@@ -27,9 +27,9 @@ namespace Crypto {
 
 enum cryptonight_algo : size_t
 {
-  CRYPTONIGHT,
-  CRYPTONIGHT_GPU,
-  CRYPTONIGHT_KRB
+	CRYPTONIGHT,
+	CRYPTONIGHT_GPU,
+	CRYPTONIGHT_KRB
 };
 
 constexpr uint32_t CRYPTONIGHT_MASK     = 0x1FFFF0;
@@ -313,12 +313,24 @@ inline __m128 _mm_set1_ps_epi32(uint32_t x)
 	return _mm_castsi128_ps(_mm_set1_epi32(x));
 }
 
+inline uint64_t xmm_extract_64(__m128i x)
+{
+#if !defined(_LP64) && !defined(_WIN64) && (!defined(__ARM_FEATURE_SIMD32) || !defined(__ARM_NEON))
+	uint64_t r = uint32_t(_mm_cvtsi128_si32(_mm_shuffle_epi32(x, _MM_SHUFFLE(1, 1, 1, 1))));
+	r <<= 32;
+	r |= uint32_t(_mm_cvtsi128_si32(x));
+	return r;
+#else
+	return _mm_cvtsi128_si64(x);
+#endif
+}
+
 template<bool SOFT_AES, cryptonight_algo ALGO>
 void cryptonight_hash(const void* input, size_t len, void* output, cn_context& ctx0)
 {
 	set_float_rounding_mode_nearest();
 
-	constexpr uint32_t MASK = ALGO > 0 ? CRYPTONIGHT_GPU_MASK : CRYPTONIGHT_MASK;
+	constexpr uint32_t MASK = ALGO == 0 ? CRYPTONIGHT_MASK : CRYPTONIGHT_GPU_MASK;
 	constexpr uint32_t ITER = ALGO == 0 ? CRYPTONIGHT_ITER : CRYPTONIGHT_KRB_ITER;
 
 	keccak((const uint8_t *)input, static_cast<uint8_t>(len), ctx0.hash_state, 200);
@@ -334,6 +346,7 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 	__m128i bx0 = _mm_set_epi64x(h0[3] ^ h0[7], h0[2] ^ h0[6]);
 
 	uint64_t idx0 = h0[0] ^ h0[4];
+
 	// Optim - 90% time boundary
 	for(size_t i = 0; i < ITER; i++)
 	{
@@ -341,14 +354,14 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 		cx = _mm_load_si128((__m128i *)&l0[idx0 & MASK]);
 
 		__m128i ax0 = _mm_set_epi64x(ah0, al0);
-    if (SOFT_AES) {
-      cx = soft_aesenc(cx, ax0);
-    }
-    else {
+		if (SOFT_AES) {
+			cx = soft_aesenc(cx, ax0);
+		}
+		else {
 #if !defined(ARM)
-      cx = _mm_aesenc_si128(cx, ax0);
+			cx = _mm_aesenc_si128(cx, ax0);
 #endif
-    }
+		}
 
 		if (ALGO == 2)
 		{
@@ -358,29 +371,27 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 				__m128d da = _mm_cvtepi32_pd(cx);
 				__m128d db = _mm_cvtepi32_pd(_mm_shuffle_epi32(cx, _MM_SHUFFLE(0, 1, 2, 3)));
 				da = _mm_mul_pd(da, db);
-        if (SOFT_AES) {
-          cx = soft_aesenc(_mm_castpd_si128(da), ax0);
-        }
-        else {
+				if (SOFT_AES) {
+					cx = soft_aesenc(_mm_castpd_si128(da), ax0);
+				}
+				else {
 #if !defined(ARM)
-          cx = _mm_aesenc_si128(_mm_castpd_si128(da), ax0);
+					cx = _mm_aesenc_si128(_mm_castpd_si128(da), ax0);
 #endif
-        }
+				}
 			}
-      if (SOFT_AES) {
-        cx = soft_aesenc(cx, ax0);
-      }
-      else {
+			if (SOFT_AES) {
+				cx = soft_aesenc(cx, ax0);
+			}
+			else {
 #if !defined(ARM)
-        cx = _mm_aesenc_si128(cx, ax0);
+				cx = _mm_aesenc_si128(cx, ax0);
 #endif
-      }
+			}
 		}
 
 		_mm_store_si128((__m128i *)&l0[idx0 & MASK], _mm_xor_si128(bx0, cx));
-
-		idx0 = _mm_cvtsi128_si64(cx);
-
+		idx0 = xmm_extract_64(cx);
 		bx0 = cx;
 
 		uint64_t hi, lo, cl, ch;
@@ -388,11 +399,11 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 		ch = ((uint64_t*)&l0[idx0 & MASK])[1];
 
 		lo = _umul128(idx0, cl, &hi);
+
 		al0 += hi;
 		ah0 += lo;
 
 		((uint64_t*)&l0[idx0 & MASK])[0] = al0;
-
 		((uint64_t*)&l0[idx0 & MASK])[1] = ah0;
 
 		ah0 ^= ch;
@@ -426,26 +437,26 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 
 inline void cn_explode_scratchpad_gpu(const uint8_t* input, uint8_t* output, const size_t mem)
 {
-  constexpr size_t hash_size = 200; // 25x8 bytes
-  alignas(128) uint64_t hash[25];
+	constexpr size_t hash_size = 200; // 25x8 bytes
+	alignas(128) uint64_t hash[25];
 
-  for (uint64_t i = 0; i < mem / 512; i++)
-  {
-    memcpy(hash, input, hash_size);
-    hash[0] ^= i;
+	for (uint64_t i = 0; i < mem / 512; i++)
+	{
+		memcpy(hash, input, hash_size);
+		hash[0] ^= i;
 
-    keccakf(hash);
-    memcpy(output, hash, 160);
-    output += 160;
+		keccakf(hash);
+		memcpy(output, hash, 160);
+		output += 160;
 
-    keccakf(hash);
-    memcpy(output, hash, 176);
-    output += 176;
+		keccakf(hash);
+		memcpy(output, hash, 176);
+		output += 176;
 
-    keccakf(hash);
-    memcpy(output, hash, 176);
-    output += 176;
-  }
+		keccakf(hash);
+		memcpy(output, hash, 176);
+		output += 176;
+	}
 }
 
 inline void prep_dv(__m128i* idx, __m128i& v, __m128& n)
@@ -628,9 +639,6 @@ inline void cn_gpu_inner_ssse3(const uint8_t* spad, uint8_t* lpad)
 template<bool SOFT_AES, cryptonight_algo ALGO>
 void cryptonight_hash_gpu(const void* input, size_t len, void* output, cn_context& ctx0) {
 	set_float_rounding_mode_nearest();
-
-  constexpr uint32_t MASK = ALGO > 0 ? CRYPTONIGHT_GPU_MASK : CRYPTONIGHT_MASK;
-  constexpr uint32_t ITER = ALGO == 0 ? CRYPTONIGHT_ITER : CRYPTONIGHT_GPU_ITER;
 
 	keccak((const uint8_t *)input, static_cast<uint8_t>(len), ctx0.hash_state, 200);
 
