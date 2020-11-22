@@ -18,11 +18,6 @@
 #include "sse2neon.h"
 #endif 
 
-// WTF??
-#if !defined(_LP64) && !defined(_WIN64) && (!defined(__ARM_FEATURE_SIMD32) || !defined(__ARM_NEON))
-#error You are trying to do a 32-bit build. This will all end in tears. I know it.
-#endif
-
 namespace Crypto {
 
 enum cryptonight_algo : size_t
