@@ -14,7 +14,7 @@
 #include "cn_aux.hpp"
 #include "aux_hash.h"
 
-#if defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON)
+#if defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON) || defined(ARM)
 #include "sse2neon.h"
 #endif 
 
@@ -430,7 +430,8 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 	}
 }
 
-inline void cn_explode_scratchpad_gpu(const uint8_t* input, uint8_t* output, const size_t mem)
+
+inline void cn_gpu_explode_scratchpad(const uint8_t* input, uint8_t* output, const size_t mem)
 {
 	constexpr size_t hash_size = 200; // 25x8 bytes
 	alignas(128) uint64_t hash[25];
@@ -547,17 +548,17 @@ inline void single_compute_wrap(__m128 n0, __m128 n1, __m128 n2, __m128 n3, floa
 
 inline __m128i* scratchpad_ptr(uint8_t* lpad, uint32_t idx, size_t n, const uint32_t mask) { return reinterpret_cast<__m128i*>(lpad + (idx & mask) + n * 16); }
 
-inline void cn_gpu_inner_ssse3(const uint8_t* spad, uint8_t* lpad)
+inline void cn_gpu_inner_hash(const uint8_t* spad, uint8_t* lpad)
 {
 	const uint32_t ITER = CRYPTONIGHT_GPU_ITER;
-	const uint32_t mask = CRYPTONIGHT_GPU_MASK;
+	const uint32_t MASK = CRYPTONIGHT_GPU_MASK;
 
 	uint32_t s = reinterpret_cast<const uint32_t*>(spad)[0] >> 8;
-	__m128i* idx0 = scratchpad_ptr(lpad, s, 0, mask);
-	__m128i* idx1 = scratchpad_ptr(lpad, s, 1, mask);
-	__m128i* idx2 = scratchpad_ptr(lpad, s, 2, mask);
-	__m128i* idx3 = scratchpad_ptr(lpad, s, 3, mask);
-	__m128 sum0 = _mm_setzero_ps();
+	__m128i* idx0 = scratchpad_ptr(lpad, s, 0, MASK);
+	__m128i* idx1 = scratchpad_ptr(lpad, s, 1, MASK);
+	__m128i* idx2 = scratchpad_ptr(lpad, s, 2, MASK);
+	__m128i* idx3 = scratchpad_ptr(lpad, s, 3, MASK);
+	__m128	 sum0 = _mm_setzero_ps();
 
 	for (size_t i = 0; i < ITER; i++)
 	{
@@ -624,22 +625,22 @@ inline void cn_gpu_inner_ssse3(const uint8_t* spad, uint8_t* lpad)
 		// vs is now between 0 and 1
 		sum0 = _mm_div_ps(sum0, _mm_set1_ps(64.0f));
 		uint32_t n = _mm_cvtsi128_si32(v0);
-		idx0 = scratchpad_ptr(lpad, n, 0, mask);
-		idx1 = scratchpad_ptr(lpad, n, 1, mask);
-		idx2 = scratchpad_ptr(lpad, n, 2, mask);
-		idx3 = scratchpad_ptr(lpad, n, 3, mask);
+		idx0 = scratchpad_ptr(lpad, n, 0, MASK);
+		idx1 = scratchpad_ptr(lpad, n, 1, MASK);
+		idx2 = scratchpad_ptr(lpad, n, 2, MASK);
+		idx3 = scratchpad_ptr(lpad, n, 3, MASK);
 	}
 }
 
 template<bool SOFT_AES, cryptonight_algo ALGO>
 void cryptonight_hash_gpu(const void* input, size_t len, void* output, cn_context& ctx0) {
-	set_float_rounding_mode_nearest();
+	//set_float_rounding_mode_nearest();
 
 	keccak((const uint8_t *)input, static_cast<uint8_t>(len), ctx0.hash_state, 200);
 
-	cn_explode_scratchpad_gpu(ctx0.hash_state, ctx0.long_state, CRYPTONIGHT_MEMORY);
+  cn_gpu_explode_scratchpad(ctx0.hash_state, ctx0.long_state, CRYPTONIGHT_MEMORY);
 
-	cn_gpu_inner_ssse3(ctx0.hash_state, ctx0.long_state);
+	cn_gpu_inner_hash(ctx0.hash_state, ctx0.long_state);
 
 	cn_implode_scratchpad<SOFT_AES, CRYPTONIGHT_MEMORY, ALGO>((__m128i*)ctx0.long_state, (__m128i*)ctx0.hash_state);
 
