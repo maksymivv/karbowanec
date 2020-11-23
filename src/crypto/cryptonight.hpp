@@ -13,6 +13,7 @@
 #include "hash.h"
 #include "cn_aux.hpp"
 #include "aux_hash.h"
+#include "Common/int-util.h"
 
 #if defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON) || defined(ARM)
 #include "sse2neon.h"
@@ -393,7 +394,11 @@ void cryptonight_hash(const void* input, size_t len, void* output, cn_context& c
 		cl = ((uint64_t*)&l0[idx0 & MASK])[0];
 		ch = ((uint64_t*)&l0[idx0 & MASK])[1];
 
+#if !defined(_LP64) && !defined(_WIN64) && !defined(ARM)
+		lo = mul128(idx0, cl, &hi);
+#else
 		lo = _umul128(idx0, cl, &hi);
+#endif
 
 		al0 += hi;
 		ah0 += lo;
