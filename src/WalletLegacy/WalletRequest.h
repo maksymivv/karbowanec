@@ -38,6 +38,9 @@ public:
   virtual ~WalletRequest() {};
 
   virtual void perform(INode& node, std::function<void (WalletRequest::Callback, std::error_code)> cb) = 0;
+
+  virtual CryptoNote::Transaction getRawTransaction(std::function<void(WalletRequest::Callback, std::error_code)> cb) = 0;
+
 };
 
 class WalletGetRandomOutsByAmountsRequest: public WalletRequest
@@ -52,6 +55,8 @@ public:
   {
     node.getRandomOutsByAmounts(std::move(m_amounts), m_outsCount, std::ref(m_context->outs), std::bind(cb, m_cb, std::placeholders::_1));
   };
+
+  virtual CryptoNote::Transaction getRawTransaction(std::function<void(WalletRequest::Callback, std::error_code)> cb) { std::bind(cb, m_cb, std::placeholders::_1); return boost::value_initialized<CryptoNote::Transaction>(); }
 
 private:
   std::vector<uint64_t> m_amounts;
@@ -70,6 +75,10 @@ public:
   {
     node.relayTransaction(m_tx, std::bind(cb, m_cb, std::placeholders::_1));
   }
+
+  static CryptoNote::Transaction dontRelayTransaction(const CryptoNote::Transaction& transaction, const INode::Callback& callback) { callback(std::error_code()); return transaction; }
+
+  virtual CryptoNote::Transaction getRawTransaction(std::function<void(WalletRequest::Callback, std::error_code)> cb) { return dontRelayTransaction(m_tx, std::bind(cb, m_cb, std::placeholders::_1)); }
 
 private:
   CryptoNote::Transaction m_tx;

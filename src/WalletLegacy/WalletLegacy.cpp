@@ -731,16 +731,17 @@ std::list<TransactionOutputInformation> WalletLegacy::selectFusionTransfersToSen
   return selectedOutputs;
 }
 
-TransactionId WalletLegacy::sendTransaction(const WalletLegacyTransfer& transfer, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+TransactionId WalletLegacy::sendTransaction(const WalletLegacyTransfer& transfer, std::string& tx_as_hex, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp, bool do_not_relay) {
   std::vector<WalletLegacyTransfer> transfers;
   transfers.push_back(transfer);
   throwIfNotInitialised();
 
-  return sendTransaction(transfers, fee, extra, mixIn, unlockTimestamp);
+  return sendTransaction(transfers, tx_as_hex, fee, extra, mixIn, unlockTimestamp, do_not_relay);
 }
 
-TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransfer>& transfers, std::string& tx_as_hex, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp, bool do_not_relay) {
   TransactionId txId = 0;
+  tx_as_hex = "";
   std::shared_ptr<WalletRequest> request;
   std::deque<std::shared_ptr<WalletLegacyEvent>> events;
   throwIfNotInitialised();
@@ -753,10 +754,15 @@ TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransf
   notifyClients(events);
 
   if (request) {
-    m_asyncContextCounter.addAsyncContext();
-    request->perform(m_node, std::bind(&WalletLegacy::sendTransactionCallback, this, std::placeholders::_1, std::placeholders::_2));
+    if (!do_not_relay) {
+      m_asyncContextCounter.addAsyncContext();
+      request->perform(m_node, std::bind(&WalletLegacy::sendTransactionCallback, this, std::placeholders::_1, std::placeholders::_2));
+    }
+    else {
+      tx_as_hex = Common::toHex(toBinaryArray(request->getRawTransaction(std::bind(&WalletLegacy::sendTransactionCallback, this, std::placeholders::_1, std::placeholders::_2))));
+    }
   }
-
+  
   return txId;
 }
 

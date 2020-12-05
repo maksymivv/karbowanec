@@ -554,7 +554,7 @@ void printIncomingTransfer(CryptoNote::WalletTransaction t,
     std::cout << std::endl;
 }
 
-void listTransfers(bool incoming, bool outgoing, 
+void list_transfers(bool incoming, bool outgoing, 
                    CryptoNote::WalletGreen &wallet, CryptoNote::INode &node)
 {
     const size_t numTransactions = wallet.getTransactionCount();

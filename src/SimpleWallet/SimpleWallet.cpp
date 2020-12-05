@@ -652,12 +652,16 @@ simple_wallet::simple_wallet(System::Dispatcher& dispatcher, const CryptoNote::C
   m_consoleHandler.setHandler("balance", boost::bind(&simple_wallet::show_balance, this, _1), "Show current wallet balance");
   m_consoleHandler.setHandler("incoming_transfers", boost::bind(&simple_wallet::show_incoming_transfers, this, _1), "Show incoming transfers");
   m_consoleHandler.setHandler("outgoing_transfers", boost::bind(&simple_wallet::show_outgoing_transfers, this, _1), "Show outgoing transfers");
-  m_consoleHandler.setHandler("list_transfers", boost::bind(&simple_wallet::listTransfers, this, _1), "Show all known transfers");
+  m_consoleHandler.setHandler("list_transfers", boost::bind(&simple_wallet::list_transfers, this, _1), "Show all known transfers");
   m_consoleHandler.setHandler("payments", boost::bind(&simple_wallet::show_payments, this, _1), "payments <payment_id_1> [<payment_id_2> ... <payment_id_N>] - Show payments <payment_id_1>, ... <payment_id_N>");
   m_consoleHandler.setHandler("outputs", boost::bind(&simple_wallet::show_unlocked_outputs_count, this, _1), "Show the number of unlocked outputs available for a transaction");
   m_consoleHandler.setHandler("bc_height", boost::bind(&simple_wallet::show_blockchain_height, this, _1), "Show blockchain height");
   m_consoleHandler.setHandler("transfer", boost::bind(&simple_wallet::transfer, this, _1),
     "transfer <mixin_count> <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee]"
+    " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. "
+    "<mixin_count> is the number of transactions yours is indistinguishable from (from 0 to maximum available)");
+  m_consoleHandler.setHandler("prepare", boost::bind(&simple_wallet::prepare_tx, this, _1),
+    "Prepare raw transaction in hex format which could be relayed via node manually <mixin_count> <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee]"
     " - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. "
     "<mixin_count> is the number of transactions yours is indistinguishable from (from 0 to maximum available)");
   m_consoleHandler.setHandler("set_log", boost::bind(&simple_wallet::set_log, this, _1), "set_log <level> - Change current log level, <level> is a number 0-4");
@@ -1922,7 +1926,7 @@ bool simple_wallet::show_outgoing_transfers(const std::vector<std::string>& args
   return true;
 }
 
-bool simple_wallet::listTransfers(const std::vector<std::string>& args) {
+bool simple_wallet::list_transfers(const std::vector<std::string>& args) {
   bool haveTransfers = false;
 
   size_t transactionsCount = m_wallet->getTransactionCount();
@@ -2092,11 +2096,12 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
     CryptoNote::WalletHelper::SendCompleteResultObserver sent;
 
     std::string extraString;
+    std::string rawTx;
     std::copy(cmd.extra.begin(), cmd.extra.end(), std::back_inserter(extraString));
 
     WalletHelper::IWalletRemoveObserverGuard removeGuard(*m_wallet, sent);
 
-    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, cmd.fee, extraString, cmd.fake_outs_count, 0);
+    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, rawTx, cmd.fee, extraString, cmd.fake_outs_count, 0);
     if (tx == WALLET_LEGACY_INVALID_TRANSACTION_ID) {
       fail_msg_writer() << "Can't send money";
       return true;
@@ -2113,6 +2118,120 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
     CryptoNote::WalletLegacyTransaction txInfo;
     m_wallet->getTransaction(tx, txInfo);
     success_msg_writer(true) << "Money successfully sent, transaction id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(txInfo.secretKey);
+
+    try {
+      CryptoNote::WalletHelper::storeWallet(*m_wallet, m_wallet_file);
+    } catch (const std::exception& e) {
+      fail_msg_writer() << e.what();
+      return true;
+    }
+  } catch (const std::system_error& e) {
+    fail_msg_writer() << e.what();
+  } catch (const std::exception& e) {
+    fail_msg_writer() << e.what();
+  } catch (...) {
+    fail_msg_writer() << "unknown error";
+  }
+
+  return true;
+}
+//----------------------------------------------------------------------------------------------------
+bool simple_wallet::prepare_tx(const std::vector<std::string> &args) {
+  if (m_trackingWallet){
+    fail_msg_writer() << "This is tracking wallet. Spending is impossible.";
+    return true;
+  }
+
+  uint64_t unmixable_balance = m_wallet->unmixableBalance();
+  uint64_t mixIn = 0;
+  std::string mixin_str = args[0];
+  if (!Common::fromString(args[0], mixIn)) {
+    logger(ERROR, BRIGHT_RED) << "mixin_count should be non-negative integer, got " << mixin_str;
+    return false;
+  }
+
+  if (mixIn != 0 && unmixable_balance != 0) {
+    logger(WARNING, BRIGHT_YELLOW) << "You have unmixable coins " << m_currency.formatAmount(unmixable_balance) << " in your wallet. "
+                                   << "If you encounter problems with sending, sweep them by making transaction with zero <mixin_count>.";
+  }
+
+  try {
+    TransferCommand cmd(m_currency, *m_node);
+
+	if (!cmd.parseArguments(logger, args))
+		return true;
+
+#ifndef __ANDROID__
+	for (auto& kv : cmd.aliases) {
+		std::string address;
+
+		try {
+			address = Common::resolveAlias(kv.first);
+
+			AccountPublicAddress ignore;
+			if (!m_currency.parseAccountAddressString(address, ignore)) {
+				throw std::runtime_error("Address \"" + address + "\" is invalid");
+			}
+		}
+		catch (std::exception& e) {
+			fail_msg_writer() << "Couldn't resolve alias: " << e.what() << ", alias: " << kv.first;
+			return true;
+		}
+
+		for (auto& transfer : kv.second) {
+			transfer.address = address;
+		}
+	}
+
+	if (!cmd.aliases.empty()) {
+		if (!askAliasesTransfersConfirmation(cmd.aliases, m_currency)) {
+			return true;
+		}
+
+		for (auto& kv : cmd.aliases) {
+			std::copy(std::move_iterator<std::vector<WalletLegacyTransfer>::iterator>(kv.second.begin()),
+				std::move_iterator<std::vector<WalletLegacyTransfer>::iterator>(kv.second.end()),
+				std::back_inserter(cmd.dsts));
+		}
+	}
+#endif
+
+    CryptoNote::WalletHelper::SendCompleteResultObserver sent;
+
+    std::string extraString;
+    std::string rawTx;
+    std::copy(cmd.extra.begin(), cmd.extra.end(), std::back_inserter(extraString));
+
+    WalletHelper::IWalletRemoveObserverGuard removeGuard(*m_wallet, sent);
+
+    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, rawTx, cmd.fee, extraString, cmd.fake_outs_count, 0, true);
+    if (tx == WALLET_LEGACY_INVALID_TRANSACTION_ID) {
+      fail_msg_writer() << "Can't send money";
+      return true;
+    }
+
+    std::error_code sendError = sent.wait(tx);
+    removeGuard.removeObserver();
+
+    if (sendError) {
+      fail_msg_writer() << sendError.message();
+      return true;
+    }
+
+    CryptoNote::WalletLegacyTransaction txInfo;
+    m_wallet->getTransaction(tx, txInfo);
+    success_msg_writer(true) << "Raw transaction prepared successfully, id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(txInfo.secretKey);
+    const std::string filename = "raw_tx.txt";
+    boost::system::error_code ec;
+    if (boost::filesystem::exists(filename, ec)) {
+        boost::filesystem::remove(filename, ec);
+    }
+    std::ofstream txFile(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+    if (!txFile.good()) {
+      return false;
+    }
+    txFile << rawTx;
+    success_msg_writer() << "Raw transaction saved to file: " << filename;
 
     try {
       CryptoNote::WalletHelper::storeWallet(*m_wallet, m_wallet_file);

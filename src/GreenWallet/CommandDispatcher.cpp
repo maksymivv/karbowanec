@@ -71,11 +71,11 @@ bool handleCommand(const std::string command,
     }
     else if (command == "incoming_transfers")
     {
-        listTransfers(true, false, walletInfo->wallet, node);
+        list_transfers(true, false, walletInfo->wallet, node);
     }
     else if (command == "list_transfers")
     {
-        listTransfers(true, true, walletInfo->wallet, node);
+        list_transfers(true, true, walletInfo->wallet, node);
     }
     else if (command == "optimize")
     {
@@ -83,7 +83,7 @@ bool handleCommand(const std::string command,
     }
     else if (command == "outgoing_transfers")
     {
-        listTransfers(false, true, walletInfo->wallet, node);
+        list_transfers(false, true, walletInfo->wallet, node);
     }
     else if (command == "reset")
     {

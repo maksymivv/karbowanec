@@ -45,7 +45,7 @@ void saveCSV(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node);
 
 void save(CryptoNote::WalletGreen &wallet);
 
-void listTransfers(bool incoming, bool outgoing, 
+void list_transfers(bool incoming, bool outgoing, 
                    CryptoNote::WalletGreen &wallet, CryptoNote::INode &node);
 
 void printOutgoingTransfer(CryptoNote::WalletTransaction t,
