@@ -2118,12 +2118,13 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
     }
 
     CryptoNote::WalletLegacyTransaction txInfo;
-    m_wallet->getTransaction(tx, txInfo);
-    
+    m_wallet->getTransaction(tx, txInfo);    
+    Crypto::SecretKey tx_key = reinterpret_cast<const Crypto::SecretKey&>(txInfo.secretKey.get());
+
     if (!m_do_not_relay_tx) {
-      success_msg_writer(true) << "Money successfully sent, transaction id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(txInfo.secretKey);
+      success_msg_writer(true) << "Money successfully sent, transaction id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(tx_key);
     } else {
-      success_msg_writer(true) << "Raw transaction prepared successfully, id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(txInfo.secretKey);
+      success_msg_writer(true) << "Raw transaction prepared successfully, id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(tx_key);
       const std::string filename = "raw_tx.txt";
       boost::system::error_code ec;
       if (boost::filesystem::exists(filename, ec)) {
