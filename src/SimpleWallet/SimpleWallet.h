@@ -204,6 +204,7 @@ namespace CryptoNote
     uint32_t m_scan_height;
     bool m_daemon_ssl;
     bool m_daemon_no_verify;
+    bool m_do_not_relay_tx;
 
     std::unique_ptr<std::promise<std::error_code>> m_initResultPromise;
 
