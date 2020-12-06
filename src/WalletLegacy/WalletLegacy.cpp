@@ -754,8 +754,8 @@ TransactionId WalletLegacy::sendTransaction(const std::vector<WalletLegacyTransf
   notifyClients(events);
 
   if (request) {
+    m_asyncContextCounter.addAsyncContext();
     if (!do_not_relay) {
-      m_asyncContextCounter.addAsyncContext();
       request->perform(m_node, std::bind(&WalletLegacy::sendTransactionCallback, this, std::placeholders::_1, std::placeholders::_2));
     }
     else {
