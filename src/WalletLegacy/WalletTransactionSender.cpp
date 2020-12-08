@@ -105,7 +105,7 @@ void WalletTransactionSender::validateTransfersAddresses(const std::vector<Walle
 }
 
 std::shared_ptr<WalletRequest> WalletTransactionSender::makeSendRequest(TransactionId& transactionId, std::deque<std::shared_ptr<WalletLegacyEvent>>& events,
-    const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp) {
+    const std::vector<WalletLegacyTransfer>& transfers, uint64_t fee, const std::string& extra, uint64_t mixIn, uint64_t unlockTimestamp, bool doNotRelay) {
 
   using namespace CryptoNote;
 
@@ -115,6 +115,7 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::makeSendRequest(Transact
 
   std::shared_ptr<SendTransactionContext> context = std::make_shared<SendTransactionContext>();
 
+  context->doNotRelay = doNotRelay;
   context->foundMoney = selectTransfersToSend(neededMoney, 0 == mixIn, context->dustPolicy.dustThreshold, context->selectedTransfers);
   throwIf(context->foundMoney < neededMoney, error::WRONG_AMOUNT);
 
@@ -225,9 +226,9 @@ std::shared_ptr<WalletRequest> WalletTransactionSender::doSendTransaction(std::s
     m_transactionsCache.updateTransaction(context->transactionId, tx, totalAmount, context->selectedTransfers, context->tx_key);
 
     notifyBalanceChanged(events);
-   
+
     return std::make_shared<WalletRelayTransactionRequest>(tx, std::bind(&WalletTransactionSender::relayTransactionCallback, this, context,
-        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), context->doNotRelay);
   }
   catch(std::system_error& ec) {
     events.push_back(makeCompleteEvent(m_transactionsCache, context->transactionId, ec.code()));

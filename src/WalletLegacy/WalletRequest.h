@@ -22,8 +22,16 @@
 // #include "WalletSynchronizationContext.h"
 #include "WalletLegacy/WalletSendTransactionContext.h"
 #include "WalletLegacy/WalletLegacyEvent.h"
+#include "Common/StringTools.h"
+#include "CryptoNoteCore/CryptoNoteTools.h"
 
-#include <boost/optional.hpp>
+#if defined __linux__ && !defined __ANDROID__
+#define BOOST_NO_CXX11_SCOPED_ENUMS
+#endif
+#include <boost/filesystem.hpp>
+#if defined __linux__ && !defined __ANDROID__
+#undef BOOST_NO_CXX11_SCOPED_ENUMS
+#endif
 
 #include <deque>
 #include <functional>
@@ -40,8 +48,6 @@ public:
 
   virtual void perform(INode& node, std::function<void (WalletRequest::Callback, std::error_code)> cb) = 0;
 
-  virtual CryptoNote::Transaction getRawTransaction(std::function<void(WalletRequest::Callback, std::error_code)> cb) = 0;
-
 };
 
 class WalletGetRandomOutsByAmountsRequest: public WalletRequest
@@ -57,8 +63,6 @@ public:
     node.getRandomOutsByAmounts(std::move(m_amounts), m_outsCount, std::ref(m_context->outs), std::bind(cb, m_cb, std::placeholders::_1));
   };
 
-  virtual CryptoNote::Transaction getRawTransaction(std::function<void(WalletRequest::Callback, std::error_code)> cb) { std::bind(cb, m_cb, std::placeholders::_1); return boost::value_initialized<CryptoNote::Transaction>(); }
-
 private:
   std::vector<uint64_t> m_amounts;
   uint64_t m_outsCount;
@@ -69,21 +73,39 @@ private:
 class WalletRelayTransactionRequest: public WalletRequest
 {
 public:
-  WalletRelayTransactionRequest(const CryptoNote::Transaction& tx, Callback cb) : m_tx(tx), m_cb(cb) {};
+  WalletRelayTransactionRequest(const CryptoNote::Transaction& tx, Callback cb, bool do_not_relay) : m_tx(tx), m_cb(cb), m_do_not_relay(do_not_relay) {};
   virtual ~WalletRelayTransactionRequest() {};
+
+  inline void dumpTransaction(const INode::Callback& callback) {
+    const std::string filename = "raw_tx.txt";
+    boost::system::error_code ec;
+    if (boost::filesystem::exists(filename, ec)) {
+      boost::filesystem::remove(filename, ec);
+    }
+    std::ofstream txFile(filename, std::ios::out | std::ios::trunc | std::ios::binary);
+    if (!txFile.good()) {
+      throw;
+    }
+
+    std::string tx_as_hex = Common::toHex(toBinaryArray(m_tx));
+
+    txFile << tx_as_hex;
+
+    callback(std::error_code());
+  }
 
   virtual void perform(INode& node, std::function<void (WalletRequest::Callback, std::error_code)> cb) override
   {
-    node.relayTransaction(m_tx, std::bind(cb, m_cb, std::placeholders::_1));
+    if (!m_do_not_relay)
+      node.relayTransaction(m_tx, std::bind(cb, m_cb, std::placeholders::_1));
+    else
+      dumpTransaction(std::bind(cb, m_cb, std::placeholders::_1));
   }
-
-  static CryptoNote::Transaction dontRelayTransaction(const CryptoNote::Transaction& transaction, const INode::Callback& callback) { callback(std::error_code()); return transaction; }
-
-  virtual CryptoNote::Transaction getRawTransaction(std::function<void(WalletRequest::Callback, std::error_code)> cb) { return dontRelayTransaction(m_tx, std::bind(cb, m_cb, std::placeholders::_1)); }
 
 private:
   CryptoNote::Transaction m_tx;
   Callback m_cb;
+  bool m_do_not_relay;
 };
 
 } //namespace CryptoNote

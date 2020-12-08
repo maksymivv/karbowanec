@@ -2098,12 +2098,11 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
     CryptoNote::WalletHelper::SendCompleteResultObserver sent;
 
     std::string extraString;
-    std::string rawTx;
     std::copy(cmd.extra.begin(), cmd.extra.end(), std::back_inserter(extraString));
 
     WalletHelper::IWalletRemoveObserverGuard removeGuard(*m_wallet, sent);
 
-    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, rawTx, cmd.fee, extraString, cmd.fake_outs_count, 0, m_do_not_relay_tx);
+    CryptoNote::TransactionId tx = m_wallet->sendTransaction(cmd.dsts, cmd.fee, extraString, cmd.fake_outs_count, 0, m_do_not_relay_tx);
     if (tx == WALLET_LEGACY_INVALID_TRANSACTION_ID) {
       fail_msg_writer() << "Can't send money";
       return true;
@@ -2125,17 +2124,7 @@ bool simple_wallet::transfer(const std::vector<std::string> &args) {
       success_msg_writer(true) << "Money successfully sent, transaction id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(tx_key);
     } else {
       success_msg_writer(true) << "Raw transaction prepared successfully, id: " << Common::podToHex(txInfo.hash) << ", key: " << Common::podToHex(tx_key);
-      const std::string filename = "raw_tx.txt";
-      boost::system::error_code ec;
-      if (boost::filesystem::exists(filename, ec)) {
-        boost::filesystem::remove(filename, ec);
-      }
-      std::ofstream txFile(filename, std::ios::out | std::ios::trunc | std::ios::binary);
-      if (!txFile.good()) {
-        return false;
-      }
-      txFile << rawTx;
-      success_msg_writer() << "Raw transaction saved to file: " << filename;
+      success_msg_writer(true) << "Raw transaction saved to file: raw_tx.txt";
       m_do_not_relay_tx = false;
     }
 
