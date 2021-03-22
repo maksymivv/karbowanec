@@ -10,8 +10,8 @@ jobs:
     name: Windows
     runs-on: windows-latest
     env:
-      BOOST_ROOT: ${{github.workspace}}/3rdparty/boost
-      BOOST_URL: https://sourceforge.net/projects/boost/files/boost/1.72.0/boost_1_72_0.7z/download
+      BOOST_ROOT: ${{github.workspace}}/3rdparty/boost 
+      BOOST_URL: https://sourceforge.net/projects/boost/files/boost/1.72.0/boost_1_72_0.tar.bz2/download
     steps:
       - uses: actions/checkout@master
         with:
@@ -31,6 +31,7 @@ jobs:
       - name: Install Boost
         if: steps.cache-boost.outputs.cache-hit != 'true'
         run: |
+          # fix up paths to be forward slashes consistently
           BOOST_ROOT=$(echo $BOOST_ROOT | sed 's/\\/\//g')
           mkdir -p $BOOST_ROOT
           curl --progress-bar --location --output $BOOST_ROOT/download.tar.bz2 $BOOST_URL
