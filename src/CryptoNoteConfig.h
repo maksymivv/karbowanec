@@ -196,6 +196,7 @@ const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1
 
 const char* const SEED_NODES[] = {
   "46.149.182.151:12347"
+, "151.115.37.223:12347"
 };
 
 } // CryptoNote
