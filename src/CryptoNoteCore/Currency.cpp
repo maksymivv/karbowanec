@@ -559,7 +559,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && nextDiffZ < 100000) {
-			nextDiffZ = 100000;
+			//nextDiffZ = 100000;
 		}
 
 		return nextDiffZ;
@@ -622,7 +622,7 @@ namespace CryptoNote {
 		
 		// minimum limit
 		if (!isTestnet() && next_difficulty < 100000) {
-			next_difficulty = 100000;
+			//next_difficulty = 100000;
 		}
 
 		return next_difficulty;
@@ -685,7 +685,7 @@ namespace CryptoNote {
 
 		// minimum limit
 		if (!isTestnet() && next_D < 100000) {
-			next_D = 100000;
+			//next_D = 100000;
 		}
 
 		return next_D;
@@ -699,16 +699,17 @@ namespace CryptoNote {
     // See commented link below for required config file changes. Fix FTL and MTP.
     // https://github.com/zawy12/difficulty-algorithms/issues/3
 
-    // reset difficulty for new epoch
-    if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) + 1) {
-      return 1000000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
+    // begin reset difficulty for new epoch
+    if (height == upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5)) {
+      return 1000; //return (cumulativeDifficulties[0] - cumulativeDifficulties[1]) / RESET_WORK_FACTOR;
     }
-    uint32_t count = (uint32_t)difficultyBlocksCountByBlockVersion(blockMajorVersion);
+    uint32_t count = (uint32_t)difficultyBlocksCountByBlockVersion(blockMajorVersion) - 1;
     if (height > upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5) && height < CryptoNote::parameters::UPGRADE_HEIGHT_V5 + count) {
       uint32_t offset = count - (height - upgradeHeight(CryptoNote::BLOCK_MAJOR_VERSION_5));
       timestamps.erase(timestamps.begin(), timestamps.begin() + offset);
       cumulativeDifficulties.erase(cumulativeDifficulties.begin(), cumulativeDifficulties.begin() + offset);
     }
+    // end reset difficulty for new epoch
 
     assert(timestamps.size() == cumulativeDifficulties.size());
 
@@ -742,7 +743,7 @@ namespace CryptoNote {
 
     // minimum limit
     if (!isTestnet() && next_D < 1000000) {
-      next_D = 1000000;
+      //next_D = 1000000;
     }
 
     return next_D;
