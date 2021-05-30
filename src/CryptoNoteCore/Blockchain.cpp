@@ -754,6 +754,9 @@ bool Blockchain::getTransactionHeight(const Crypto::Hash &txId, uint32_t& blockH
 }
 
 difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHash) {
+  if (prevHash == NULL_HASH)
+    return 1;
+
   std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
