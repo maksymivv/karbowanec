@@ -763,7 +763,7 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
 
   uint32_t height = (uint32_t)m_blocks.size();
   uint8_t BlockMajorVersion = getBlockMajorVersionForHeight(static_cast<uint32_t>(height));
-  size_t need = std::min<size_t>(height - 1, static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
+  size_t need = std::min<size_t>(std::max<size_t>(height - 1, 1), static_cast<size_t>(m_currency.difficultyBlocksCountByBlockVersion(BlockMajorVersion)));
   size_t got = 0;
 
   Crypto::Hash h = prevHash;
