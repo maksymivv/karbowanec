@@ -723,7 +723,9 @@ bool Core::handle_incoming_block(const Block& b, block_verification_context& bvc
     pause_mining();
   }
 
-  m_blockchain.addNewBlock(b, bvc);
+  if (!m_blockchain.addNewBlock(b, bvc)) {
+
+  }
 
   if (control_miner) {
     update_block_template_and_resume_mining();

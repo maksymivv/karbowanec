@@ -127,7 +127,7 @@ const char     CRYPTONOTE_BLOCKCHAIN_INDICES_FILENAME[]      = "blockchainindice
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
 } // parameters
 
-const char     CRYPTONOTE_NAME[]                             = "krbcoin";
+const char     CRYPTONOTE_NAME[]                             = "krbcoin2";
 const char     CRYPTONOTE_TICKER[]                           = "KRB";
 const char     GENESIS_COINBASE_TX_HEX[]                     = "010a01ff0001fac484c69cd608029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101f904925cc23f86f9f3565188862275dc556a9bdfb6aec22c5aca7f0177c45ba8";
 const char     DNS_CHECKPOINTS_HOST[]                        = "127.0.0.1"; //"checkpoints.karbo.org";
@@ -145,9 +145,9 @@ const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by def
 const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  128;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
-const int      P2P_DEFAULT_PORT                              =  12347;
-const int      RPC_DEFAULT_PORT                              =  12348;
-const int      RPC_DEFAULT_SSL_PORT                          =  12448;
+const int      P2P_DEFAULT_PORT                              =  13347;
+const int      RPC_DEFAULT_PORT                              =  13348;
+const int      RPC_DEFAULT_SSL_PORT                          =  13448;
 const int      WALLET_RPC_DEFAULT_PORT                       =  15000;
 const int      WALLET_RPC_DEFAULT_SSL_PORT                   =  15100;
 const int      GATE_RPC_DEFAULT_PORT                         =  16000;
@@ -195,8 +195,8 @@ const uint32_t P2P_IDLE_CONNECTION_KILL_INTERVAL             = (5 * 60);      //
 const char     P2P_STAT_TRUSTED_PUB_KEY[]                    = "8f80f9a5a434a9f1510d13336228debfee9c918ce505efe225d8c94d045fa115";
 
 const char* const SEED_NODES[] = {
-  "46.149.182.151:12347"
-, "151.115.37.223:12347"
+  "46.149.182.151:13347"
+, "151.115.37.223:13347"
 };
 
 } // CryptoNote
