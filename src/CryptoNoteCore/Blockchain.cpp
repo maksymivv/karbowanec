@@ -1235,11 +1235,11 @@ bool Blockchain::get_block_long_hash(Crypto::cn_context &context, const Block& b
     return false;
   }
 
-#define ITER 128
   Crypto::Hash hash_1, hash_2;
   uint32_t currentHeight = boost::get<BaseInput>(b.baseTransaction.inputs[0]).blockIndex;
   uint32_t maxHeight = std::min<uint32_t>(getCurrentBlockchainHeight() - 1, currentHeight - 1 - m_currency.minedMoneyUnlockWindow());
 
+#define ITER 128
   for (uint32_t i = 0; i < ITER; i++) {
     cn_fast_hash(pot.data(), pot.size(), hash_1);
 
@@ -1250,18 +1250,18 @@ bool Blockchain::get_block_long_hash(Crypto::cn_context &context, const Block& b
         hash_1.data[j * 4 - 2], 
         hash_1.data[j * 4 - 1]
       };
-    
+
       uint32_t n = (chunk[0] << 24) |
-                    (chunk[1] << 16) |
-                    (chunk[2] << 8)  |
-                    (chunk[3]);
+                   (chunk[1] << 16) |
+                   (chunk[2] << 8)  |
+                   (chunk[3]);
 
       uint32_t height_j = n % maxHeight;
       std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
-      const Block& bi = m_blocks[height_j].bl;
+      const Block& bj = m_blocks[height_j].bl;
 
       BinaryArray ba;
-      if (!get_block_hashing_blob(bi, ba)) {
+      if (!get_block_hashing_blob(bj, ba)) {
         logger(ERROR, BRIGHT_RED) << "Failed to get_block_hashing_blob of additional block " 
                                   << j << " at height " << height_j;
         return false;
