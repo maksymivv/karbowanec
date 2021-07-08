@@ -1,6 +1,6 @@
 // Copyright (c) 2012-2016, The CryptoNote developers, The Bytecoin developers
 // Copyright (c) 2018, The TurtleCoin developers
-// Copyright (c) 2016-2020, The Karbo developers
+// Copyright (c) 2016-2021, The Karbo developers
 //
 // This file is part of Karbo.
 //
@@ -28,6 +28,7 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
+#include <mutex>
 #include <chrono>
 #include <thread>
 #include <condition_variable>
@@ -42,7 +43,6 @@ using namespace Logging;
 namespace CryptoNote {
 //---------------------------------------------------------------------------
 Checkpoints::Checkpoints(Logging::ILogger &log) : logger(log, "checkpoints") {
-  m_mutex = new std::mutex();
 }
 //---------------------------------------------------------------------------
 bool Checkpoints::add_checkpoint(uint32_t height, const std::string &hash_str) {
@@ -152,7 +152,6 @@ std::vector<uint32_t> Checkpoints::getCheckpointHeights() const {
 //---------------------------------------------------------------------------
 bool Checkpoints::load_checkpoints_from_dns()
 {
-  std::lock_guard<std::mutex> lock(*m_mutex);
   std::mutex m;
   std::condition_variable cv;
   std::string domain(CryptoNote::DNS_CHECKPOINTS_HOST);
