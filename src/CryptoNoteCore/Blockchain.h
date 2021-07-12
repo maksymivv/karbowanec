@@ -270,12 +270,10 @@ namespace CryptoNote {
     {
       bool operator () (const Crypto::KeyImage& a, const Crypto::KeyImage& b) const
       {
-        //return !(std::equal(std::begin(a.data), std::end(a.data), std::begin(b.data)));
-          return std::memcmp(&a, &b, sizeof(Crypto::KeyImage)) < 0;
+        return std::memcmp(&a, &b, sizeof(Crypto::KeyImage)) < 0;
       }
     };
 
-    //typedef std::unordered_map<Crypto::KeyImage, uint32_t> SpentKeyImagesContainer;
     typedef stxxl::unordered_map<
       Crypto::KeyImage, uint32_t, KeyImageHashFunctor, KeyImageCompare, SUB_BLOCK_SIZE, SUB_BLOCKS_PER_BLOCK
     > SpentKeyImagesContainer;

@@ -276,7 +276,7 @@ int main(int argc, char* argv[])
     stxxl::config * cfg = stxxl::config::get_instance();
     // create a disk_config structure
     stxxl::disk_config disk1(coreConfig.configFolder + "/" + "memswap.bin", 2000 * 1024 * 1024, "wincall");
-    //disk1.direct = stxxl::disk_config::DIRECT_OFF;
+    disk1.direct = stxxl::disk_config::DIRECT_ON;
     disk1.delete_on_exit = false;
     disk1.device_id = -1;
     disk1.autogrow = true;
