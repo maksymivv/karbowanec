@@ -194,7 +194,7 @@ namespace CryptoNote {
 
     template<class t_ids_container, class t_blocks_container, class t_missed_container>
     bool getBlocks(const t_ids_container& block_ids, t_blocks_container& blocks, t_missed_container& missed_bs) {
-      std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
+      //std::lock_guard<std::recursive_mutex> lk(m_blockchain_lock);
 
       for (const auto& bl_id : block_ids) {
         try {
@@ -217,7 +217,7 @@ namespace CryptoNote {
 
     template<class t_ids_container, class t_tx_container, class t_missed_container>
     void getBlockchainTransactions(const t_ids_container& txs_ids, t_tx_container& txs, t_missed_container& missed_txs) {
-      std::lock_guard<decltype(m_blockchain_lock)> bcLock(m_blockchain_lock);
+      //std::lock_guard<decltype(m_blockchain_lock)> bcLock(m_blockchain_lock);
 
       for (const auto& tx_id : txs_ids) {
         TransactionIndex ti;
@@ -338,7 +338,7 @@ namespace CryptoNote {
     typedef SwappedVector<BlockEntry> Blocks;
     typedef std::unordered_map<Crypto::Hash, uint32_t> BlockMap;
     typedef std::unordered_map<Crypto::Hash, TransactionIndex> TransactionMap;
-    //typedef BasicUpgradeDetector<DB> UpgradeDetector;
+    //typedef BasicUpgradeDetector<DB> UpgradeDetector;<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
     friend class BlockCacheSerializer;
     friend class BlockchainIndicesSerializer;
