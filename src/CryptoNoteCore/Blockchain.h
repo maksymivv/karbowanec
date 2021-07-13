@@ -394,7 +394,7 @@ namespace CryptoNote {
     bool pushBlock(const Block& blockData, const std::vector<Transaction>& transactions, const Crypto::Hash& blockHash, block_verification_context& bvc);
     bool pushBlock(BlockEntry& block, const Crypto::Hash& blockHash);
     void popBlock();
-    bool pushTransaction(BlockEntry& block, const Crypto::Hash& transactionHash, TransactionIndex transactionIndex);
+    bool pushTransaction(BlockEntry& block, const Crypto::Hash& transactionHash, TransactionIndex& transactionIndex);
     void popTransaction(const Transaction& transaction, const Crypto::Hash& transactionHash);
     void popTransactions(const BlockEntry& block, const Crypto::Hash& minerTransactionHash);
     bool validateInput(const MultisignatureInput& input, const Crypto::Hash& transactionHash, const Crypto::Hash& transactionPrefixHash, const std::vector<Crypto::Signature>& transactionSignatures);
