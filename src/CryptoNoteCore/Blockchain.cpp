@@ -1359,19 +1359,27 @@ bool Blockchain::getBackwardBlocksSize(size_t from_height, std::vector<size_t>& 
   //for (size_t i = start_offset; i != from_height + 1; i++) {
   //  sz.push_back(m_blocks[i].block_cumulative_size);
   //}
-  size_t i = start_offset;
-  auto middle = Common::write_varint_sqlite4(start_offset);
-  for (DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle); i != from_height + 1; i++, cur.next()) {
-    auto v = cur.get_value_array();
-    Crypto::Hash id;
-    std::copy(v.begin(), v.end(), id.data);
-    auto key = BLOCK_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)) + BLOCK_SUFFIX;
-    BinaryArray ba;
-    m_db.get(key, ba);
-    BlockEntry e;
-    fromBinaryArray(e, ba);
-    sz.push_back(e.block_cumulative_size);
+
+  for (size_t i = start_offset; i != from_height + 1; i++) {
+    auto it = m_cache_map.find(i);
+    if (it != m_cache_map.end()) {
+      sz.push_back(it->second.block_cumulative_size);
+    }
+    else {
+      auto middle = Common::write_varint_sqlite4(i);
+      DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle);
+      auto v = cur.get_value_array();
+      Crypto::Hash id;
+      std::copy(v.begin(), v.end(), id.data);
+      auto key = BLOCK_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)) + BLOCK_SUFFIX;
+      BinaryArray ba;
+      m_db.get(key, ba);
+      BlockEntry e;
+      fromBinaryArray(e, ba);
+      sz.push_back(e.block_cumulative_size);
+    }
   }
+
   return true;
 }
 
