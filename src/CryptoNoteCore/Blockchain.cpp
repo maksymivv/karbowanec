@@ -2878,9 +2878,9 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
       //amountOutputs.push_back(std::make_pair<>(transactionIndex, output)); // push to m_outputs
 
       BinaryArray ba;
+      OutputsEntry oe;
       const auto key = OUTPUTS_INDEX_PREFIX + Common::write_varint_sqlite4(transaction.tx.outputs[output].amount);
       if (m_db.get(key, ba)) {
-        OutputsEntry oe;
         if (!fromBinaryArray(oe, ba)) {
           throw std::runtime_error("Blockchain::pushTransaction, failed to parse output entry from DB");
         }
@@ -2890,8 +2890,7 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         //m_db.del(key, false);
         m_db.put(key, toBinaryArray(oe), false);
       } else {
-        OutputsEntry oe;
-        transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update
+        transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update, it will be 0 in this case
         oe.outputs.push_back(std::make_pair<>(transactionIndex, output));
         m_db.put(key, toBinaryArray(oe), true);
       }
