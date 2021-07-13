@@ -2845,11 +2845,8 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         return false;
       }
     }
-  }
-
-  for (const auto& inv : transaction.tx.inputs) {
-    if (inv.type() == typeid(MultisignatureInput)) {
-      const MultisignatureInput& in = ::boost::get<MultisignatureInput>(inv);
+    else if (transaction.tx.inputs[i].type() == typeid(MultisignatureInput)) {
+      const MultisignatureInput& in = ::boost::get<MultisignatureInput>(transaction.tx.inputs[i]);
       //auto& amountOutputs = m_multisignatureOutputs[in.amount];
       //amountOutputs[in.outputIndex].isUsed = true;
 
@@ -2864,7 +2861,8 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
         // just put and update doesn't work, have to delete old first
         //m_db.del(key, false);
         m_db.put(key, toBinaryArray(me), false);
-      } else {
+      }
+      else {
         MultisignatureOutputEntry me;
         me.multisignatureOutputs[in.outputIndex].isUsed = true;
         m_db.put(key, toBinaryArray(me), true);
