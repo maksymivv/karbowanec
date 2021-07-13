@@ -2646,6 +2646,7 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
 
   CachedBlockInfo info;
   info.blockHash = blockHash;
+  info.prevBlockHash = block.bl.previousBlockHash;
   info.block_cumulative_size = cumulative_block_size;
   info.cumulative_difficulty = block.cumulative_difficulty;
   info.already_generated_coins = block.already_generated_coins;
