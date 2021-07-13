@@ -2778,20 +2778,20 @@ bool Blockchain::pushBlock(BlockEntry& block, const Crypto::Hash& blockHash) {
   }
  
   //assert(m_blockIndex.size() == m_blocks.size());
+  m_height.store(block.height + 1, std::memory_order_relaxed); // +1 incl. zero block
 
   // committing helps to keep memory usage low
   // commit every 1k blocks when syncing, on every block when was synced
-  if (isInCheckpointZone(getCurrentBlockchainHeight()) || !m_synchronized) {
+  if (/*isInCheckpointZone(getCurrentBlockchainHeight()) ||*/ !m_synchronized) {
     if (block.height != 0 && block.height % 1000 == 0) { // no commit on genesis
       db_commit();
       logger(INFO, BRIGHT_MAGENTA) << "Blockchain synchronized to height " << block.height;
     }
-  } else {
+  }
+  else {
     logger(DEBUGGING) << "Blockchain::db_commit on single push block started...";
     db_commit();
   }
-
-  m_height.store(block.height + 1, std::memory_order_relaxed); // +1 incl. zero block
 
   return true;
 }
