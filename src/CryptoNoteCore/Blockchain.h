@@ -105,6 +105,7 @@ namespace CryptoNote {
 
     struct CachedBlockInfo {
       Crypto::Hash blockHash;
+      Crypto::Hash prevBlockHash;
       uint64_t timestamp;
       uint64_t block_cumulative_size;
       difficulty_type cumulative_difficulty;

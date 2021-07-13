@@ -949,14 +949,13 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
     uint32_t bh = 0;
     BlockEntry b;
     if (getBlockHeight(h, bh)) {
-      /*auto it = m_cache_map.find(bh);
+      auto it = m_cache_map.find(bh);
       if (it != m_cache_map.end()) {
         timestamps.push_back(it->second.timestamp);
         cumulative_difficulties.push_back(it->second.cumulative_difficulty);
-
-        // need previousBlockHash 
+        h = it->second.prevBlockHash;
       }
-      else {*/
+      else {
         auto middle = Common::write_varint_sqlite4(bh);
         DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle);
         auto v = cur.get_value_array();
@@ -966,13 +965,19 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
         BinaryArray ba;
         m_db.get(key, ba);
         fromBinaryArray(b, ba);
-      //}
+        timestamps.push_back(b.bl.timestamp);
+        cumulative_difficulties.push_back(b.cumulative_difficulty);
+        h = b.bl.previousBlockHash;
+      }
     }
     else {
       auto blockByHashIterator = m_alternative_chains.find(h);
       if (blockByHashIterator != m_alternative_chains.end()) {
         b = blockByHashIterator->second;
         bh = b.height;
+        timestamps.push_back(b.bl.timestamp);
+        cumulative_difficulties.push_back(b.cumulative_difficulty);
+        h = b.bl.previousBlockHash;
       }
       else {
         logger(ERROR) << "Can't find block " << h << " for difficulty calculation";
@@ -980,12 +985,7 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
       }
     }
 
-    timestamps.push_back(b.bl.timestamp);
-    cumulative_difficulties.push_back(b.cumulative_difficulty);
-
     processed++;
-
-    h = b.bl.previousBlockHash;
 
   } while (processed < difficultyBlocksCount);
 
