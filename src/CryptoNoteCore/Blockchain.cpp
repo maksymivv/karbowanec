@@ -930,6 +930,17 @@ bool Blockchain::getBlockHeight(const Crypto::Hash& blockId, uint32_t& blockHeig
   return true;
 }
 
+bool Blockchain::find_cached_block_entry_by_hash(const Crypto::Hash &hash, CachedBlockInfo& b) {
+  for (CachedBlockInfoContainer::const_iterator it = m_cache_map.begin(); it != m_cache_map.end(); ++it) {
+    if (it->second.blockHash == hash) {
+      b = it->second;
+      return true;
+    }
+  }
+
+  return false;
+}
+
 difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHash) {
   if (prevHash == NULL_HASH) {
     return 1;
@@ -948,29 +959,26 @@ difficulty_type Blockchain::getDifficultyForNextBlock(const Crypto::Hash &prevHa
   do {
     uint32_t bh = 0;
     BlockEntry b;
-    if (getBlockHeight(h, bh)) {
-      auto it = m_cache_map.find(bh);
-      if (it != m_cache_map.end()) {
-        timestamps.push_back(it->second.timestamp);
-        cumulative_difficulties.push_back(it->second.cumulative_difficulty);
-        h = it->second.prevBlockHash;
-      }
-      else {
-        auto middle = Common::write_varint_sqlite4(bh);
-        DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle);
-        auto v = cur.get_value_array();
-        Crypto::Hash id;
-        std::copy(v.begin(), v.end(), id.data);
-        auto key = BLOCK_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)) + BLOCK_SUFFIX;
-        BinaryArray ba;
-        m_db.get(key, ba);
-        fromBinaryArray(b, ba);
-        timestamps.push_back(b.bl.timestamp);
-        cumulative_difficulties.push_back(b.cumulative_difficulty);
-        h = b.bl.previousBlockHash;
-      }
-    }
-    else {
+    CachedBlockInfo i;
+
+    if (find_cached_block_entry_by_hash(h, i)) {
+      timestamps.push_back(i.timestamp);
+      cumulative_difficulties.push_back(i.cumulative_difficulty);
+      h = i.prevBlockHash;
+    } else if (getBlockHeight(h, bh)) {
+      auto middle = Common::write_varint_sqlite4(bh);
+      DB::Cursor cur = m_db.begin(BLOCK_INDEX_PREFIX, middle);
+      auto v = cur.get_value_array();
+      Crypto::Hash id;
+      std::copy(v.begin(), v.end(), id.data);
+      auto key = BLOCK_PREFIX + DB::to_binary_key(id.data, sizeof(id.data)) + BLOCK_SUFFIX;
+      BinaryArray ba;
+      m_db.get(key, ba);
+      fromBinaryArray(b, ba);
+      timestamps.push_back(b.bl.timestamp);
+      cumulative_difficulties.push_back(b.cumulative_difficulty);
+      h = b.bl.previousBlockHash;
+    } else {
       auto blockByHashIterator = m_alternative_chains.find(h);
       if (blockByHashIterator != m_alternative_chains.end()) {
         b = blockByHashIterator->second;

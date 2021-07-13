@@ -402,6 +402,8 @@ namespace CryptoNote {
     void removeLastBlock();
     //bool checkUpgradeHeight(const UpgradeDetector& upgradeDetector);
 
+    bool find_cached_block_entry_by_hash(const Crypto::Hash &hash, CachedBlockInfo& b);
+
     bool storeBlockchainIndices();
     bool loadBlockchainIndices();
 
