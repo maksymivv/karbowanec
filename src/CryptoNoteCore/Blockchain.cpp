@@ -2669,7 +2669,10 @@ bool Blockchain::pushBlock(const Block& blockData, const std::vector<Transaction
   info.timestamp = blockData.timestamp;
   info.already_generated_transactions = block.transactions.size() + 1;
 
-  m_cache_map.emplace(std::make_pair<>(block.height, info));
+  m_cache_map.insert(std::make_pair<>(block.height, info));
+  if (m_cache_map.size() >= 1000) {
+    m_cache_map.erase(m_cache_map.begin());
+  }
 
   pushBlock(block, blockHash); // TODO use if (!pushBlock(block, blockHash)) return false; ??
 

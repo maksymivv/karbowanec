@@ -317,7 +317,7 @@ namespace CryptoNote {
     //typedef google::sparse_hash_map<uint64_t, std::vector<std::pair<TransactionIndex, uint16_t>>> outputs_container; //Crypto::Hash - tx hash, size_t - index of out in transaction
     //typedef google::sparse_hash_map<uint64_t, std::vector<MultisignatureOutputUsage>> MultisignatureOutputsContainer;
 
-    typedef std::unordered_map<uint32_t, CachedBlockInfo> CachedBlockInfoContainer;
+    typedef std::map<uint32_t, CachedBlockInfo> CachedBlockInfoContainer;
 
     CachedBlockInfoContainer m_cache_map;
 
