@@ -2888,13 +2888,15 @@ bool Blockchain::pushTransaction(BlockEntry& block, const Crypto::Hash& transact
           throw std::runtime_error("Blockchain::pushTransaction, failed to parse output entry from DB");
         }
         transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update
-        oe.outputs.push_back(std::make_pair<>(transactionIndex, output));
+        oe.outputs.reserve(oe.outputs.size() + 1);
+        oe.outputs.emplace_back(std::make_pair<>(transactionIndex, output));
         // just put and update doesn't work, have to delete old first
         //m_db.del(key, false);
         m_db.put(key, toBinaryArray(oe), false);
       } else {
         transaction.m_global_output_indexes[output] = oe.outputs.size(); // get size before the update, it will be 0 in this case
-        oe.outputs.push_back(std::make_pair<>(transactionIndex, output));
+        oe.outputs.reserve(oe.outputs.size() + 1);
+        oe.outputs.emplace_back(std::make_pair<>(transactionIndex, output));
         m_db.put(key, toBinaryArray(oe), true);
       }
     } else if (transaction.tx.outputs[output].target.type() == typeid(MultisignatureOutput)) {
