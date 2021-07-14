@@ -610,7 +610,7 @@ bool Blockchain::init(const std::string& config_folder, bool load_existing) {
 void Blockchain::db_commit() {
   //std::lock_guard<decltype(m_blockchain_lock)> lk(m_blockchain_lock);
 
-  //logger(INFO) << "Blockchain::db_commit started...";
+  logger(DEBUGGING) << "Blockchain::db_commit started...";
   try {
     m_db.commit_db_txn();
   } 
@@ -620,7 +620,7 @@ void Blockchain::db_commit() {
   catch (...) {
     logger(ERROR, BRIGHT_RED) << "Unknown error during DB commit";
   }
-  //logger(INFO) << "BlockChain::db_commit finished...";
+  logger(DEBUGGING) << "BlockChain::db_commit finished...";
 }
 
 void Blockchain::on_synchronized() {
